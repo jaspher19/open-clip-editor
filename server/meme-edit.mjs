@@ -63,8 +63,14 @@ const HOLES='m -64 2 b -64 -24 -16 -26 -16 2 b -16 24 -64 26 -64 2 m 16 2 b 16 -
 const JAW='m -60 0 l 60 0 b 62 30 42 46 20 48 l -20 48 b -42 46 -62 30 -60 0',TEETH='m -48 4 l 48 4 l 48 9 l -48 9 m -30 4 l -26 4 l -26 30 l -30 30 m -10 4 l -6 4 l -6 33 l -10 33 m 8 4 l 12 4 l 12 33 l 8 33 m 28 4 l 32 4 l 32 30 l 28 30';
 const CLOUD=circle(-70,-10,36)+circle(-34,-42,46)+circle(14,-50,50)+circle(62,-26,40)+circle(0,4,42)+circle(96,4,26)+circle(-104,10,24)+circle(46,14,30)+circle(-40,16,30);
 const FLAME='m -50 0 b -62 -50 -24 -80 -14 -150 b 2 -104 24 -96 30 -128 b 58 -74 62 -36 50 0 l -50 0';
+/**
+ * Where the skull goes on a 9:16 crop: beside the face, on the side away from it. The face's place in the frame comes from the
+ * face track sample nearest the held frame (its raw position against the crop window), else the default left side.
+ */
+export function skullSide(samples,at,fraction){const s=(samples||[]).filter(p=>Number.isFinite(p.rawX)&&Number.isFinite(p.centerX)&&Math.abs(p.time-at)<=1.5).sort((a,b)=>Math.abs(a.time-at)-Math.abs(b.time-at))[0];if(!s||!(fraction>0&&fraction<1))return 'left';
+ const left=Math.min(1-fraction,Math.max(0,s.centerX-fraction/2));return (s.rawX-left)/fraction<.45?'right':'left';}
 /** Mind-blown skull beside the subject and glowing flames along the floor over the skull ending; cloud and jaw move on every 808 hit. */
-export function skullAss(skull,{outputFormat='shorts'}={}){if(!skull)return '';const wide=outputFormat==='video',W=wide?1920:1080,H=wide?1080:1920,x=Math.round(W*(wide?.36:.27)),y=Math.round(H*.5),z=wide?80:100,a=skull.start+.05,end=skull.end,span=(end-a)*1000,lines=[];
+export function skullAss(skull,{outputFormat='shorts',side='left'}={}){if(!skull)return '';const wide=outputFormat==='video',W=wide?1920:1080,H=wide?1080:1920,x=Math.round(W*(wide?.36:side==='right'?.73:.27)),y=Math.round(H*.5),z=wide?80:100,a=skull.start+.05,end=skull.end,span=(end-a)*1000,lines=[];
  const at=(dx,dy)=>`${Math.round(x+dx*z/100)},${Math.round(y+dy*z/100)}`,base=`\\an7\\fscx${z}\\fscy${z}\\p1`,bone='&HD8ECF6&',ink='&H151515&',edge=`\\bord${wide?4:5}\\3c&H000000&\\shad${wide?3:4}\\4c&H000000&\\4a&H70&`;
  const add=(layer,t0,t1,tags,shape)=>lines.push(`Dialogue: ${layer},${stamp(t0)},${stamp(t1)},Default,,0,0,0,,{${base}${tags}}${shape}`);
  // Floor glow and flames: a warm haze along the bottom, then soft tongues of light that flicker at their own rates.

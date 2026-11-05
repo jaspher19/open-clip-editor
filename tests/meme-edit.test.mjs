@@ -63,3 +63,17 @@ test('the AI judges a pool of meme-shaped candidates: its best-scored moments wi
  assert.equal(fitPick({start:0,payoff:1,end:2},{start:0,end:20,peakAt:10},stream,options),null,'too short for the format');
  assert.equal(judgeReady(options,{GEMINI_API_KEY:'x'}),true);assert.equal(judgeReady(validateOptions(applyTemplate('context-hit',{})),{GEMINI_API_KEY:'x'}),false,'meme templates only');assert.equal(judgeReady(options,{}),false);
 });
+test('the skull sits beside the face, on the side away from it',async()=>{
+ const {skullSide}=await import('../server/meme-edit.mjs');const fraction=.32;
+ assert.equal(skullSide([{time:10,rawX:.12,centerX:.2}],10,fraction),'right','a face at the left edge of the crop puts the skull on the right');
+ assert.equal(skullSide([{time:10,rawX:.55,centerX:.55}],10,fraction),'left','a centred face keeps the skull on the left');
+ assert.equal(skullSide([{time:20,rawX:.1,centerX:.1}],10,fraction),'left','no face near the held frame: default side');
+ assert.match(skullAss({start:1,end:3.9},{side:'right'}),/\pos\(788,/);
+});
+test('switching from a meme template to a standard one drops the meme effects',async()=>{
+ const {withTemplate}=await import('../web/src/logic.mjs'),{EDIT_TEMPLATES}=await import('../server/templates.mjs');
+ const skull=applyTemplate('skull-ending',{}),hit=applyTemplate('context-hit',skull);
+ for(const k of ['skullEnding','revealFx','cutFlash','tintFlashes','actionLabels'])assert.equal(hit[k],false,k);assert.equal(hit.hookPosition,'top');
+ const web=withTemplate(skull,EDIT_TEMPLATES.find(t=>t.id==='context-hit'),{remember:false});assert.equal(web.skullEnding,false);assert.equal(web.hookPosition,'top');
+ assert.equal(applyTemplate('meme-reveal',hit).revealFx,true,'meme templates still turn theirs on');
+});

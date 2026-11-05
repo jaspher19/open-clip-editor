@@ -2,7 +2,9 @@ import fs from 'node:fs';
 export const EDIT_TEMPLATES=JSON.parse(fs.readFileSync(new URL('../presets/edits.json',import.meta.url),'utf8'));
 export const CAPTION_FONTS=[{id:'anton',name:'Anton',family:'Anton'},{id:'barlow',name:'Barlow Condensed',family:'Barlow Condensed'},{id:'work',name:'Work Sans',family:'Work Sans'},{id:'mono',name:'Red Hat Mono',family:'Red Hat Mono'},{id:'montserrat',name:'Montserrat ExtraBold',family:'Montserrat ExtraBold'},{id:'montserrat-black',name:'Montserrat Black',family:'Montserrat Black'}];
 export function captionFont(id){return CAPTION_FONTS.find(f=>f.id===id)?.family;}
-export function applyTemplate(id,current={},overrides={}){const template=EDIT_TEMPLATES.find(t=>t.id===id);if(!template)throw new Error('Unknown edit template');return {...current,...template.settings,editTemplate:id,...overrides};}
+// Meme-only effects are off unless the chosen template turns them on, so switching away from a meme edit drops them.
+export const TEMPLATE_RESET={revealFx:false,cutFlash:false,tintFlashes:false,skullEnding:false,actionLabels:false,hookReveal:'pop',hookPosition:'top'};
+export function applyTemplate(id,current={},overrides={}){const template=EDIT_TEMPLATES.find(t=>t.id===id);if(!template)throw new Error('Unknown edit template');return {...current,...TEMPLATE_RESET,...template.settings,editTemplate:id,...overrides};}
 // Punch-ins land on speech beats (after a pause, or on ! / ?) when there are any; otherwise on a steady cadence.
 // Manual zooms ({out, dur} in output seconds) add a quick 1.18x punch that eases in and out over their duration.
 export function zoomFilter(options,beats=[],zooms=[],ramps=[]){const auto=!!options.punchIn&&options.motionIntensity!=='off'&&options.autoEffects!==false;if(!auto&&!zooms.length&&!ramps.length)return '';const size=options.outputFormat==='video'?'1920x1080':'1080x1920';const cadence=Number(options.punchInterval??2.8),amount=Number(options.punchZoom??1.08),frames=Math.round(cadence*30),mode=options.motionIntensity||'balanced';

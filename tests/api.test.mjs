@@ -100,3 +100,21 @@ test('adding a clip to the calendar twice updates the one draft, and a posted cl
  const post=path.join(store.root,'posting',first.id,'post.json'),saved=JSON.parse(fs.readFileSync(post,'utf8'));fs.writeFileSync(post,JSON.stringify({...saved,videoId:'v',url:'https://youtu.be/v',state:'uploaded-private'}));
  r=await add();again=await r.json();assert.equal(again.existing,'posted');assert.equal(fs.readdirSync(path.join(store.root,'posting')).filter(n=>/^[a-f0-9-]{36}$/.test(n)).length,1,'still one post');
 });
+test('exports, sources and transcripts are served when the app lives under a dot-folder',async t=>{
+ const store=new JobStore(path.join(ROOT,'.cache','api-tests-'+randomUUID(),'.hidden-root'));const queue={isBusy:()=>false,enqueue(){},cancel(){}};
+ const app=createApp({store,queue,youtube:new YouTubeClient({folder:path.join(store.root,'youtube-auth')})});const server=await new Promise(r=>{const s=app.listen(0,'127.0.0.1',()=>r(s));});t.after(()=>new Promise(r=>server.close(r)));const base=`http://127.0.0.1:${server.address().port}`;
+ const job=store.create({type:'upload'},{}),folder=store.folder(job.id),clipId=randomUUID();fs.mkdirSync(path.join(folder,'exports'),{recursive:true});
+ fs.writeFileSync(path.join(folder,'exports',`${clipId}.mp4`),'video');fs.writeFileSync(path.join(folder,'transcript.json'),'{"words":[]}');fs.writeFileSync(path.join(folder,'source.mp4'),'source');
+ store.update(job.id,{sourcePath:path.join(folder,'source.mp4'),clips:[{id:clipId,title:'Clip',start:0,end:30,kept:true}],exports:[{clipId,filename:`${clipId}.mp4`}]});
+ for(const [url,body] of [[`/api/jobs/${job.id}/export/${clipId}`,'video'],[`/api/jobs/${job.id}/export/${clipId}?download=1`,'video'],[`/api/jobs/${job.id}/source`,'source'],[`/api/jobs/${job.id}/transcript`,'{"words":[]}']]){const r=await fetch(base+url);assert.equal(r.status,200,url);assert.equal(await r.text(),body);}
+});
+test('short meme clips can be edited; other templates still need 20 seconds',async t=>{
+ const store=new JobStore(path.join(ROOT,'.cache','api-tests-'+randomUUID()));const queue={isBusy:()=>false,enqueue(){},cancel(){}};
+ const app=createApp({store,queue,youtube:new YouTubeClient({folder:path.join(store.root,'youtube-auth')})});const server=await new Promise(r=>{const s=app.listen(0,'127.0.0.1',()=>r(s));});t.after(()=>new Promise(r=>server.close(r)));const base=`http://127.0.0.1:${server.address().port}`;
+ const job=store.create({type:'upload'},{editTemplate:'skull-ending'}),clipId=randomUUID(),words=Array.from({length:40},(_,i)=>({text:'word',start:100+i*.3,end:100+i*.3+.25}));
+ fs.mkdirSync(store.folder(job.id),{recursive:true});fs.writeFileSync(path.join(store.folder(job.id),'transcript.json'),JSON.stringify({words,duration:600}));
+ store.update(job.id,{status:'complete',metadata:{duration:600,width:1920,height:1080},clips:[{id:clipId,title:'Old',start:100,end:113,kept:true,settings:{}}],exports:[]});
+ const patch=body=>fetch(base+`/api/jobs/${job.id}/clips/${clipId}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+ let r=await patch({title:'New title'});assert.equal(r.status,200,await r.clone().text());
+ r=await patch({settings:{editTemplate:'context-hit'}});assert.equal(r.status,400);assert.match((await r.json()).error,/at least 20 seconds/);
+});

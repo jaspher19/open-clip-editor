@@ -7,7 +7,9 @@ export function templateChanges(value,template){return template?Object.keys(temp
 const TWEAKS_KEY='openclip.templateTweaks';
 export function loadTweaks(storage=globalThis.localStorage){try{return JSON.parse(storage?.getItem(TWEAKS_KEY)||'{}')||{};}catch{return {};}}
 export function saveTweaks(id,value,template,storage=globalThis.localStorage){if(!id||!template)return;const all=loadTweaks(storage),keys=templateChanges(value,template),next={...all};if(keys.length)next[id]=Object.fromEntries(keys.map(k=>[k,value[k]]));else delete next[id];if(JSON.stringify(next)!==JSON.stringify(all))try{storage?.setItem(TWEAKS_KEY,JSON.stringify(next));}catch{/* private mode or full storage */}}
-export function withTemplate(value,template,{remember=true,storage=globalThis.localStorage}={}){const saved=remember?loadTweaks(storage)[template.id]||{}:{};const tweaks=Object.fromEntries(Object.entries(saved).filter(([k])=>k in template.settings));return {...value,...template.settings,...tweaks,editTemplate:template.id};}
+// Meme-only effects are off unless the chosen template turns them on (mirrors server/templates.mjs).
+const TEMPLATE_RESET={revealFx:false,cutFlash:false,tintFlashes:false,skullEnding:false,actionLabels:false,hookReveal:'pop',hookPosition:'top'};
+export function withTemplate(value,template,{remember=true,storage=globalThis.localStorage}={}){const saved=remember?loadTweaks(storage)[template.id]||{}:{};const tweaks=Object.fromEntries(Object.entries(saved).filter(([k])=>k in template.settings));return {...value,...TEMPLATE_RESET,...template.settings,...tweaks,editTemplate:template.id};}
 // Editor clock: m:ss.s under an hour, h:mm:ss.s above.
 export function clock(t){if(!Number.isFinite(t)||t<0)t=0;const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=(t%60).toFixed(1).padStart(4,'0');return h?`${h}:${String(m).padStart(2,'0')}:${s}`:`${m}:${s}`;}
 export function parseClock(text){const parts=String(text).trim().split(':');if(!parts[0]||parts.length>3||parts.some(p=>!/^\d+(\.\d+)?$/.test(p)))return NaN;return parts.reduce((total,p)=>total*60+Number(p),0);}

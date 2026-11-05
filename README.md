@@ -4,9 +4,29 @@ Turn a long stream, a podcast or any recording into captioned, edited Shorts (9:
 
 Paste a public YouTube link or drop in a video file. OpenClip transcribes it locally, finds the best moments, edits each one with the template you choose, and exports ready-to-post MP4s. If you want, it also writes titles with AI and schedules the uploads to your YouTube channel.
 
-![Caption style demo](site/media/demo.gif)
+## See it in action
 
-*The demo is original graphics with synthetic audio, made to show the caption renderer.*
+All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* (credited below). The app transcribed it, found the moments and edited them; only the on-screen hook text was typed by hand. Click a preview to watch the full MP4 with sound.
+
+| Skull Ending *(meme edit)* | Meme Reveal *(meme edit)* | Context Hit *(standard)* |
+| :---: | :---: | :---: |
+| [![Skull Ending example](docs/media/preview-skull-ending.gif)](docs/media/example-skull-ending.mp4) | [![Meme Reveal example](docs/media/preview-meme-reveal.gif)](docs/media/example-meme-reveal.mp4) | [![Context Hit example](docs/media/preview-context-hit.gif)](docs/media/example-context-hit.mp4) |
+| Ends on the punchline, then a smear into a held frame with a warm glow, flames, an animated skull and an 808 beat | The frame freezes in silence, then the reveal lands with a flash and a boom; green and red tints on the shouted lines | A hook title, then the setup and the payoff, with word-by-word captions |
+
+### Screenshots
+
+| | |
+| :---: | :---: |
+| ![New project: paste a link or drop a file, pick an edit style](docs/media/new-project.jpg) | ![Finished project: edited clips ready to post](docs/media/project-clips.jpg) |
+| **New project:** your video, an edit style, how many moments | **Your clips:** edited and ready, with the whole-stream timeline above |
+| ![Clip editor: live preview and word-level transcript](docs/media/clip-editor.jpg) | ![Templates: choose a different edit for any clip](docs/media/templates.jpg) |
+| **Clip editor:** trim and cut on words, fix captions | **Style & hook:** switch templates, fonts, colours and motion |
+
+![Posting calendar: drafts, scheduling and private uploads](docs/media/posting-calendar.jpg)
+
+**Posting calendar:** edit titles and descriptions, schedule, and upload privately to YouTube.
+
+## What it does
 
 - **Runs locally.** Transcription (Whisper), editing and rendering (FFmpeg) all happen on your machine. No account and no API key are required.
 - **Finds moments for you.** Laughs, hype words, loud reactions and pauses rank every part of the stream. Each pick gets the setup it needs before the payoff.
@@ -164,4 +184,6 @@ Contributions are welcome. Good starting points: moment selection quality, more 
 
 ## License
 
-MIT for the original project code; see [LICENSE](LICENSE). Fonts, sounds, dependencies and external programs keep their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The meme sounds and the skull artwork are original and generated in code; no third-party videos, music or branding are included.
+MIT for the original project code; see [LICENSE](LICENSE). Fonts, sounds, dependencies and external programs keep their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The meme sounds and the skull artwork are original and generated in code.
+
+The example clips and screenshots use footage from **Tears of Steel**, (CC) Blender Foundation | [mango.blender.org](https://mango.blender.org), licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The clips are short excerpts cropped to 9:16, with captions, titles and effects added by OpenClip. No other third-party video, music or branding is included.

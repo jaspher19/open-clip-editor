@@ -560,3 +560,6 @@ button:disabled{opacity:.55;filter:grayscale(.6)}
 .start-bar strong{display:block;font-size:14.5px}.start-steps{display:flex;flex-wrap:wrap;gap:4px 0;margin:6px 0 0;padding:0;list-style:none;font-size:12px;color:var(--ink-soft)}.start-steps li+li::before{content:'→';margin:0 7px}
 .start-bar>.primary{flex:none;white-space:nowrap}
 @media(max-width:700px){.edit-kind{grid-template-columns:1fr}.start-bar{flex-direction:column;align-items:stretch}.start-bar>.primary{justify-content:center}}
+
+/* Skull Ending centres its title mid-frame, like the render (hookPosition: middle). */
+.live-hook.middle{top:47%;transform:translateY(-50%)}
