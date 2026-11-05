@@ -1,0 +1,23 @@
+{
+  "name": "My private clip workflow",
+  "url": "https://www.youtube.com/watch?v=R6gKMvetXUU",
+  "sourceMode": "auto",
+  "template": "context-hit",
+  "contextText": "A costume challenge at a Halloween party",
+  "posting": "private",
+  "publishingEnabled": true,
+  "madeForKids": false,
+  "maxUploadsPerRun": 3,
+  "maxDailyUploads": 5,
+  "segmentSeconds": 300,
+  "maxSegments": 12,
+  "maxPending": 3,
+  "minScore": 55,
+  "autoResume": true,
+  "metadata": {
+    "titleTemplate": "{title}",
+    "descriptionTemplate": "{context}\n\n{transcript}\n\nSource: {sourceTitle}\n{sourceUrl}\nSource range: {start}–{end}s\n\n#Shorts",
+    "tags": ["costumes", "highlights"]
+  },
+  "options": {"model": "small.en", "language": "en", "picker": "heuristic", "count": 3}
+}

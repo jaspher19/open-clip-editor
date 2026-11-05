@@ -1,0 +1,6 @@
+import path from 'node:path';import fs from 'node:fs';import {fileURLToPath} from 'node:url';
+export const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+export const WORK=path.join(ROOT,'work');export const CACHE=path.join(ROOT,'.cache');
+export const PYTHON=process.env.CLIP_PYTHON||path.join(ROOT,'.venv',process.platform==='win32'?'Scripts/python.exe':'bin/python');
+export function localEnv(extra={}){const tmp=path.join(CACHE,'tmp');fs.mkdirSync(tmp,{recursive:true});return {...process.env,TEMP:tmp,TMP:tmp,TMPDIR:tmp,HF_HOME:path.join(CACHE,'huggingface'),HF_HUB_CACHE:path.join(CACHE,'huggingface','hub'),XDG_CACHE_HOME:CACHE,PIP_CACHE_DIR:path.join(CACHE,'pip'),UV_CACHE_DIR:path.join(CACHE,'uv'),UV_PYTHON_INSTALL_DIR:path.join(CACHE,'python'),npm_config_cache:path.join(CACHE,'npm'),PYTHONPYCACHEPREFIX:path.join(CACHE,'pycache'),PYTHONDONTWRITEBYTECODE:'1',MPLCONFIGDIR:path.join(CACHE,'matplotlib'),NUMBA_CACHE_DIR:path.join(CACHE,'numba'),TORCH_HOME:path.join(CACHE,'torch'),OMP_NUM_THREADS:'4',MKL_NUM_THREADS:'4',...extra};}
+export function workPath(id,...parts){if(!/^[a-f0-9-]{36}$/.test(id))throw new Error('Invalid job ID');const base=path.join(WORK,id),result=path.resolve(base,...parts);if(result!==base&&!result.startsWith(base+path.sep))throw new Error('Invalid file path');return result;}

@@ -1,0 +1,14 @@
+Sound accents used by edit templates. All files are CC0 1.0 (public domain dedication):
+https://creativecommons.org/publicdomain/zero/1.0/
+
+soft/plop_01, plop_02, switch_01, wooden_01 and impact/hit_01-04, slam_01-02:
+  "100 CC0 SFX" by rubberduck, https://opengameart.org/content/100-cc0-sfx
+soft/retro_coin_01, synth_beep_01:
+  "50 CC0 retro / synth SFX" by rubberduck, https://opengameart.org/content/50-cc0-retro-synth-sfx
+
+Converted to 48 kHz mono PCM, peak-normalised to -0.3 dBFS with a 30 ms fade-out.
+
+meme/boom, bass-hit, whoosh, riser, rewind, ding, scratch, pop, shutter, crowd-ooh, phonk-drop, skull-808:
+  Original sounds synthesised by this repository's scripts/make-sfx.mjs with ffmpeg (no recordings or samples).
+  Dedicated to the public domain under CC0 1.0, and also covered by the repository's MIT license.
+  Regenerate with: node scripts/make-sfx.mjs

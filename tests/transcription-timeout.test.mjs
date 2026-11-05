@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {run} from '../server/process.mjs';
+test('long transcription can exceed the inactivity window while still reporting progress',async()=>{const started=Date.now();const result=await run(process.execPath,['-e','let n=0;console.log("loading");const timer=setInterval(()=>{console.log(++n);if(n===8)clearInterval(timer)},600)'],{timeout:0,idleTimeout:4000});assert.ok(Date.now()-started>4000);assert.match(result.stdout,/8/);});
+test('a stalled transcription still terminates with a distinct inactivity error',async()=>{await assert.rejects(run(process.execPath,['-e','console.log("loaded");setInterval(()=>{},5000)'],{timeout:0,idleTimeout:400}),/no output|inactive|without progress/i);});

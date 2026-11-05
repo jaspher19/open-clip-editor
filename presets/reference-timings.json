@@ -1,0 +1,474 @@
+[
+  {
+    "videoId": "B4Xh4PzRtJM",
+    "observations": [
+      {
+        "id": "context-title",
+        "kind": "title",
+        "start": 0,
+        "end": 2.567,
+        "label": "Opening two-line context headline; white setup and neon-green emphasis; fades out",
+        "confidence": "observed"
+      },
+      {
+        "id": "short-captions",
+        "kind": "captions",
+        "start": 2.7,
+        "end": 13,
+        "label": "Intermittent short red, white, yellow and green caption hits, with original gaps",
+        "confidence": "estimated"
+      },
+      {
+        "id": "brief-brightness",
+        "kind": "color",
+        "start": 3.9,
+        "end": 4.2,
+        "label": "Brief washed/bright emphasis around a red reaction caption",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ground-camera",
+        "kind": "framing",
+        "start": 5.6,
+        "end": 11.8,
+        "label": "Alternating ground/object views and returns to subject; source-camera and edit movement are not separable",
+        "confidence": "estimated"
+      },
+      {
+        "id": "impact-view",
+        "kind": "framing",
+        "start": 14.2,
+        "end": 15.667,
+        "label": "Ground-level impact/action view, then return toward subject",
+        "confidence": "estimated"
+      },
+      {
+        "id": "payoff-transition",
+        "kind": "framing",
+        "start": 15.667,
+        "end": 15.867,
+        "label": "Short vertical smear/zoom-like transition into payoff treatment",
+        "confidence": "observed"
+      },
+      {
+        "id": "skull-payoff",
+        "kind": "graphic",
+        "start": 15.8,
+        "end": 18.733,
+        "label": "Skull-style graphic and subject glow in the warm payoff image",
+        "confidence": "observed"
+      },
+      {
+        "id": "warm-outro",
+        "kind": "color",
+        "start": 15.8,
+        "end": 18.733,
+        "label": "Warm/darker grading and freeze-like/slowed payoff treatment through final video frame",
+        "confidence": "observed"
+      }
+    ],
+    "notes": [
+      "Source: https://www.youtube.com/shorts/B4Xh4PzRtJM . Cached source was not modified.",
+      "AV1 480x640, 30fps, 562 frames; video duration18.733333s, Opus audio duration18.754s. Preserve the complete container, not only the video duration.",
+      "Whole-clip contacts used0.5s samples. Original-PTS 30fps frame contacts verified title fade2.2-2.7s and payoff transition15.3-15.9s. Other boundaries are approximate, generally within0.25-0.5s.",
+      "Title remains faint at2.533s and is absent by2.567s. Vertical smear begins15.667s; first skull/warm frame is15.800s, with clean settled payoff by15.867s.",
+      "Visible encoded-layer observations are not original project keyframes. Exact easing/font/audio-stem identification is not claimed."
+    ]
+  },
+  {
+    "videoId": "eUFkorW-1kk",
+    "observations": [
+      {
+        "id": "short-word-captions",
+        "kind": "captions",
+        "start": 0,
+        "end": 13.7,
+        "label": "Short outlined upper-middle words; yellow/cyan/white emphasis changes throughout",
+        "confidence": "observed"
+      },
+      {
+        "id": "first-action-label",
+        "kind": "context",
+        "start": 1.4,
+        "end": 2.367,
+        "label": "First asterisk-style descriptive action label replaces ordinary word hits",
+        "confidence": "observed"
+      },
+      {
+        "id": "first-flash",
+        "kind": "color",
+        "start": 1.4,
+        "end": 1.7,
+        "label": "Brief bright/washed emphasis as first action label appears",
+        "confidence": "estimated"
+      },
+      {
+        "id": "cyan-phrase-group",
+        "kind": "captions",
+        "start": 4.7,
+        "end": 6.167,
+        "label": "Cyan word-hit run before green emphasis beat",
+        "confidence": "estimated"
+      },
+      {
+        "id": "green-tint",
+        "kind": "color",
+        "start": 6.2,
+        "end": 6.6,
+        "label": "Green full-frame tint rises, peaks and fades back to normal footage",
+        "confidence": "observed"
+      },
+      {
+        "id": "red-tint",
+        "kind": "color",
+        "start": 7.733,
+        "end": 8.1,
+        "label": "Red/magenta full-frame tint rises and fades during reaction beat",
+        "confidence": "observed"
+      },
+      {
+        "id": "cyan-return",
+        "kind": "captions",
+        "start": 8.3,
+        "end": 9.5,
+        "label": "Cyan short speech emphasis returns before later action labels",
+        "confidence": "estimated"
+      },
+      {
+        "id": "later-action-labels",
+        "kind": "context",
+        "start": 10.533,
+        "end": 12.7,
+        "label": "Alternating short descriptive labels, distinct from speech captions",
+        "confidence": "observed"
+      },
+      {
+        "id": "later-source-counter",
+        "kind": "source-overlay",
+        "start": 9.4,
+        "end": 13.7,
+        "label": "Small original stream counter visible near bottom edge in later framing",
+        "confidence": "estimated"
+      },
+      {
+        "id": "closing-word-hits",
+        "kind": "captions",
+        "start": 12.7,
+        "end": 13.7,
+        "label": "Yellow closing speech hits replace descriptive labels",
+        "confidence": "observed"
+      }
+    ],
+    "notes": [
+      "Source: https://www.youtube.com/shorts/eUFkorW-1kk . Cached source was not modified.",
+      "AV1 360x640, 30fps, 411 frames; video duration13.700s, Opus audio duration13.734s.",
+      "Whole-clip0.5s inspection plus original-PTS 30fps boundary contacts. First descriptive label starts1.400s, remains2.333s, replaced2.367s. Later labels begin10.533s, remain12.667s, replaced12.700s.",
+      "Green becomes visible6.200s, peaks around6.267-6.367s, fades through6.567s, normal by6.600s. Red begins7.733s, peaks7.767-7.900s, fades through8.067s.",
+      "Boundaries were inspected on actual PTS-tagged frames, not inferred from scene-score events. Exact effect parameters and camera/editor zoom attribution remain unknown.",
+      "Original playback retains audio timing. No music identity or SFX stem separation is claimed."
+    ]
+  },
+  {
+    "videoId": "dSLpxbxT4L4",
+    "observations": [
+      {
+        "id": "white-canvas",
+        "kind": "framing",
+        "start": 0,
+        "end": 21.8,
+        "label": "Persistent white editorial canvas with central wide footage band",
+        "confidence": "observed"
+      },
+      {
+        "id": "creator-mark",
+        "kind": "graphic",
+        "start": 0,
+        "end": 21.8,
+        "label": "Small yellow circular creator mark above headline",
+        "confidence": "observed"
+      },
+      {
+        "id": "context-headline",
+        "kind": "title",
+        "start": 0,
+        "end": 21.8,
+        "label": "Persistent contextual headline above footage with red emphasized phrase",
+        "confidence": "observed"
+      },
+      {
+        "id": "source-overlays",
+        "kind": "source-overlay",
+        "start": 0,
+        "end": 21.8,
+        "label": "Original match/stream overlays remain inside footage window",
+        "confidence": "observed"
+      },
+      {
+        "id": "wide-interaction",
+        "kind": "framing",
+        "start": 0,
+        "end": 21.8,
+        "label": "Multi-person interaction stays in wide band; large white footer remains below",
+        "confidence": "observed"
+      }
+    ],
+    "notes": [
+      "Source: https://www.youtube.com/shorts/dSLpxbxT4L4 . Cached source was not modified.",
+      "AV1 360x640, 30fps, 654 frames; video duration21.800s, Opus audio duration21.814s.",
+      "Persistent layers observed across0.5s samples from start through21.5s; findings describe stable layout, not unseen source project layers.",
+      "No added word-by-word speech-caption layer was apparent in inspected samples. Do not fabricate one in the original reference.",
+      "Original playback includes actual creator mark, text, footage and audio at encoded timing. Editable source fonts, branding tracks and easing were not established."
+    ]
+  },
+  {
+    "videoId": "xLpfTIoEqEc",
+    "observations": [
+      {
+        "id": "tattoo-opening-context",
+        "kind": "context",
+        "start": 0,
+        "end": 1.25,
+        "label": "Opening action label over the subject / artist setup",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-white-word-captions",
+        "kind": "captions",
+        "start": 1.25,
+        "end": 12.3,
+        "label": "Short uppercase white speech captions with heavy dark outlines; interrupted by action labels",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-ink-action",
+        "kind": "context",
+        "start": 7.25,
+        "end": 8.3,
+        "label": "Artist close-up with an ink-preparation action label",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-laugh-action",
+        "kind": "context",
+        "start": 9.75,
+        "end": 10.75,
+        "label": "Artist close-up with a laughter reaction label",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-begins-action",
+        "kind": "context",
+        "start": 11.9,
+        "end": 12.4,
+        "label": "Action label marking the tattooing start",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-pain-reaction",
+        "kind": "context",
+        "start": 12.4,
+        "end": 14,
+        "label": "Pain reaction label on tight subject framing",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-first-flash",
+        "kind": "graphic",
+        "start": 14,
+        "end": 14.25,
+        "label": "Brief bright transition from tight framing into the wide presentation",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-wide-presentation",
+        "kind": "framing",
+        "start": 14.25,
+        "end": 18.75,
+        "label": "Smaller wide source window over blurred fill, retaining subject and artist",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-wide-reaction-label",
+        "kind": "context",
+        "start": 14.25,
+        "end": 18.5,
+        "label": "Repeated outlined reaction label below the wide source window",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-second-flash",
+        "kind": "graphic",
+        "start": 18.5,
+        "end": 18.75,
+        "label": "Brief bright transition into the following tattoo/donation beat",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-donation-beat",
+        "kind": "context",
+        "start": 18.75,
+        "end": 20.25,
+        "label": "Separate contextual donation label over the artist / subject action",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-yellow-word-captions",
+        "kind": "captions",
+        "start": 20.25,
+        "end": 29.75,
+        "label": "Short yellow uppercase speech hits with dark outlines",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-outro-wide",
+        "kind": "framing",
+        "start": 29.75,
+        "end": 31.25,
+        "label": "Bright transition followed by a wide two-person reaction over blurred fill",
+        "confidence": "estimated"
+      },
+      {
+        "id": "tattoo-outro-reaction",
+        "kind": "context",
+        "start": 31.25,
+        "end": 33.429333,
+        "label": "Artist close-up with an outlined laughter / reaction label to the ending",
+        "confidence": "estimated"
+      }
+    ],
+    "notes": [
+      "Source: https://www.youtube.com/shorts/xLpfTIoEqEc ; direct inspection of the cached original encoded video, not a reconstructed template.",
+      "Container duration measured with ffprobe: 33.429333 seconds. The original media is the timing authority, including its full audio track.",
+      "General inspection at 0.5-second intervals; targeted framing/transition inspection at 0.25-second intervals around 13–15, 18–21 and 29–32 seconds. Listed boundaries are approximate visual cue ranges, usually ±0.25 seconds near those transitions and up to ±0.5 seconds elsewhere.",
+      "Intermittent speech words within a broad caption interval are not transcribed or individually keyed here. All original baked-in words and their exact appearances remain present in original-reference playback.",
+      "Source-camera movement versus added zoom, exact fonts/easing, hidden layer tracks, music identity, speech/beat alignment and individual sound-effect stems were not established. No manual audio listening was performed.",
+      "Evidence: .cache/references/xLpfTIoEqEc/timing-0.jpg, timing-12.jpg, timing-24.jpg, edge-13.jpg, edge-18.jpg and edge-29.jpg. Timestamp labels on later contact sheets restart at zero; add the filename range start."
+    ]
+  },
+  {
+    "videoId": "hx4hSSYtyqw",
+    "observations": [
+      {
+        "id": "ranking-headline",
+        "kind": "title",
+        "start": 0,
+        "end": 59.694,
+        "label": "Persistent two-line multicolor ranking headline with thick dark outline",
+        "confidence": "observed"
+      },
+      {
+        "id": "ranking-series-badge",
+        "kind": "context",
+        "start": 0,
+        "end": 59.694,
+        "label": "Small persistent series / part badge above the headline",
+        "confidence": "observed"
+      },
+      {
+        "id": "ranking-teaser",
+        "kind": "context",
+        "start": 0,
+        "end": 59.694,
+        "label": "Small persistent payoff teaser below the headline",
+        "confidence": "observed"
+      },
+      {
+        "id": "ranking-blur-layout",
+        "kind": "framing",
+        "start": 0,
+        "end": 59.694,
+        "label": "Central source window with blurred source fill around it",
+        "confidence": "observed"
+      },
+      {
+        "id": "ranking-third-source",
+        "kind": "framing",
+        "start": 0,
+        "end": 15,
+        "label": "First countdown moment: indoor headset / basketball-drawing scene",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-second-source",
+        "kind": "framing",
+        "start": 15,
+        "end": 42.25,
+        "label": "Second countdown moment: blue-shirt webcam and drawing-panel reaction scene",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-first-source",
+        "kind": "framing",
+        "start": 42.25,
+        "end": 59.694,
+        "label": "Final countdown moment: group reaction / shirtless outdoor-presented scene",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-third-item-reveal",
+        "kind": "graphic",
+        "start": 0.25,
+        "end": 59.694,
+        "label": "Third-place item animates into its list slot near 0.25–0.5 seconds and remains visible",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-second-item-reveal",
+        "kind": "graphic",
+        "start": 15,
+        "end": 59.694,
+        "label": "Second-place label enters with the second moment, settling around 15.25 seconds",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-first-item-reveal",
+        "kind": "graphic",
+        "start": 42.25,
+        "end": 59.694,
+        "label": "First-place label enters with the final moment, settling around 42.75 seconds",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-speech-hits",
+        "kind": "captions",
+        "start": 0,
+        "end": 59.694,
+        "label": "Intermittent short white uppercase speech captions near the source window lower edge",
+        "confidence": "observed"
+      },
+      {
+        "id": "ranking-drawing-panel-a",
+        "kind": "source-overlay",
+        "start": 15,
+        "end": 32.75,
+        "label": "Nested stream counters, smaller reaction camera and changing drawing panels inside the second source moment",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-drawing-panel-b",
+        "kind": "source-overlay",
+        "start": 32.75,
+        "end": 42.25,
+        "label": "Second drawing-panel presentation continues inside the middle moment",
+        "confidence": "estimated"
+      },
+      {
+        "id": "ranking-footer",
+        "kind": "source-overlay",
+        "start": 0,
+        "end": 59.694,
+        "label": "Persistent creator footer / watermark over the lower blurred area",
+        "confidence": "observed"
+      }
+    ],
+    "notes": [
+      "Source: https://www.youtube.com/shorts/hx4hSSYtyqw ; inspected actual cached original video frames.",
+      "Container duration from ffprobe: 59.694 seconds. Original playback preserves full encoded timing and audio; these visual cue notes are not an editable recreation of the creator project.",
+      "General source inspection at one-second intervals. Targeted 0.25-second sheets around 0–1, 14–16 and 41–43 seconds localize the two major moment changes: second moment begins between 14.75 and 15 seconds; final moment begins between 42 and 42.25 seconds.",
+      "Persistent-layer ranges mean the element is visible in inspected frames throughout the clip, not proof of exact hidden source keyframes. Individual word durations, internal drawing-panel edits and list easing were not frame-by-frame recovered.",
+      "The source contains three genuinely distinct moments; retaining the original reference avoids replacing the countdown with decorative ranking numbers over one clip.",
+      "No manual audio listening or soundtrack/stem identification was performed. Exact font identity, source project assets, masks/easing and music-beat timing remain unknown.",
+      "Evidence: .cache/references/hx4hSSYtyqw/timing-0.jpg, timing-20.jpg, timing-40.jpg, edge-0.jpg, edge-14.jpg and edge-41.jpg. Later sheets label times relative to their excerpt; add 20/40/14/41 seconds as appropriate."
+    ]
+  }
+]

@@ -1,0 +1,3 @@
+import fs from 'node:fs';import path from 'node:path';import {spawnSync} from 'node:child_process';import {ROOT,localEnv} from '../server/config.mjs';
+let count=0;function walk(dir){if(!fs.existsSync(dir))return;for(const f of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,f.name);if(f.isDirectory())walk(p);else if(p.endsWith('.mjs')){const r=spawnSync(process.execPath,['--check',p],{env:localEnv(),encoding:'utf8',windowsHide:true});if(r.status){console.error(r.stderr);process.exitCode=1;}count++;}}}
+for(const d of ['server','scripts','tests'])walk(path.join(ROOT,d));console.log(`Checked ${count} JavaScript modules`);
