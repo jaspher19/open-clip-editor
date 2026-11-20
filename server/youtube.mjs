@@ -2,11 +2,11 @@ import fs from 'node:fs';import path from 'node:path';import crypto from 'node:c
 import {writeJsonAtomic} from './atomic.mjs';
 function atomic(file,value){fs.mkdirSync(path.dirname(file),{recursive:true});writeJsonAtomic(file,value,{mode:0o600});}
 function read(file){try{return JSON.parse(fs.readFileSync(file,'utf8'));}catch{return {};}}
-export function uploadBody(metadata,settings={},{existing=false}={}){
+export function uploadBody(metadata,settings={},{existing=false,now=Date.now()}={}){
  const privacy=settings.privacy||'private';if(!['private','public','unlisted','schedule'].includes(privacy))throw new Error('Invalid upload privacy');
  if(typeof settings.madeForKids!=='boolean')throw new Error('Choose whether this channel content is made for kids');
  const status={privacyStatus:privacy==='schedule'?'private':privacy,selfDeclaredMadeForKids:settings.madeForKids};
- if(privacy==='schedule'){const time=Date.parse(settings.publishAt);if(!Number.isFinite(time)||(!existing&&time<Date.now()+60000))throw new Error('Scheduled publish time must be at least one minute in the future');status.publishAt=new Date(time).toISOString();}
+ if(privacy==='schedule'){const time=Date.parse(settings.publishAt);if(!Number.isFinite(time)||(!existing&&time<now+60000))throw new Error('Scheduled publish time must be at least one minute in the future');status.publishAt=new Date(time).toISOString();}
  const title=String(metadata.title||'').trim();if(!title||title.length>100||/[<>]/.test(title))throw new Error('Upload title must be 1–100 characters without < or >');
  const description=String(metadata.description||'');if(/[<>]/.test(description))throw new Error('Description cannot contain < or >');if(Buffer.byteLength(description)>5000)throw new Error('Description exceeds 5000 UTF-8 bytes');
  const tags=metadata.tags||[];if(!Array.isArray(tags)||tags.some(t=>typeof t!=='string')||tags.join(',').length>440)throw new Error('Tags exceed the local 440-character limit');

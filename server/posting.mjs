@@ -16,7 +16,7 @@ export function planSchedule(count,{start,times,offset='+08:00',now=Date.now(),l
   for(const t of clock){const at=Date.parse(`${ymd}T${t}:00${offset}`);if(at>=now+lead)out.push(new Date(at).toISOString());if(out.length===count)break;}}
  return out;
 }
-export function validatePost(input,media,{existing=false}={}){
+export function validatePost(input,media,{existing=false,now}={}){
  // 'auto' follows YouTube's own rule: square or vertical and at most 3 minutes is a Short.
  const format=input.format==='auto'?(media.width<=media.height&&media.duration<=180?'shorts':'video'):input.format||'shorts',timeZone=input.timeZone||'Asia/Manila';
  if(!['shorts','video'].includes(format))throw new Error('Choose Shorts or regular video');
@@ -24,7 +24,7 @@ export function validatePost(input,media,{existing=false}={}){
  if(format==='shorts'&&(media.width>media.height||media.duration>180))throw new Error('Shorts need square or vertical footage, at most 3 minutes');
  if(format==='video'&&media.width<=media.height&&media.duration<=180)throw new Error('Use a horizontal edit for a regular video under 3 minutes; YouTube classifies square/vertical uploads as Shorts');
  try{new Intl.DateTimeFormat('en',{timeZone}).format();}catch{throw new Error('Invalid time zone');}
- const settings={privacy:'private',madeForKids:false,...input.settings};const body=uploadBody(input.metadata||{},settings,{existing});
+ const settings={privacy:'private',madeForKids:false,...input.settings};const body=uploadBody(input.metadata||{},settings,{existing,...(Number.isFinite(now)?{now}:{})});
  return {format,timeZone,metadata:body.snippet,settings:{...settings,publishAt:body.status.publishAt},label:String(input.label||body.snippet.title).slice(0,150)};
 }
 export class PostingQueue{
@@ -44,7 +44,7 @@ export class PostingQueue{
  /** Swap a draft's video for a newer export (e.g. after fixing burned-in captions), keeping its title, description and schedule. */
  replaceVideo(id,file,media){const p=this.get(id);if(this.public(p).locked)throw new Error('This post already started uploading, so its video cannot be replaced');const data=validatePost(p,media,{existing:true});const temp=path.join(this.folder(id),'video.next.mp4');fs.copyFileSync(file,temp);fs.rmSync(p.file,{force:true});fs.renameSync(temp,p.file);return this.save({...p,...data,media,fingerprint:undefined,source:p.source&&{...p.source,videoMtime:fs.statSync(file).mtimeMs},state:'draft',error:''});}
  /** Give each chosen draft a public release slot (YouTube publishes it at that time after upload). */
- schedule(ids,plan){const posts=ids.map(id=>this.get(id));if(posts.some(p=>this.public(p).locked))throw new Error('Some selected posts already started uploading; deselect them first');const slots=planSchedule(posts.length,plan);if(slots.length<posts.length)throw new Error('Not enough future release slots');return posts.map((p,i)=>this.save({...p,...validatePost({...p,settings:{...p.settings,privacy:'schedule',publishAt:slots[i]}},p.media),autoUpload:plan.daily?{at:uploadTime(slots[i],plan.now)}:undefined,state:'draft',error:''}));}
+ schedule(ids,plan){const posts=ids.map(id=>this.get(id));if(posts.some(p=>this.public(p).locked))throw new Error('Some selected posts already started uploading; deselect them first');const slots=planSchedule(posts.length,plan);if(slots.length<posts.length)throw new Error('Not enough future release slots');return posts.map((p,i)=>this.save({...p,...validatePost({...p,settings:{...p.settings,privacy:'schedule',publishAt:slots[i]}},p.media,{now:plan.now}),autoUpload:plan.daily?{at:uploadTime(slots[i],plan.now)}:undefined,state:'draft',error:''}));}
  remove(id){const p=this.get(id);if(this.public(p).locked)throw new Error('Uploaded posts and saved upload sessions cannot be removed here');fs.rmSync(this.folder(id),{recursive:true,force:true});}
  /** The post already on YouTube (or mid-upload) for the same clip, if any. */
  postedTwin(p,list=this.list()){const same=o=>o.id!==p.id&&(complete(o)||this.public(o).locked)&&!!(p.source&&o.source)&&o.source.jobId===p.source.jobId&&o.source.clipId===p.source.clipId;return list.find(same)||null;}
