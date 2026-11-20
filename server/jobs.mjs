@@ -19,4 +19,4 @@ export class JobStore extends EventEmitter{
  list(){return fs.readdirSync(this.root,{withFileTypes:true}).filter(f=>f.isDirectory()&&/^[a-f0-9-]{36}$/.test(f.name)).flatMap(f=>{try{return [this.get(f.name)];}catch{return [];}}).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));}
  recover(){for(const j of this.list())if(['running','queued','exporting'].includes(j.status))this.update(j.id,{status:'interrupted',message:'Processing was interrupted. Retry to continue from saved work.'});}
 }
-export function publicJob(job){const {sourcePath,musicPath,source,...safe}=job;return {...safe,source:{type:source.type,name:source.name||'',url:source.url||'',section:source.section||null},sourceUrl:sourcePath?`/api/jobs/${job.id}/source`:null,moments:MOMENTS};}
+export function publicJob(job){const {sourcePath,musicPath,source,...safe}=job;return {...safe,source:{type:source.type,kind:source.kind||'video',name:source.name||'',url:source.url||'',section:source.section||null},sourceUrl:sourcePath?`/api/jobs/${job.id}/source`:null,moments:MOMENTS};}

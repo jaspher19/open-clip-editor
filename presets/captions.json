@@ -379,5 +379,27 @@
     "shadowColor": "&H00000000&",
     "fitWidth": 800,
     "hold": 0.3
+  },
+  "comic-word": {
+    "label": "Comic word (Glow Card)",
+    "font": "Luckiest Guy",
+    "size": 150,
+    "minSize": 96,
+    "maxWords": 2,
+    "maxChars": 12,
+    "uppercase": true,
+    "case": "upper",
+    "outline": 11,
+    "outlineColor": "&H00000000&",
+    "active": "&H00FFFFFF&",
+    "inactive": "&H00FFFFFF&",
+    "box": false,
+    "pop": false,
+    "shadow": 4,
+    "shadowColor": "&H00000000&",
+    "fitWidth": 900,
+    "lines": 2,
+    "hold": 0.15,
+    "pairing": "link"
   }
 }

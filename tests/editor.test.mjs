@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {formatTime,trimError,downloadableIds,templateChanges,withTemplate,saveTweaks,loadTweaks,clock,parseClock,readyClips,projectTemplate,centerAt,cropBox,captionChunk,accentWord} from '../web/src/logic.mjs';
 test('editor gives actionable finite and source-bound trim errors',()=>{
  assert.match(trimError(NaN,40,100),/number/i);assert.match(trimError(0,19,100),/20/);assert.match(trimError(0,95,200),/90/);assert.equal(trimError(0,75,200),'');assert.match(trimError(50,110,100),/source/);assert.equal(trimError(10,40,100),'');
- assert.equal(formatTime(61.2),'1:01.2');assert.equal(formatTime(0),'0:00.0');
+ assert.equal(formatTime(61.2),'1:01.2');assert.equal(formatTime(6361.5),'1:46:01.5','long streams show hours');assert.equal(formatTime(0),'0:00.0');
 });
 test('downloads include only kept clips with current exports',()=>{
  const job={clips:[{id:'a',kept:true},{id:'b',kept:false},{id:'c',kept:true,dirty:true}],exports:[{clipId:'a'},{clipId:'b'},{clipId:'c'}]};assert.deepEqual(downloadableIds(job),['a']);

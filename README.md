@@ -2,7 +2,7 @@
 
 Turn a long stream, a podcast or any recording into captioned, edited Shorts (9:16) or regular videos (16:9), on your own computer.
 
-Paste a public YouTube link or drop in a video file. OpenClip transcribes it locally, finds the best moments, edits each one with the template you choose, and exports ready-to-post MP4s. If you want, it also writes titles with AI and schedules the uploads to your YouTube channel.
+Paste a public YouTube, Twitch or Kick link (a past broadcast, a clip, or a YouTube or Twitch stream that is still live) or drop in a video file. OpenClip transcribes it locally, finds the best moments, edits each one with the template you choose, and exports ready-to-post MP4s. If you want, it also writes titles with AI and schedules the uploads to your YouTube channel.
 
 ## See it in action
 
@@ -84,7 +84,7 @@ The first transcription downloads the Whisper model you picked (the `small.en` d
 
 ## 4. Make your first clips
 
-1. **Your video.** Paste a public YouTube link, or drop an MP4, MOV, MKV, WebM or M4V file (up to 4 GB). You can add a line of context, for example *"A costume challenge at a Halloween party"*.
+1. **Your video.** Paste a public YouTube video or live stream, a Twitch VOD, clip or live channel, or a Kick VOD or clip, or drop an MP4, MOV, MKV, WebM or M4V file (up to 4 GB). Streams longer than 90 minutes (up to 30 hours) download as a light 360p copy for finding moments; each finished clip is then rendered from a 1080p download of just that part of the stream. A Twitch or Kick clip link becomes one edited clip. **Live streams:** paste a YouTube live link or a Twitch channel that is live, and everything streamed so far is imported (an 11-hour stream takes about 8 minutes at 360p); clips render from 1080p fetched straight from the live stream. Paste again later for the newer part. Kick only shares the last few seconds while live, so paste a Kick stream once it has ended. A Twitch channel must save past broadcasts. Streams over 2 hours get a **fast scan**: a quick draft of the whole stream finds the likely moments, and only those (about a fifth of the stream) are transcribed properly. Add a moment anywhere on the timeline and that part is transcribed on the spot. Choose *Full transcript* under *Long streams* if you want every word. You can add a line of context, for example *"A costume challenge at a Halloween party"*.
 2. **Edit style.** Choose **Meme edit** or **Standard clips**, then pick a template. Each card plays a preview.
 3. **Moments.** Choose how many clips you want (or *Auto*, about one per 11 minutes of video). Then press the start button.
 
@@ -148,6 +148,8 @@ Restart the app after editing `.env`. AI features send transcript text to the pr
 5. Open **Posting calendar**, add edited clips (or any finished MP4), edit the title, description and tags, and save drafts.
 6. Select drafts and press **Upload selected**. Uploads are **private by default**. A scheduled post uploads now and YouTube publishes it at the time you set. New Google Cloud projects may be limited to private uploads until Google audits them.
 
+**Automatic thumbnails.** When you add a regular (horizontal) video to the posting calendar, OpenClip makes a 1280×720 thumbnail from the clip's project: the streamer's biggest reaction cut out with a white outline over a bright gameplay frame, two to four big words from the clip title (or your own), the game name, and an optional LIVE badge. Change the words or make it again from the post's thumbnail panel. YouTube does not let apps set a Shorts thumbnail, so for Shorts the panel makes an image to download and set in the YouTube app. The official game logo is never used; the game name is drawn in OpenClip's own lettering. Run `npm run setup:faces` once to download the face models.
+
 An upload log stops the same file from being uploaded twice, unless you choose **Upload anyway**. Scheduled times currently use UTC+8. See [docs/AUTOMATION.md](docs/AUTOMATION.md) for live-stream capture, repeatable automation scripts and their limits.
 
 ## Command line
@@ -161,7 +163,8 @@ npm run setup:references                                             # optional:
 ## Troubleshooting
 
 - **Captions don't render, or setup complains about libass.** Install a full FFmpeg build and make sure it's first on your `PATH`.
-- **A YouTube link fails.** YouTube changes often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only and DRM videos aren't supported.
+- **A YouTube, Twitch or Kick link fails.** These sites change often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only, subscriber-only and DRM videos aren't supported, and live channels aren't supported yet: wait for the stream to end and paste the past broadcast.
+- **Twitch: favour what viewers clipped.** Add your own free Twitch app's `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` to `.env` (see `.env.example`). For Twitch VODs, OpenClip then reads the clips viewers made of the broadcast and ranks those moments higher; each such clip says "Viewers clipped this" with the view count.
 - **Face follow falls back to center.** Run `npm run setup:faces`. Dark scenes, side profiles and fast motion can still fall back to center.
 - **Port 5173 is in use.** Set `PORT=5180` (or another free port) in `.env`.
 - **Disk space.** Each project lives in `work/<project id>/`. Stop the app before deleting a project folder.

@@ -29,7 +29,7 @@ test('API rejects non-YouTube URLs, exposes persisted jobs, blocks foreign mutat
  store.update(job.id,{compilation:{filename:'old.mp4'}});r=await fetch(base+`/api/jobs/${job.id}/clips/${clipId}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({title:'New clip title'})});assert.equal(r.status,200);assert.equal(store.get(job.id).compilation,null);r=await fetch(base+`/api/jobs/${job.id}/compilation`);assert.equal(r.status,404);
  app.locals.automation.active.set('fixture',{jobId:job.id});r=await fetch(base+`/api/jobs/${job.id}/clips/${clipId}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({title:'Changed during upload'})});assert.equal(r.status,409);assert.equal(store.get(job.id).clips[0].title,'New clip title');app.locals.automation.active.delete('fixture');
  r=await fetch(base+`/api/jobs/${job.id}/download?clips=${clipId}`);assert.equal(r.status,409);
- r=await fetch(base+'/api/health');const health=await r.json();assert.ok(['clean','creator','focus','impact','podcast','explain','story','gaming'].every(s=>health.styles.includes(s)));assert.equal(health.templates.length,15);assert.equal(health.fonts.length,6);
+ r=await fetch(base+'/api/health');const health=await r.json();assert.ok(['clean','creator','focus','impact','podcast','explain','story','gaming'].every(s=>health.styles.includes(s)));assert.equal(health.templates.length,17);assert.equal(health.fonts.length,7);
  const form=new FormData();form.append('music',new Blob(['not audio']),'bad.exe');r=await fetch(base+`/api/jobs/${job.id}/music`,{method:'POST',body:form});assert.equal(r.status,400);
  store.update(job.id,{clips:[{id:clipId,title:'Test',settings:{},dirty:false,kept:true}]});
  r=await fetch(base+`/api/jobs/${job.id}/export`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({clipIds:[clipId],settings:{musicEnabled:true}})});assert.equal(r.status,202);assert.equal(store.get(job.id).clips[0].dirty,true);
@@ -117,4 +117,14 @@ test('short meme clips can be edited; other templates still need 20 seconds',asy
  const patch=body=>fetch(base+`/api/jobs/${job.id}/clips/${clipId}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
  let r=await patch({title:'New title'});assert.equal(r.status,200,await r.clone().text());
  r=await patch({settings:{editTemplate:'context-hit'}});assert.equal(r.status,400);assert.match((await r.json()).error,/at least 20 seconds/);
+});
+test('API creates Twitch and Kick jobs from their links and accepts live Twitch channels and refuses Kick channels with a clear reason',async t=>{
+ const store=new JobStore(path.join(ROOT,'.cache','api-tests-'+randomUUID()));const queue={isBusy:()=>false,enqueue(){},cancel(){}};
+ const app=createApp({store,queue,youtube:new YouTubeClient({folder:path.join(store.root,'youtube-auth')})});const server=await new Promise(r=>{const s=app.listen(0,'127.0.0.1',()=>r(s));});t.after(()=>new Promise(r=>server.close(r)));const base=`http://127.0.0.1:${server.address().port}`;
+ const post=url=>fetch(base+'/api/jobs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url})});
+ let r=await post('https://www.twitch.tv/kyle/v/2921164270');assert.equal(r.status,202);let job=await r.json();assert.deepEqual(job.source,{type:'twitch',kind:'video',name:'',url:'https://www.twitch.tv/videos/2921164270',section:null});
+ r=await post('https://kick.com/xqc?clip=clip_01M73TDVGBGC62J5PMQZPPSG93');assert.equal(r.status,202);job=await r.json();assert.equal(job.source.type,'kick');assert.equal(job.source.kind,'clip');
+ // A live Twitch channel imports the stream so far; Kick channels cannot (Kick shares only the last seconds while live).
+ r=await post('https://www.twitch.tv/kyle');assert.equal(r.status,202);job=await r.json();assert.equal(job.source.kind,'channel');assert.equal(job.source.url,'https://www.twitch.tv/kyle');
+ r=await post('https://kick.com/xqc');assert.equal(r.status,400);assert.match((await r.json()).error,/Kick channel.*last few seconds/);
 });

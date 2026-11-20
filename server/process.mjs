@@ -20,6 +20,6 @@ export async function probe(file,options={}){
  const r=await run('ffprobe',['-v','error','-show_format','-show_streams','-of','json',file],options);let data;try{data=JSON.parse(r.stdout);}catch{throw new Error('Could not read video metadata');}
  const video=data.streams?.find(s=>s.codec_type==='video'),audio=data.streams?.find(s=>s.codec_type==='audio');const duration=Number(data.format?.duration);
  if(!video||!audio||!Number.isFinite(duration)||duration<=0)throw new Error('The source must contain a video track and audible audio track');
- if(duration>4*3600)throw new Error('Use a video under four hours');
+ if(duration>30*3600)throw new Error('Use a video under 30 hours');
  const rate=String(video.avg_frame_rate||video.r_frame_rate).split('/').map(Number);return {duration,audioDuration:Number(audio.duration)>0?Number(audio.duration):duration,width:video.width,height:video.height,fps:rate[1]?rate[0]/rate[1]:rate[0],audioCodec:audio.codec_name,videoCodec:video.codec_name,size:Number(data.format.size)||0};
 }

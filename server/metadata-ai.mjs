@@ -124,10 +124,12 @@ export async function writeMetadataAI(input,options={}){
  return {...out,model};
 }
 
+/** Gen-Z hooks keep the writer's casing (slang reads wrong in Title Case) without a closing full stop. */
+export const genzCase=s=>{const t=String(s||'').replace(/[.]+$/,'').trim();return t.charAt(0).toUpperCase()+t.slice(1);};
 // Batched hooks and titles for every clip of a project in one request, so a free tier spends one call per stream.
 const BatchClip=z.object({
  index:z.coerce.number().int().describe('The clip number given in the prompt'),
- hook:z.string().describe('On-screen hook, at most 6 words, who-did-what or a curiosity line, no swearing'),
+ hook:z.string().describe('On-screen hook, at most 9 words, who-did-what in the hook voice asked for, no swearing'),
  title:z.string().describe('Who-did-what clip title, Title Case, 4-9 words, at most 60 characters'),
  altTitles:z.array(z.string()).optional().describe('1-2 alternative clip titles with a different angle (one reaction-led, one curiosity-led), same who-did-what and no-invention rules, at most 60 characters each'),
  youtubeTitle:z.string().optional().describe('YouTube title: who-did-what hook, 45-70 characters'),
@@ -143,13 +145,15 @@ export function batchPrompt({format='shorts',sourceTitle,contextText,sourceUrl,c
  const lines=[`Write packaging for ${clips.length} clip${clips.length>1?'s':''} cut from one livestream, each as a YouTube ${format==='video'?'regular video (16:9)':'Short (vertical)'}.`,`Source stream: ${clean(sourceTitle)||'unknown'}`];
  if(contextText)lines.push(`Creator's context: ${clean(contextText)}`);if(sourceUrl)lines.push(`Credit link for descriptions: ${sourceUrl}`);
  lines.push('Return one entry per clip with the same index. Each title must match what happens in that clip.');
- for(const c of clips)lines.push('',`Clip ${c.index} (${c.category||'moment'}, ${Math.round(c.duration||0)}s)`,`People with evidence: ${peopleLine(c.people)}`,...(c.template?[templateStyle(c.template)]:[]),...(c.peakLine?[`Peak line: ${clean(c.peakLine).slice(0,200)}`]:[]),...(c.labels?[LABEL_RULE]:[]),`Transcript: ${clean(c.transcript).slice(0,1100)||'(no speech)'}`);
+ for(const c of clips)lines.push('',`Clip ${c.index} (${c.category||'moment'}, ${Math.round(c.duration||0)}s)`,`People with evidence: ${peopleLine(c.people)}`,...(c.template?[templateStyle(c.template)]:[GENZ_HOOK]),...(c.peakLine?[`Peak line: ${clean(c.peakLine).slice(0,200)}`]:[]),...(c.labels?[LABEL_RULE]:[]),`Transcript: ${clean(c.transcript).slice(0,1100)||'(no speech)'}`);
  return lines.join('\n');
 }
+// Gen-Z hook voice (Glow Card): still a true who-did-what line, written like a clip-channel caption.
+export const GENZ_HOOK='On-screen hook voice: Gen-Z meme caption, 4-9 words and at most 40 characters, plain text with no emoji or hashtags, not all caps. Name the streamer from the people with evidence and say what they actually did or what is happening to them in this clip (it must be true to the transcript), then make it funny the way clip channels caption. Be specific: name the concrete thing from the transcript (the NPC, the car, the cutscene, the line someone said) instead of generic words like game or graphics, and give every clip a different angle; the slang adds punch, it never replaces the event. Use one or two slang words only where they fit: cooked, crashed out, aura, W, L, NPC, yapping, lowkey, fr, bro, ain’t no way, tweaking, locked in, glazing, rizz, chat. Shapes that work: [streamer] got cooked by [thing]; [streamer] crashed out over [thing]; [streamer] when [what happened]; [thing] had [streamer] tweaking; [streamer] locked in for [goal]. Never invent events, never insult anyone, no swearing or slurs.';
 /** The edit template's title rules as one prompt line (the pattern is abstract; it is never a real title to copy). */
 export function templateStyle(meta){
  const t=normalizeTemplateMeta(meta);if(!t)return '';const guide=t.titleGuide.replace(/</g,'[').replace(/>/g,']').replace(/\s+/g,' ');
- return 'YouTube title style: '+[guide&&`follow the pattern ${guide} (a pattern only, fill it with this clip's real people and events)`,t.case&&{title:'Title Case',upper:'ALL CAPS',sentence:'Sentence case'}[t.case],t.emojiCount?`end youtubeTitle and altTitles with ${t.emojiCount} emoji from ${t.emoji.join(' ')}`:'no emoji',`at most ${t.maxLength} characters`,'no hashtags in titles','hook and title stay plain text without emoji'].filter(Boolean).join('; ')+'.';
+ return 'YouTube title style: '+[guide&&`follow the pattern ${guide} (a pattern only, fill it with this clip's real people and events)`,t.case&&{title:'Title Case',upper:'ALL CAPS',sentence:'Sentence case'}[t.case],t.emojiCount?`end youtubeTitle and altTitles with ${t.emojiCount} emoji from ${t.emoji.join(' ')}`:'no emoji',`at most ${t.maxLength} characters`,'no hashtags in titles','hook and title stay plain text without emoji'].filter(Boolean).join('; ')+'.'+(t.hookVoice==='genz'?' '+GENZ_HOOK:'');
 }
 const wordsOf=s=>String(s||'').split(/\s+/).filter(Boolean).length;
 // Models sometimes misspell a name by one letter ("Kai Cenet"); snap such words back to the evidence spelling.
@@ -166,13 +170,13 @@ export async function writeClipBatchAI(input,{chunk=6,...options}={}){
   const a=byIndex.get(c.index);if(!a)return {index:c.index};
   const allowed=c.people||[],named=t=>!unsupportedNames(t,allowed).length;
   // Hooks and clip titles are drawn on screen and name files, so emoji are removed; the template shapes YouTube titles.
-  const fix=t=>fixNames(t,allowed),hook=titleCase(fix(dropProfanity(clean(stripEmoji(a.hook))).replace(/^["“]|["”]$/g,'').trim())),title=titleCase(fix(cutWords(dropProfanity(clean(stripEmoji(a.title))).replace(/\s+/g,' '),60)));
+  const genz=(normalizeTemplateMeta(c.template)?.hookVoice||'genz')==='genz',fix=t=>fixNames(t,allowed),hook=(genz?genzCase:titleCase)(fix(dropProfanity(clean(stripEmoji(a.hook))).replace(/^["“]|["”]$/g,'').trim())),title=titleCase(fix(cutWords(dropProfanity(clean(stripEmoji(a.title))).replace(/\s+/g,' '),60)));
   const shape=(t,k,max=100)=>c.template?shapeTitle(t,{...c.template,maxLength:Math.min(normalizeTemplateMeta(c.template).maxLength,max)},{seed:`${c.seed??c.index}${k?`:${k}`:''}`,people:allowed}):t;
   const draft=finishDraft({title:fix(a.youtubeTitle||a.title),description:fix(a.description),hashtags:a.hashtags,tags:(a.tags||[]).map(fix).filter(t=>!/\b(?:profanity|curs(?:e|ing)|swear\w*|insult\w*|drama|cancel\w*)\b/i.test(t)),rationale:''});
   if(input.sourceUrl&&!draft.description.includes(input.sourceUrl))draft.description=`${draft.description}\n\nFull stream: ${input.sourceUrl}`.slice(0,4900);
   draft.title=shape(draft.title,0);
   const alts=[...new Set((a.altTitles||[]).slice(0,2).map(t=>titleCase(fix(cutWords(dropProfanity(clean(t)).replace(/\s+/g,' '),60)))))].filter(t=>wordsOf(stripEmoji(t))>=3&&named(t)&&stripEmoji(t)!==title).map((t,n)=>shape(t,n+2,60));
-  return {index:c.index,...(c.labels&&Array.isArray(a.labels)?{labels:a.labels.slice(0,6)}:{}),...(alts.length?{altTitles:alts}:{}),...(hook&&wordsOf(hook)<=6&&named(hook)?{hook}:{}),...(wordsOf(title)>=3&&named(title)?{title}:{}),...(named(draft.title)&&draft.title.length>=10?{metadata:{title:draft.title,description:draft.description,tags:draft.tags}}:{})};
+  return {index:c.index,...(c.labels&&Array.isArray(a.labels)?{labels:a.labels.slice(0,6)}:{}),...(alts.length?{altTitles:alts}:{}),...(hook&&wordsOf(hook)<=(genz?10:6)&&hook.length<=(genz?48:60)&&named(hook)?{hook}:{}),...(wordsOf(title)>=3&&named(title)?{title}:{}),...(named(draft.title)&&draft.title.length>=10?{metadata:{title:draft.title,description:draft.description,tags:draft.tags}}:{})};
  });
  return {clips,model,provider,partial:!!lastError,error:lastError?.message};
 }

@@ -44,7 +44,7 @@ test('local who-did-what titles use evidence only and keep swearing off screen',
  const nobody=localTitles('Ayo.',{people:[]});assert.match(nobody.title,/^Streamer /,'no guessed names');assert.notEqual(nobody.title,'Ayo');
  assert.ok(!/“/.test(localTitles('Go okay alright alright what?',{people:kai,peakText:'Go okay alright alright what?'}).title),'filler chatter is never quoted as a title');
  assert.ok(!/Celebrates/.test(localTitles("let's go to Cascades later.",{people:kai,peakText:"let's go to Cascades later."}).title),'"let\'s go to" is not a celebration');
- assert.equal(titleCase('kai gets scared by a fake spider'),'Kai Gets Scared by a Fake Spider');
+ assert.equal(titleCase('kai gets scared by a fake spider'),'Kai Gets Scared by a Fake Spider');assert.equal(titleCase('xQc buys an iPhone'),'xQc Buys an iPhone','mixed-case names keep their casing');
  assert.equal(maskProfanity('what the fuck'),'what the f***');assert.equal(dropProfanity('That nigga is crazy'),'That is crazy');
 });
 

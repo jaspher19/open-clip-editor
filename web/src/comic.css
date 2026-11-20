@@ -563,3 +563,23 @@ button:disabled{opacity:.55;filter:grayscale(.6)}
 
 /* Skull Ending centres its title mid-frame, like the render (hookPosition: middle). */
 .live-hook.middle{top:47%;transform:translateY(-50%)}
+/* Facecam on top · gameplay below (StackEditor.tsx) */
+.stack-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stack-editor{display:grid;gap:8px}
+.stack-editor small{font-size:12px;color:var(--ink-soft)}
+.stack-status{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px}
+.stack-status>span{flex:1 1 220px}
+.stack-source{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;touch-action:none;user-select:none}
+.stack-source canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stack-box{position:absolute;border:2px solid;box-sizing:border-box;cursor:move}
+.stack-box span{position:absolute;left:0;top:0;padding:1px 6px;font-size:11px;font-weight:700;color:#111;pointer-events:none}
+.stack-box i{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border-radius:50%;border:2px solid #111;cursor:nwse-resize}
+.stack-box.cam{border-color:#ffd21f;background:#ffd21f1f;z-index:2}.stack-box.cam span,.stack-box.cam i{background:#ffd21f}
+.stack-box.cam.guess{border-style:dashed}
+.stack-box.game{border-color:#2ee6ff;background:#2ee6ff14;z-index:1}.stack-box.game span,.stack-box.game i{background:#2ee6ff}
+.stack-box.dragging{outline:2px solid #fff}
+/* Cam Split card: facecam panel on top, gameplay below */
+.mock-stack .mock-cam{position:absolute;left:0;right:0;top:0;height:36%;overflow:hidden;background:radial-gradient(90% 90% at 50% 40%,#3a2f45,#1a1522);border-bottom:2px solid #000}
+.mock-stack .mock-cam .mock-person{height:78%;width:42%}
+.mock-stack .mock-game{position:absolute;left:0;right:0;top:36%;bottom:0;background:linear-gradient(160deg,#1f6f5c 0 30%,#2c3f7a 30% 62%,#7a3a5c 62%);opacity:.9}
+.mock-stack .mock-game::after{content:"";position:absolute;left:44%;top:40%;width:12%;aspect-ratio:1;border:2px solid #ffffffb0;border-radius:50%}

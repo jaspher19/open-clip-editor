@@ -1,4 +1,4 @@
-export function formatTime(t){if(!Number.isFinite(t)||t<0)return '0:00.0';return `${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;}
+export function formatTime(t){if(!Number.isFinite(t)||t<0)return '0:00.0';if(t>=3600)return clock(t);return `${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;}
 export function trimError(start,end,duration,min=20){if(!Number.isFinite(start)||!Number.isFinite(end))return 'Enter a valid number for both trim points.';if(start<0||end>duration)return 'Keep the range within the source video.';if(end-start<min)return `Choose at least ${min} seconds of source footage.`;if(end-start>90)return 'Keep each source selection at 90 seconds or less.';return '';}
 export function downloadableIds(job){return job.clips.filter(c=>c.kept&&!c.dirty&&job.exports.some(e=>e.clipId===c.id)).map(c=>c.id);}
 // Settings the user changed after choosing a template; unset keys keep the template value.
@@ -46,3 +46,50 @@ export const historyUndo=h=>h.past.length?{past:h.past.slice(0,-1),present:h.pas
 export const historyRedo=h=>h.future.length?{past:[...h.past,h.present],present:h.future[0],future:h.future.slice(1),key:'',at:0}:h;
 /** Seconds a source range plays once export tightens pauses (an estimate of server/edl.mjs buildEdl). */
 export function tightLength(words,start,end,{threshold=.6,padding=.12}={}){const w=(words||[]).filter(x=>x.end>start&&x.start<end).sort((a,b)=>a.start-b.start);if(!w.length)return 0;let total=0,a=Math.max(start,w[0].start-padding),b=Math.min(end,w[0].end+padding);for(let i=1;i<w.length;i++){if(w[i].start-w[i-1].end>threshold){total+=b-a;a=Math.max(start,w[i].start-padding);b=Math.min(end,w[i].end+padding);}else b=Math.max(b,Math.min(end,w[i].end+padding));}return total+b-a;}
+// Stacked facecam layout (shared with server/stack.mjs so the preview matches the export). Boxes are [x,y,w,h] shares of the source frame.
+export const STACK_SPLIT_MIN=.25,STACK_SPLIT_MAX=.55;
+export function validBox(b){return Array.isArray(b)&&b.length===4&&b.every(v=>typeof v==='number'&&Number.isFinite(v))&&b[0]>=0&&b[1]>=0&&b[2]>=.02&&b[3]>=.02&&b[0]+b[2]<=1.0001&&b[1]+b[3]<=1.0001;}
+/**
+ * Panel heights in 1080×1920 pixels. Automatic split: the cam's own shape at full width, kept between 25% and 55% of the height.
+ * @param {number[]|null} camBox
+ * @param {{split?:number|null,sourceAspect?:number}} [opts]
+ */
+export function stackPanels(camBox,{split=null,sourceAspect=16/9}={}){
+ const camAspect=camBox?(camBox[2]*sourceAspect)/camBox[3]:16/9,clamp=x=>Math.max(STACK_SPLIT_MIN,Math.min(STACK_SPLIT_MAX,x));
+ const share=typeof split==='number'?clamp(split):clamp(1080/camAspect/1920),top=Math.max(2,Math.round(1920*share/2)*2);return {top,bottom:1920-top};
+}
+/**
+ * Glow Card layout (stackStyle 'card', after the GTA 6 launch Shorts of Typical Gamer): a rounded webcam card with a
+ * glowing edge over a full-width gameplay band, on a blurred copy of the gameplay. Pixels of the 1080×1920 frame;
+ * the frame art (scripts/make-cam-card.py) is drawn around cam.
+ */
+export const CARD={cam:{x:100,y:48,w:880,h:544},game:{y:530,h:1210},captionY:672};
+/**
+ * The part of the cam box shaped like the card (880×544). A cam taller than the card loses height, not the head: the
+ * face sits about 45% down (or the crop keeps the upper part when no face is known). A wider cam is cut at the sides
+ * around the face.
+ */
+/**@param {number[]} box @param {number[]|null} [face] @param {number} [sourceAspect]*/
+export function cardCamBox(box,face=null,sourceAspect=16/9){
+ const [x,y,w,h]=box;
+ const target=CARD.cam.w/CARD.cam.h,aspect=w*sourceAspect/h,clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+ if(Math.abs(aspect-target)<.01)return [x,y,w,h];
+ if(aspect<target){const nh=w*sourceAspect/target,ny=face?clamp(face[1]+face[3]/2-nh*.45,y,y+h-nh):y+(h-nh)*.2;return [x,ny,w,nh].map(v=>+v.toFixed(5));}
+ const nw=h*target/sourceAspect,nx=face?clamp(face[0]+face[2]/2-nw/2,x,x+w-nw):x+(w-nw)/2;return [nx,y,nw,h].map(v=>+v.toFixed(5));
+}
+/** Default gameplay crop: full height, centred, shaped like the bottom panel (the whole width when the source is narrower). */
+export function defaultGameBox(bottom,sourceAspect=16/9){const w=Math.min(1,(1080/bottom)/sourceAspect);return [+((1-w)/2).toFixed(4),0,+w.toFixed(4),1];}
+/** The part of a box that fills a panel of `panelAspect` (cover scaling crops the box's longer side, centred). */
+export function coverRect([x,y,w,h],panelAspect,sourceAspect=16/9){const a=(w*sourceAspect)/h;if(a>panelAspect){const nw=w*panelAspect/a;return [x+(w-nw)/2,y,nw,h];}const nh=h*a/panelAspect;return [x,y+(h-nh)/2,w,nh];}
+
+/** Cam Split reaction zooms: how much tighter the cam panel cuts in. */
+export const ZOOM=1.4;
+/**
+ * The tighter cam crop: the cam box shrunk by ZOOM around the face (or the box centre), kept inside the box.
+ * @param {number[]} cam
+ * @param {number[]|null} [face]
+ */
+export function zoomBox(cam,face){
+ const [x,y,w,h]=cam,nw=w/ZOOM,nh=h/ZOOM,cx=face?face[0]+face[2]/2:x+w/2,cy=face?face[1]+face[3]*.6:y+h/2;
+ return [Math.max(x,Math.min(x+w-nw,cx-nw/2)),Math.max(y,Math.min(y+h-nh,cy-nh/2)),nw,nh].map(v=>+v.toFixed(5));
+}

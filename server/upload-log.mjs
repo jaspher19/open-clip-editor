@@ -30,7 +30,7 @@ export function guardUploads(youtube,log,describe=()=>({})){
   const fingerprint=args.fingerprint||await fileFingerprint(args.file),info=source?{...source,...describe(source)}:undefined;
   if(!allowRepeat){const hit=log.findRepeat({fingerprint,source:info,title:args.metadata?.title});if(hit)throw Object.assign(new Error(repeatMessage(hit)),{code:'REPEAT_UPLOAD',repeat:hit});}
   const {fingerprint:_,...rest}=args;const result=await youtube.upload(rest);
-  log.record({videoId:result.videoId,url:result.url,title:args.metadata?.title||'',format:info?.format,via,privacy:args.settings?.privacy,publishAt:args.settings?.publishAt,fingerprint,source:info&&{jobId:info.jobId,clipId:info.clipId,video:info.video,start:info.start,end:info.end},repeatAllowed:allowRepeat||undefined});
+  log.record({videoId:result.videoId,url:result.url,title:args.metadata?.title||'',format:info?.format,via,privacy:args.settings?.privacy,publishAt:args.settings?.publishAt,fingerprint,source:info&&{jobId:info.jobId,clipId:info.clipId,video:info.video,start:info.start,end:info.end},...(Array.isArray(info?.traits)?{traits:info.traits}:{}),repeatAllowed:allowRepeat||undefined});
   return result;};
  return new Proxy(youtube,{get(target,key){if(key==='upload')return upload;if(key==='uploadLog')return log;const value=target[key];return typeof value==='function'?value.bind(target):value;}});
 }

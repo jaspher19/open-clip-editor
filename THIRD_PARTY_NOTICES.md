@@ -10,10 +10,12 @@ Original application code is MIT. This file does not replace upstream licenses. 
 | CTranslate2 | [MIT](https://github.com/OpenNMT/CTranslate2/blob/master/LICENSE) | Inference runtime. |
 | Whisper models | [MIT](https://github.com/openai/whisper/blob/main/LICENSE) | Downloaded on demand via faster-whisper; not bundled. |
 | yt-dlp | [Unlicense](https://github.com/yt-dlp/yt-dlp/blob/master/LICENSE) | Public video extraction. Python distribution used here. |
+| curl_cffi | [MIT](https://github.com/lexiforest/curl_cffi/blob/main/LICENSE) | yt-dlp's browser-compatible requests, needed for Kick. Bundles curl (curl license) and BoringSSL (ISC/OpenSSL-style); their notices ship with the wheel. |
 | yt-dlp-ejs | [Unlicense AND MIT AND ISC](https://github.com/yt-dlp/ejs) | JavaScript challenge support; transitive components retain their notices. |
 | PyAV | [BSD-3-Clause](https://github.com/PyAV-Org/PyAV/blob/main/LICENSE.txt) | faster-whisper dependency. Its binary wheels can include FFmpeg libraries with their own notices. |
 | MediaPipe | [Apache-2.0](https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE) | Optional sampled face detection. |
 | BlazeFace short-range weights | Apache-2.0, [Google model card](https://storage.googleapis.com/mediapipe-assets/MediaPipe%20BlazeFace%20Model%20Card%20(Short%20Range).pdf) | Optional download by `setup:faces`; no identity recognition. |
+| Face Landmarker and Selfie Segmenter weights | Apache-2.0 ([MediaPipe models](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker)) | Optional download by `setup:faces`; automatic thumbnails score expressions and cut the streamer out. No identity recognition. |
 | opencv-contrib-python | [Apache-2.0 and bundled third-party notices](https://github.com/opencv/opencv-python/blob/4.x/LICENSE.txt) | Sampled frame decoding. |
 | NumPy | [BSD-3-Clause](https://numpy.org/doc/stable/license.html) | Canonical audio samples and image arrays. |
 | Express, multer, archiver | MIT | Local API, multipart upload and ZIP generation. See installed package LICENSE files. |
@@ -35,4 +37,13 @@ Sound accents in `assets/sfx/` (6 soft pops, 6 impact hits): **"100 CC0 SFX"** a
 
 Burned-in title font: **Montserrat** Black and ExtraBold (Copyright 2011 The Montserrat Project Authors), SIL Open Font License 1.1, downloaded from the official [Montserrat repository](https://github.com/JulietaUla/Montserrat). The OFL notice is `assets/fonts/Montserrat-OFL.txt`.
 
+Glow Card caption font: **Luckiest Guy** (Copyright 2010 Brian J. Bonislawsky DBA Astigmatic), Apache License 2.0, downloaded from the official [Google Fonts repository](https://github.com/google/fonts/tree/main/apache/luckiestguy) (SHA-256 cfbdd68a039f92df51cf3721506af6242e64594c6325fe0bedbeff3fe385d980). The license accompanies the font as `assets/fonts/LuckiestGuy-LICENSE.txt` and `web/public/fonts/LuckiestGuy-LICENSE.txt`. The Glow Card frame art (`assets/overlays/`) is original, drawn by `scripts/make-cam-card.py`.
+
 Example media in `docs/media/` (screenshots, GIF previews and MP4 examples) contains excerpts of **Tears of Steel**, (CC) Blender Foundation | mango.blender.org, licensed under [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/). Changes: short excerpts, cropped to 9:16, re-encoded, with captions, titles, colour effects and original synthesized sounds added by OpenClip. The film itself is not bundled.
+
+## VoltAgent awesome-claude-code-subagents (MIT)
+
+`.claude/agents/debugger.md`, `performance-engineer.md`, `python-pro.md`, `qa-expert.md` and `react-specialist.md`
+are adapted from https://github.com/VoltAgent/awesome-claude-code-subagents (commit ed74d115), Copyright (c) 2025
+VoltAgent, MIT License. Each file has an added "OpenClip project rules" block. Full licence text:
+`.claude/agents/licenses/VoltAgent-LICENSE.txt`. These are development aids for Claude Code, not part of the app.

@@ -1,11 +1,17 @@
-import {useRef,useState} from 'react';import {ImagePlus,Loader2,Trash2} from 'lucide-react';import './publishing.css';
+import {useRef,useState} from 'react';import {ImagePlus,Loader2,Trash2,Sparkles,Download} from 'lucide-react';import './publishing.css';
 // Custom thumbnail for a main-video post: scrub to a frame, add big text, render it on the server.
-type ThumbPost={id:string;format:string;locked:boolean;thumbnail?:{time:number;text:string;updatedAt:string};thumbnailError?:string};
+type ThumbPost={id:string;format:string;locked:boolean;source?:{jobId?:string;clipId?:string};thumbnail?:{time:number|null;text:string;auto?:boolean;updatedAt:string};thumbnailError?:string};
 async function call(url:string,init?:RequestInit){const r=await fetch(url,{...init,headers:{'Content-Type':'application/json'}});const data=r.headers.get('content-type')?.includes('json')?await r.json():{};if(!r.ok)throw new Error(data.error||`Request failed (${r.status})`);return data;}
 export function ThumbnailPicker({post,onSaved}:{post:ThumbPost;onSaved:()=>void|Promise<void>}){
  const video=useRef<HTMLVideoElement>(null),[time,setTime]=useState(post.thumbnail?.time||0),[text,setText]=useState(post.thumbnail?.text||''),[busy,setBusy]=useState(''),[error,setError]=useState('');
- const [version,setVersion]=useState(post.thumbnail?.updatedAt||'');
- if(post.format!=='video')return <div className="thumb-picker thumb-note"><strong>Thumbnail</strong><p className="muted">For Shorts, YouTube only lets you pick the thumbnail frame in the YouTube mobile app after upload.</p></div>;
+ const [version,setVersion]=useState(post.thumbnail?.updatedAt||''),[shortImage,setShortImage]=useState(''),[live,setLive]=useState(false);
+ const linked=!!post.source?.clipId&&post.source.clipId!=='stream-summary';
+ // Automatic thumbnail: the streamer's best reaction cut out over gameplay, big words and the game name (server/autothumb.mjs).
+ async function auto(){setBusy('auto');setError('');try{const p=await call(`/api/posting/${post.id}/thumbnail/auto`,{method:'POST',body:JSON.stringify({...(text.trim()?{text:text.trim()}:{}),live})});if(p.shortThumbnail)setShortImage(p.shortThumbnail.url);else setVersion(p.thumbnail?.updatedAt||String(Date.now()));await onSaved();}catch(e){setError((e as Error).message);}finally{setBusy('');}}
+ const autoControls=linked&&<div className="thumb-auto"><label><input type="checkbox" checked={live} disabled={post.locked} onChange={e=>setLive(e.target.checked)}/> LIVE badge</label><button type="button" className="secondary" disabled={!!busy||post.locked} onClick={auto}>{busy==='auto'?<Loader2 className="spin" size={16}/>:<Sparkles size={16}/>}{post.format==='video'?'Make automatic thumbnail':'Make a thumbnail image'}</button><small className="muted">Picks the streamer’s biggest reaction and cuts them out over the gameplay. Big text comes from the box below, or the clip title.</small></div>;
+ if(post.format!=='video')return <div className="thumb-picker thumb-note"><strong>Thumbnail</strong><p className="muted">YouTube does not let apps set a Shorts thumbnail; choose it in the YouTube mobile app after upload. You can make an image here to use for other posts.</p>
+  {linked&&<label>Big text (optional) <span className="counter">{text.length}/40</span><input maxLength={40} value={text} placeholder="NO WAY" onChange={e=>setText(e.target.value)}/></label>}{autoControls}
+  {shortImage&&<div className="thumb-current"><img alt="Automatic thumbnail" src={shortImage}/><a className="text-button" href={shortImage} download="thumbnail.jpg"><Download size={14}/>Download image</a></div>}{error&&<p role="alert" className="trim-warning">{error}</p>}</div>;
  async function save(){setBusy('save');setError('');try{const p=await call(`/api/posting/${post.id}/thumbnail`,{method:'POST',body:JSON.stringify({time:Number(time.toFixed(2)),text:text.trim()})});setVersion(p.thumbnail?.updatedAt||String(Date.now()));await onSaved();}catch(e){setError((e as Error).message);}finally{setBusy('');}}
  async function remove(){setBusy('remove');setError('');try{await call(`/api/posting/${post.id}/thumbnail`,{method:'DELETE'});setVersion('');await onSaved();}catch(e){setError((e as Error).message);}finally{setBusy('');}}
  return <div className="thumb-picker"><div className="thumb-head"><strong>Thumbnail</strong><small className="muted">1280×720 · uploaded after the video</small></div>
@@ -13,6 +19,7 @@ export function ThumbnailPicker({post,onSaved}:{post:ThumbPost;onSaved:()=>void|
    <div className="thumb-current">{version?<><img alt="Current custom thumbnail" src={`/api/posting/${post.id}/thumbnail?v=${encodeURIComponent(version)}`}/><button type="button" className="text-button" disabled={!!busy||post.locked} onClick={remove}>{busy==='remove'?<Loader2 className="spin" size={14}/>:<Trash2 size={14}/>}Use YouTube’s pick instead</button></>:<p className="muted">No custom thumbnail. YouTube picks a frame for you.</p>}</div></div>
   <label>Frame <span className="counter">{time.toFixed(1)} s</span><input type="range" min={0} max={video.current?.duration||600} step={0.1} value={time} disabled={post.locked} onChange={e=>{const t=Number(e.target.value);setTime(t);if(video.current)video.current.currentTime=t;}}/></label>
   <label>Big text on the thumbnail (optional) <span className="counter">{text.length}/40</span><input maxLength={40} value={text} disabled={post.locked} placeholder="KAI LOSES IT" onChange={e=>setText(e.target.value)}/></label>
+  {autoControls}
   <button type="button" className="secondary" disabled={!!busy||post.locked} onClick={save}>{busy==='save'?<Loader2 className="spin" size={16}/>:<ImagePlus size={16}/>}Use this frame</button>
   {post.thumbnailError&&<p role="alert" className="trim-warning">{post.thumbnailError}</p>}{error&&<p role="alert" className="trim-warning">{error}</p>}
  </div>;

@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type CSSProperties,type RefObject} from 'react';
 import {Play,Pause,Eye,Film} from 'lucide-react';
 import type {Word,Settings,Effect,Range,EngagementSettings} from './types';
+import {StackCanvas,type StackLayout} from './StackEditor';
 import {clock,centerAt,cropBox,captionChunk,accentWord,toOutput,toSource,outputLength} from './logic.mjs';
 
 /** On-video hook in the modern clipper look: heavy outlined capitals with one accent word. */
@@ -9,7 +10,7 @@ export function HookTitle({text,accent,fontFamily,className=''}:{text:string;acc
  return <span className={`hook-title ${className}`} style={{fontFamily,'--hook-accent':accent} as CSSProperties}>{words.map((w,i)=><span key={i} className={i===hit?'accent':undefined}>{w}{i<words.length-1?' ':''}</span>)}</span>;
 }
 
-const CAPTION_TOP:Record<string,string>={lower:'68%',middle:'50%',center:'50%',upper:'36%'};
+const CAPTION_TOP:Record<string,string>={lower:'68%',middle:'50%',center:'50%',upper:'36%',seam:'35%'};
 // Browser approximation of the reference caption styles in presets/captions.json (server/captions.mjs renders the export).
 // fs = libass size in 1080-wide px; EM = CSS em per libass size unit (unitsPerEm / (winAscent+winDescent)); gw = width per char.
 type Look={font:string;fs:number;fit?:number;words:number;textCase:'upper'|'lower';color:string;palette?:string[];rule?:'alternate'|'cycle'|'keywords';box?:string;outline?:number;shadow?:number;soft?:boolean;glow?:boolean;build?:boolean};
@@ -48,7 +49,7 @@ type Phase={kind:'normal'}|{kind:'cold';until:number}|{kind:'hold';label:string}
  * cuts are skipped, extra parts follow, and freezes, replays, the cold open and on-screen effects play out.
  * `words` already carry caption corrections and exclude cut words.
  */
-export default function LivePreview({video,src,segments,words,settings,hook,sourceAspect,samples,fontFamily,accent,effects=[],coldOpenAt}:{video:RefObject<HTMLVideoElement|null>;src:string;segments:Segment[];words:Word[];settings:Partial<Settings>&EngagementSettings;hook:string;sourceAspect:number;samples:{time:number;centerX:number}[];fontFamily?:string;accent:string;effects?:Effect[];coldOpenAt?:number}){
+export default function LivePreview({video,src,segments,words,settings,hook,sourceAspect,samples,fontFamily,accent,effects=[],coldOpenAt,stack=null}:{stack?:StackLayout|null;video:RefObject<HTMLVideoElement|null>;src:string;segments:Segment[];words:Word[];settings:Partial<Settings>&EngagementSettings;hook:string;sourceAspect:number;samples:{time:number;centerX:number}[];fontFamily?:string;accent:string;effects?:Effect[];coldOpenAt?:number}){
  const [time,setTime]=useState(segments[0]?.start??0),[playing,setPlaying]=useState(false),[mode,setMode]=useState<'edited'|'original'>('edited'),[phase,setPhase]=useState<Phase>({kind:'normal'}),[rewind,setRewind]=useState(false);
  const raf=useRef(0),seg=useRef(0),done=useRef(new Set<string>()),last=useRef(0),phaseRef=useRef<Phase>({kind:'normal'}),holding=useRef(false),timer=useRef(0);
  const first=segments[0],total=outputLength(segments);
@@ -82,7 +83,8 @@ export default function LivePreview({video,src,segments,words,settings,hook,sour
  const active=(e:Effect,len:number)=>time>=e.at&&time<e.at+len,fx=mode==='edited'&&phase.kind!=='cold'?effects:[];
  const zoom=fx.find(e=>e.type==='zoom'&&active(e,Number(e.duration??.5))),shake=fx.some(e=>e.type==='shake'&&active(e,Number(e.duration??.4))),flash=fx.find(e=>e.type==='flash'&&active(e,Number(e.duration??.3))),pop=fx.find(e=>e.type==='pop'&&active(e,.9));
  const zoomScale=zoom?1+.18*Math.sin(Math.PI*Math.min(1,(time-zoom.at)/Number(zoom.duration??.5))):1;
- const videoStyle:CSSProperties=mode==='original'?{}:contained?{position:'absolute',left:0,width:'100%',top:framing==='editorial'?'26%':'50%',height:'auto',transform:framing==='editorial'?undefined:'translateY(-50%)'}:{position:'absolute',top:0,height:'100%',width:`${box.width}%`,left:`${box.left}%`,maxWidth:'none',objectFit:'cover'};
+ const stacked=mode==='edited'&&framing==='stack'&&!wide&&!!stack;
+ const videoStyle:CSSProperties=mode==='original'?{}:stacked?{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0}:contained?{position:'absolute',left:0,width:'100%',top:framing==='editorial'?'26%':'50%',height:'auto',transform:framing==='editorial'?undefined:'translateY(-50%)'}:{position:'absolute',top:0,height:'100%',width:`${box.width}%`,left:`${box.left}%`,maxWidth:'none',objectFit:'cover'};
  const out=toOutput(time,segments),elapsed=out??0,showHook=settings.hookEnabled!==false&&!!hook&&phase.kind!=='cold'&&(settings.titleMode==='persistent'||elapsed<Number(settings.hookDuration||2.8)),chunk=settings.captionsEnabled===false||phase.kind==='cold'?null:captionChunk(words,time);
  // Reference styles use their own font unless a caption font is chosen (fontFamily is then the user's pick).
  const captionTop=CAPTION_TOP[String(settings.captionPosition||'lower')]||'68%',base=LOOKS[String(settings.style||'')],look=base&&settings.font&&settings.font!=='auto'&&fontFamily?{...base,font:fontFamily}:base;
@@ -92,7 +94,7 @@ export default function LivePreview({video,src,segments,words,settings,hook,sour
  return <div className="live-preview">
   <div className="live-mode" role="radiogroup" aria-label="Preview mode"><button type="button" role="radio" aria-checked={mode==='edited'} className={mode==='edited'?'chosen':''} onClick={()=>setMode('edited')}><Eye size={14}/>As edited</button><button type="button" role="radio" aria-checked={mode==='original'} className={mode==='original'?'chosen':''} onClick={()=>setMode('original')}><Film size={14}/>Original</button></div>
   <div className={`live-frame ${mode} framing-${framing} ${wide?'wide':'tall'} ${shake&&mode==='edited'?'is-shaking':''} ${phase.kind==='hold'?'is-frozen':''}`} style={mode==='edited'?{aspectRatio:String(frameAspect)}:undefined}>
-   <div className="live-zoom" style={mode==='edited'&&zoomScale!==1?{transform:`scale(${zoomScale.toFixed(3)})`}:undefined}><video ref={video} src={src} style={videoStyle} controls={mode==='original'} playsInline preload="metadata" onLoadedMetadata={()=>{if(video.current&&first&&video.current.currentTime<first.start)video.current.currentTime=first.start;}}/></div>
+   <div className="live-zoom" style={mode==='edited'&&zoomScale!==1?{transform:`scale(${zoomScale.toFixed(3)})`}:undefined}><video ref={video} src={src} style={videoStyle} controls={mode==='original'} playsInline preload="metadata" onLoadedMetadata={()=>{if(video.current&&first&&video.current.currentTime<first.start)video.current.currentTime=first.start;}}/>{stacked&&stack&&<StackCanvas video={video} layout={stack} sourceAspect={sourceAspect}/>}</div>
    {mode==='edited'&&<>{showHook&&<div className={settings.hookPosition==='middle'?'live-hook middle':'live-hook'}><HookTitle text={hook} accent={accent} fontFamily={fontFamily}/></div>}{settings.seriesLabel&&<span className="live-series">{String(settings.seriesLabel)}</span>}
     {look&&settings.captionsEnabled!==false&&phase.kind!=='cold'&&<ReferenceCaption look={look} words={words} time={time} top={captionTop} wide={wide}/>}
     {settings.watermark&&<div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:`${(Number(settings.watermarkY??.82)*100).toFixed(1)}%`,transform:'translateY(-50%)',textAlign:'center',fontFamily:`'${look?.font||'Work Sans'}'`,fontWeight:700,fontSize:`${((EM[look?.font||'Work Sans']||.65)*(wide?30/19.2:38/10.8)).toFixed(3)}cqw`,color:'#ffffff73',WebkitTextStroke:`${(wide?2/19.2:2/10.8).toFixed(3)}cqw #0000004c`,paintOrder:'stroke fill',pointerEvents:'none',zIndex:1}}>{String(settings.watermark)}</div>}

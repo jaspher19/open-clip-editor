@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 export const EDIT_TEMPLATES=JSON.parse(fs.readFileSync(new URL('../presets/edits.json',import.meta.url),'utf8'));
-export const CAPTION_FONTS=[{id:'anton',name:'Anton',family:'Anton'},{id:'barlow',name:'Barlow Condensed',family:'Barlow Condensed'},{id:'work',name:'Work Sans',family:'Work Sans'},{id:'mono',name:'Red Hat Mono',family:'Red Hat Mono'},{id:'montserrat',name:'Montserrat ExtraBold',family:'Montserrat ExtraBold'},{id:'montserrat-black',name:'Montserrat Black',family:'Montserrat Black'}];
+export const CAPTION_FONTS=[{id:'anton',name:'Anton',family:'Anton'},{id:'barlow',name:'Barlow Condensed',family:'Barlow Condensed'},{id:'work',name:'Work Sans',family:'Work Sans'},{id:'mono',name:'Red Hat Mono',family:'Red Hat Mono'},{id:'montserrat',name:'Montserrat ExtraBold',family:'Montserrat ExtraBold'},{id:'montserrat-black',name:'Montserrat Black',family:'Montserrat Black'},{id:'luckiest',name:'Luckiest Guy',family:'Luckiest Guy'}];
 export function captionFont(id){return CAPTION_FONTS.find(f=>f.id===id)?.family;}
 // Meme-only effects are off unless the chosen template turns them on, so switching away from a meme edit drops them.
 export const TEMPLATE_RESET={revealFx:false,cutFlash:false,tintFlashes:false,skullEnding:false,actionLabels:false,hookReveal:'pop',hookPosition:'top'};

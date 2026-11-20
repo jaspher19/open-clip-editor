@@ -7,7 +7,7 @@ export function parseYouTubeUrl(value){
  return {id,url:`https://www.youtube.com/watch?v=${id}`};
 }
 // Long 1080p60 streams pass 4 GB in H.264, and yt-dlp then aborts without an error, so prefer full-height 1080p (H.264, then VP9) whose known size fits, then 720p.
-const FORMAT='bv*[vcodec^=avc1][height>=1000][height<=1080][filesize<3800M]+ba[acodec^=mp4a]/bv*[vcodec^=vp][height>=1000][height<=1080][filesize<3800M]+ba[acodec^=mp4a]/bv*[vcodec^=avc1][height<=1080][filesize<3800M]+ba[acodec^=mp4a]/bv*[vcodec^=avc1][height<=720]+ba[acodec^=mp4a]/b[ext=mp4][height<=1080]/bv*[height<=1080]+ba/b[height<=1080]';
+export const FORMAT='bv*[vcodec^=avc1][height>=1000][height<=1080][filesize<3800M]+ba[acodec^=mp4a]/bv*[vcodec^=vp][height>=1000][height<=1080][filesize<3800M]+ba[acodec^=mp4a]/bv*[vcodec^=avc1][height<=1080][filesize<3800M]+ba[acodec^=mp4a]/bv*[vcodec^=avc1][height<=720]+ba[acodec^=mp4a]/b[ext=mp4][height<=1080]/bv*[height<=1080]+ba/b[height<=1080]';
 /** yt-dlp exits 0 when it skips a download on purpose; say why, and drop the partial pieces. */
 function skipReason(folder){
  let log='';try{log=fs.readFileSync(path.join(folder,'download.log'),'utf8');}catch{}

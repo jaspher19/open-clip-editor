@@ -1,8 +1,13 @@
-import fs from 'node:fs';import {captionFont} from './templates.mjs';
+import fs from 'node:fs';import {captionFont} from './templates.mjs';import {CARD} from '../web/src/logic.mjs';
 export const CAPTION_STYLES=JSON.parse(fs.readFileSync(new URL('../presets/captions.json',import.meta.url),'utf8'));
-export function groupWords(words,{maxWords=3,maxChars=27,maxGap=.45}={}){
+// Pairing rule `link` (Glow Card): two words share the screen only when one is a short linking word or the second is a
+// number ("THE MONEY", "FOR ME", "GTA 6"), never across a comma or a pause; otherwise one word at a time.
+const LINK=new Set(['a','an','the','i','i\'m','it','it\'s','is','was','of','for','to','in','on','at','me','my','you','we','and','but','so','this','that','lot','just','get','go','oh','no','yes','he','she','they','not','too','up','out','what']);
+const bare=t=>String(t).toLowerCase().replace(/[^\p{L}\p{N}']/gu,'');
+const linked=(a,b)=>!/[,;:—–-]$/.test(a.text)&&b.start-a.end<.2&&(LINK.has(bare(a.text))||LINK.has(bare(b.text))||/^\d/.test(bare(b.text)));
+export function groupWords(words,{maxWords=3,maxChars=27,maxGap=.45,pairing=''}={}){
  const groups=[];let current=[];
- for(const w of words){if(current.length&&(current.length>=maxWords||current.map(x=>x.text).join(' ').length+w.text.length+1>maxChars||/[.!?]$/.test(current.at(-1).text)||w.start-current.at(-1).end>maxGap)){groups.push(current);current=[];}current.push(w);}if(current.length)groups.push(current);return groups;
+ for(const w of words){if(current.length&&(current.length>=maxWords||(pairing==='link'&&!linked(current.at(-1),w))||current.map(x=>x.text).join(' ').length+w.text.length+1>maxChars||/[.!?]$/.test(current.at(-1).text)||w.start-current.at(-1).end>maxGap)){groups.push(current);current=[];}current.push(w);}if(current.length)groups.push(current);return groups;
 }
 const escape=s=>String(s).replaceAll('\\','＼').replaceAll('{','｛').replaceAll('}','｝').replace(/[\r\n]/g,' ').replace(/\s+/g,' ').trim();
 const time=t=>{const n=Math.max(0,Math.round(t*100));return `${Math.floor(n/360000)}:${String(Math.floor(n/6000)%60).padStart(2,'0')}:${String(Math.floor(n/100)%60).padStart(2,'0')}.${String(n%100).padStart(2,'0')}`;};
@@ -15,20 +20,20 @@ const STRONG=/^(viral|famous|angry|mad|wild|hilarious|broke|scared|jump|wins?|lo
 /** Index of the word to colour: prefer the action word, then a strong word, then the name at the start. */
 export function emphasisIndex(words){let best=-1,score=-Infinity;words.forEach((raw,i)=>{const w=raw.replace(/[^\p{L}\p{N}']/gu,'');if(!w||TITLE_STOP.has(w.toLowerCase()))return;let s=w.length/20;if(STRONG.test(w))s+=4;else if(i>0&&/(ed|ing)$/i.test(w)&&w.length>4)s+=3;else if(i>0&&/[^s]s$/i.test(w)&&w.length>3)s+=2.5;else if(i===0)s+=1;if(/^\d/.test(w))s+=2;if(s>=score){score=s;best=i;}});return best;}
 // Average advance per character as a share of the libass font size, measured from the bundled fonts.
-const glyphWidth=(font,upper)=>({Anton:.28,'Barlow Condensed':.35,'Red Hat Mono':.45,'Montserrat Black':.38,'Montserrat ExtraBold':upper?.52:.45}[font]??(upper?.47:.37));
+const glyphWidth=(font,upper)=>({Anton:.28,'Barlow Condensed':.35,'Red Hat Mono':.45,'Montserrat Black':.38,'Montserrat ExtraBold':upper?.52:.45,'Luckiest Guy':.59}[font]??(upper?.47:.37));
 // Vertical metrics as shares of the libass font size (= winAscent+winDescent): baseline from the line top, and cap height.
-const METRICS={Anton:{asc:2876/3550,cap:1760/3550},'Montserrat ExtraBold':{asc:1109/1562,cap:700/1562},'Montserrat Black':{asc:1109/1562,cap:700/1562},'Work Sans':{asc:1105/1448,cap:660/1448}};
+const METRICS={Anton:{asc:2876/3550,cap:1760/3550},'Montserrat ExtraBold':{asc:1109/1562,cap:700/1562},'Montserrat Black':{asc:1109/1562,cap:700/1562},'Work Sans':{asc:1105/1448,cap:660/1448},'Luckiest Guy':{asc:2006/2510,cap:1424/2510}};
 // Stable pseudo-random pick for the `cycle` colour rule, never repeating the previous colour.
 const pick=(k,n,prev)=>{if(n<2)return 0;const r=Math.floor(Math.abs(Math.sin(k*12.9898+1)*43758.5453))%(prev<0?n:n-1);return prev>=0&&r>=prev?r+1:r;};
-const TITLE_FONTS={'meme-phrase':{font:'Montserrat Black',upper:true,size:88,min:64},impact:{font:'Anton',upper:true,size:156,min:110},gaming:{font:'Anton',upper:true,size:156,min:110}};
+const TITLE_FONTS={'comic-word':{font:'Luckiest Guy',upper:true,size:118,min:76,rows:3,width:1000,accent:'&H0000E5FF&'},'meme-phrase':{font:'Montserrat Black',upper:true,size:88,min:64},impact:{font:'Anton',upper:true,size:156,min:110},gaming:{font:'Anton',upper:true,size:156,min:110}};
 const titleFace=style=>TITLE_FONTS[style]||{font:'Montserrat Black',upper:false,size:122,min:88};
 export function makeAss(words,{style='clean',title='',progressBar=false,duration=0,font='auto',accentColor='auto',captionPosition='lower',motionIntensity='balanced',hookEnabled=true,hookDuration=2.8,titleMode='opening',contextText='',seriesLabel='',captionsEnabled=true,rankItems=[],rankActive=0,framing='center',captionReveal='progressive',outputFormat='shorts',maskProfanity:mask=true,watermark='',watermarkY=.82,hookReveal='pop',hookPosition='top'}={}){
  const source=CAPTION_STYLES[style];if(!source)throw new Error('Invalid caption style');const preset={...source,font:captionFont(font)||source.font,active:accentColor==='auto'?source.active:assColor(accentColor)};const wide=outputFormat==='video',cx=wide?960:540;const clean=t=>mask?maskProfanity(t):String(t);
  // Captions sit in the lower-middle band (about 65-70% height on 9:16) so they never cover the face.
  // `middle` centres the caption block on the frame's horizontal midline (\an5, or \an8 from the block top for 2-line phrases).
- const position=(wide?{lower:940,middle:540,center:870,upper:460}:{lower:1330,middle:960,center:1250,upper:860})[captionPosition]||(wide?900:1330),middle=captionPosition==='middle',solid=preset.boxStyle==='solid';
+ const position=(wide?{lower:940,middle:540,center:870,upper:460,seam:540}:{lower:1330,middle:960,center:1250,upper:860,seam:CARD.captionY})[captionPosition]||(wide?900:1330),middle=captionPosition==='middle'||captionPosition==='seam',solid=preset.boxStyle==='solid';
  const header=`[Script Info]\nScriptType: v4.00+\nPlayResX: ${wide?1920:1080}\nPlayResY: ${wide?1080:1920}\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Work Sans,72,&H00FFFFFF,&H0077FFAA,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,5,1,2,70,70,440,1\nStyle: Title,Work Sans,62,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,4,1,8,90,90,190,1\n${solid?'Style: Box,Work Sans,72,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,3,12,0,2,0,0,0,1\n':''}\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
- const groups=captionsEnabled?groupWords(words,{maxWords:preset.maxWords,maxChars:preset.maxChars}):[];const lines=[];
+ const groups=captionsEnabled?groupWords(words,{maxWords:preset.maxWords,maxChars:preset.maxChars,pairing:preset.pairing}):[];const lines=[];
  // Reference-template fields (docs/EDIT-CONTRACT.md): case, colorRule+palette, solid box, hard/soft shadow, glow, spacing, lines, minSize.
  const kase=preset.case||(preset.uppercase?'upper':'none'),upper=kase==='upper',cased=t=>upper?t.toUpperCase():kase==='lower'?t.toLowerCase():t,gw=glyphWidth(preset.font,upper);
  const rule=preset.colorRule||'active',palette=rule==='keywords'&&accentColor!=='auto'?[preset.active]:preset.palette?.length?preset.palette:[preset.active],flat=groups.flat(),tint=new Map();
@@ -70,13 +75,15 @@ export function makeAss(words,{style='clean',title='',progressBar=false,duration
  let titleBottom=0;
  // Modern hook title (all templates except editorial): heavy font, white with a thick black outline and drop shadow,
  // one action/name word in the accent colour, at most two balanced lines, pop-in, held for the whole clip.
- if(title&&hookEnabled&&framing!=='editorial'){const face=titleFace(style),maxWidth=wide?1100:900,words=escape(clean(title)).split(' ').filter(Boolean).map(w=>face.upper?w.toUpperCase():w);
+ if(title&&hookEnabled&&framing!=='editorial'){const face=titleFace(style),maxWidth=wide?1100:face.width||900,words=escape(clean(title)).split(' ').filter(Boolean).map(w=>face.upper?w.toUpperCase():w).reduce((a,w)=>{if(a.length&&/^\d+$/.test(w)&&a.at(-1).length<=5)a[a.length-1]+=' '+w;else a.push(w);return a;},[]);// a short number stays with its word ("GTA 6")
   const fit=(rows,fs)=>Math.max(...rows.map(r=>r.join(' ').length))*fs*glyphWidth(face.font,face.upper)<=maxWidth;
-  const split=list=>{if(list.join(' ').length<=14||list.length<2)return [list];let best=null;for(let i=1;i<list.length;i++){const r=[list.slice(0,i),list.slice(i)],longest=Math.max(...r.map(x=>x.join(' ').length));if(!best||longest<best.longest)best={rows:r,longest};}return best.rows;};
+  // Two balanced rows; faces that allow it (Glow Card's comic hook) take three once the line is long, to stay big.
+  const split=list=>{if(list.join(' ').length<=14||list.length<2)return [list];let best=null;const three=!wide&&face.rows===3&&list.join(' ').length>26&&list.length>=3;
+   for(let i=1;i<list.length;i++)for(let j=three?i+1:list.length;j<=list.length;j++){if(three&&j===list.length)continue;const r=three?[list.slice(0,i),list.slice(i,j),list.slice(j)]:[list.slice(0,i),list.slice(i)],longest=Math.max(...r.map(x=>x.join(' ').length));if(!best||longest<best.longest)best={rows:r,longest};}return best.rows;};
   const start=Math.round(face.size*(wide?.85:1)),floor=Math.round(face.min*(wide?.85:1));let kept=words,rows=wide&&fit([words],start)?[words]:split(kept),size=start;while(!fit(rows,size)&&size>floor)size-=2;
   while(!fit(rows,size)&&kept.length>2){kept=kept.slice(0,-1);rows=split([...kept.slice(0,-1),kept.at(-1)+'…']);}
   const flat=rows.flat(),hot=emphasisIndex(flat.map(w=>w.replace(/…$/,''))),white='&H00FFFFFF&';let n=0;
-  const body=rows.map(r=>r.map(w=>{const i=n++;return i===hot?`{\\c${preset.active}}${w}{\\c${white}}`:w;}).join(' ')).join('\\N');
+  const body=rows.map(r=>r.map(w=>{const i=n++;return i===hot?`{\\c${face.accent||preset.active}}${w}{\\c${white}}`:w;}).join(' ')).join('\\N');
   const end=titleMode==='persistent'&&duration>0?duration:Math.min(hookDuration,duration||hookDuration),top=hookPosition==='middle'?Math.round((wide?1080:1920)*.47-rows.length*size*1.08/2):safeTop+labelGap;titleBottom=top+Math.round(rows.length*size*1.08);
   const pop=motionIntensity==='off'?'':'\\fscx80\\fscy80\\t(0,140,\\fscx106\\fscy106)\\t(140,260,\\fscx100\\fscy100)\\fad(40,0)';
   // Typewriter: letters appear one by one over ~0.7 s (karaoke \ko with an invisible unsung colour), a second row in the accent colour.

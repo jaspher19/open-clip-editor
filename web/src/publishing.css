@@ -16,3 +16,4 @@
 .title-options button[aria-pressed=true]{background:var(--lime)}
 .post-flag.thumb-flag{background:#ffb4a8}
 @media (max-width:640px){.thumb-grid{grid-template-columns:1fr}}
+.thumb-auto{display:grid;gap:6px;margin:6px 0}.thumb-auto label{display:flex;gap:6px;align-items:center;font-size:13px}

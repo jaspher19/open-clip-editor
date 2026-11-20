@@ -1,4 +1,5 @@
 import fs from 'node:fs';import path from 'node:path';import {writeClipBatchAI,metadataProviders} from './metadata-ai.mjs';import {streamPeople,clipPeople} from './people.mjs';import {pickHook,titleOptions} from './titles.mjs';import {renderThumbnail} from './thumbnails.mjs';import {placeLabels,withLabels} from './meme-edit.mjs';
+import {autoThumbnail} from './autothumb.mjs';
 // Publishing extras: a fresh hook and title choices for one clip, and custom thumbnails for main-video posts.
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const textIn=(words,a,b)=>words.filter(w=>w.end>a&&w.start<b).map(w=>w.text).join(' ').replace(/\s+/g,' ').trim();
@@ -30,6 +31,21 @@ export function registerPublishRoutes(app,{store,posting,env=process.env,fetchIm
   const temp=path.join(posting.folder(p.id),'thumbnail.next.jpg');
   try{const out=await renderThumbnail(p.file,temp,{time,text});res.json(posting.public(posting.setThumbnail(p.id,{...out,file:temp})));}finally{fs.rmSync(temp,{force:true});}
  });
+ // Automatic thumbnail from the clip's project: expressive face cut-out over gameplay, big words, game name.
+ // Regular videos get it as their custom thumbnail; Shorts get an image to set in the YouTube app (the API cannot).
+ const shortThumb=p=>path.join(posting.folder(p.id),'thumbnail-short.jpg');
+ app.post('/api/posting/:id/thumbnail/auto',async(req,res)=>{
+  const p=posting.get(req.params.id),src=p.source||{};if(posting.public(p).locked)throw fail('This post already started uploading; set the thumbnail in YouTube Studio',409);
+  const text=typeof req.body?.text==='string'?req.body.text.trim():undefined;if(text!==undefined&&text.length>40)throw fail('Keep thumbnail text to 40 characters');
+  let job;try{job=store.get(src.jobId);}catch{throw fail('This post is not linked to a project, so pick a frame instead',409);}
+  const clip=job.clips?.find(c=>c.id===src.clipId);if(!clip)throw fail('This post is not linked to a clip, so pick a frame instead',409);
+  const temp=path.join(posting.folder(p.id),'thumbnail.auto.jpg');
+  try{const made=await autoThumbnail(job,store.folder(job.id),clip,temp,{text,live:req.body?.live===true});
+   if(p.format==='video')return res.json(posting.public(posting.setThumbnail(p.id,{time:null,text:made.text,file:temp,auto:true})));
+   fs.copyFileSync(temp,shortThumb(p));res.json({...posting.public(p),shortThumbnail:{url:`/api/posting/${p.id}/thumbnail/short?v=${Date.now()}`,text:made.text}});}
+  finally{fs.rmSync(temp,{force:true});}
+ });
+ app.get('/api/posting/:id/thumbnail/short',(req,res)=>{const file=shortThumb(posting.get(req.params.id));if(!fs.existsSync(file))throw fail('No thumbnail image yet',404);res.set('Cache-Control','no-store').sendFile(file,{dotfiles:'allow'});});
  app.get('/api/posting/:id/thumbnail',(req,res)=>{const file=posting.thumbnailFile(posting.get(req.params.id).id);if(!fs.existsSync(file))throw fail('No custom thumbnail yet',404);res.set('Cache-Control','no-store').sendFile(file,{dotfiles:'allow'});});
  app.delete('/api/posting/:id/thumbnail',(req,res)=>res.json(posting.public(posting.clearThumbnail(mainVideo(req.params.id).id))));
 }

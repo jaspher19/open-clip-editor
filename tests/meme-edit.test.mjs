@@ -61,7 +61,7 @@ test('the AI judges a pool of meme-shaped candidates: its best-scored moments wi
  for(const c of clips){assert.ok(stream.some(w=>Math.abs(w.start-.08-c.start)<1e-6),'starts on a word');assert.ok(c.end-(c.start+c.peakAt)<=4.2,'ends on the punchline');}
  const failed=await judgeMoments(transcript,options,{ask:async()=>{throw new Error('Gemini is busy');}});assert.equal(failed.status.status,'failed');assert.equal(failed.clips.length,3,'local picks are kept');
  assert.equal(fitPick({start:0,payoff:1,end:2},{start:0,end:20,peakAt:10},stream,options),null,'too short for the format');
- assert.equal(judgeReady(options,{GEMINI_API_KEY:'x'}),true);assert.equal(judgeReady(validateOptions(applyTemplate('context-hit',{})),{GEMINI_API_KEY:'x'}),false,'meme templates only');assert.equal(judgeReady(options,{}),false);
+ assert.equal(judgeReady(options,{GEMINI_API_KEY:'x'}),true);assert.equal(judgeReady(validateOptions(applyTemplate('context-hit',{})),{GEMINI_API_KEY:'x'}),true,'every template');assert.equal(judgeReady(validateOptions({aiJudge:false}),{GEMINI_API_KEY:'x'}),false,'switched off');assert.equal(judgeReady(options,{}),false);
 });
 test('the skull sits beside the face, on the side away from it',async()=>{
  const {skullSide}=await import('../server/meme-edit.mjs');const fraction=.32;

@@ -29,6 +29,23 @@ function hookFromTitle(title,people){let h=tidy(title);for(const p of people)if(
 // Hooks are drawn by the renderer, whose fonts have no emoji glyphs, so emoji never reach them.
 export const pickHook=(candidate,title,people)=>{const c=stripEmoji(candidate),t=stripEmoji(title);return usableHook(c,people)?tidy(c):hookFromTitle(t,people);};
 
+// Gen-Z hook voice without AI: the local who-did-what title reworded like a clip-channel caption, keeping its event
+// ("Jynxzi Struggles with Terrible Driving" -> "Jynxzi got cooked by the driving"). Null when no pattern fits.
+const HYPE_ADJ=/\b(?:insane|wild|crazy|intense|sudden|endless|terrible|epic|huge|massive|hilarious|unexpected)\s+/gi;
+const GENZ=[[/^reacts? to (.+)$/i,(n,x)=>`${n} was not ready for ${x}`],[/^(?:is )?(?:shocked|stunned|amazed|speechless) (?:by|at) (.+)$/i,(n,x)=>`${x} had ${n} tweaking`],
+ [/^struggles? with (.+)$/i,(n,x)=>`${n} got cooked by ${x}`],[/^roasts? (.+)$/i,(n,x)=>`${n} roasting ${x} fr`],[/^(?:rages?|crashes out|loses it) (?:at|over|about) (.+)$/i,(n,x)=>`${n} crashed out over ${x}`],
+ [/^(?:hypes? up|celebrates?|locks? in for) (.+)$/i,(n,x)=>`${n} locked in for ${x}`],[/^finds? (.+)$/i,(n,x)=>`${n} found ${x} lowkey`],[/^wrecks? (.+)$/i,(n,x)=>`${n} took a massive L with ${x}`],[/^(?:secures?|gets?|lands?) (.+)$/i,(n,x)=>`${n} got ${x}, aura`]];
+export function genzHook(title,people=[]){
+ const t=tidy(stripEmoji(title)),names=people.flatMap(p=>[p.name,p.short]).filter(Boolean).sort((a,b)=>b.length-a.length),name=names.find(n=>new RegExp(`^${escapeRe(n)}\\b`,'i').test(t));if(!name)return null;
+ const short=people.find(p=>p.name===name||p.short===name)?.short||name,rest=t.slice(name.length).trim();
+ for(const [re,make] of GENZ){const m=rest.match(re);if(!m)continue;let x=m[1].replace(HYPE_ADJ,'').replace(/\s+(?:in (?:GTA ?(?:6|VI)|game)|while .+|on stream)$/i,'').trim();if(!x)return null;
+  x=x.split(' ').map(w=>/^(?:GTA|NPC|VI|[A-Z][a-z]+'s)$|^\d/.test(w)||/^[A-Z]{2,}$/.test(w)?w:w.toLowerCase()).join(' ');if(!/^(?:the|a|an|his|her|their|my)\b/i.test(x)&&!/^\d/.test(x)&&!(x.split(' ').length===1&&/[^s]s$/i.test(x)))x=`the ${x}`;
+  const out=make(short,x);return out.length<=48?out.charAt(0).toUpperCase()+out.slice(1):null;}
+ return null;
+}
+// Every edit uses the Gen-Z hook voice unless its template opts out with hookVoice 'plain' (also without a template).
+const genzVoice=(clip,job,templates)=>(templateMetadata(clip,job,templates)?.hookVoice||'genz')==='genz';
+
 // Title choices for the editor: the current title first, then distinct alternatives, each at most 60 characters.
 export const titleOptions=(...list)=>{const seen=new Set();return list.flat().map(t=>tidy(t)).filter(t=>{const key=stripEmoji(t).toLowerCase();return t&&t.length<=60&&!seen.has(key)&&seen.add(key);}).slice(0,3);};
 /** Whether a clip's edit asks for meme action labels (its own settings over the project's, template defaults included). */
@@ -43,13 +60,13 @@ export async function titleClips(job,clips,transcript,{folder,env=process.env,fe
   return {index,people,text,peakLine,local};
  });
  // Local titles first, so every clip has a who-did-what title even if the AI call fails.
- let out=clips.map((c,k)=>{const {local,people}=items[k],title=c.titleEdited?c.title:tidy(local.title),hook=c.hookEdited?c.hook:pickHook(local.hook,title,people);const next={...c,title,hook,titleOptions:titleOptions(yt(title,c,people)),titleSource:c.titleEdited?'owner':'local',settings:{...c.settings,...(c.hookEdited?{}:{hookText:hook})}};return {...next,metadata:c.metadata?.generatedBy==='owner edited'?c.metadata:localMetadata(next,job,people,{templates})};});
+ let out=clips.map((c,k)=>{const {local,people}=items[k],title=c.titleEdited?c.title:tidy(local.title),hook=c.hookEdited?c.hook:(genzVoice(c,job,templates)&&genzHook(title,people))||pickHook(local.hook,title,people);const next={...c,title,hook,...(!c.hookEdited&&genzVoice(c,job,templates)?{hookVoice:'genz'}:{}),titleOptions:titleOptions(yt(title,c,people)),titleSource:c.titleEdited?'owner':'local',settings:{...c.settings,...(c.hookEdited?{}:{hookText:hook})}};return {...next,metadata:c.metadata?.generatedBy==='owner edited'?c.metadata:localMetadata(next,job,people,{templates})};});
  let aiTitles={status:'skipped',provider:null,model:null};
  if(!metadataProviders(env).length&&!client)return {clips:out,aiTitles:{...aiTitles,error:'No AI key set; using local titles'}};
  onStage?.('Writing hooks and titles');
  try{
   const result=await writeClipBatchAI({format:job.options?.outputFormat||'shorts',sourceTitle:sourceName(job.title),contextText:job.options?.contextText||'',sourceUrl:job.source?.url||'',clips:clips.map((c,k)=>{const template=templateMetadata(c,job,templates);return {index:k,category:c.category,duration:c.end-c.start,people:items[k].people,peakLine:items[k].peakLine,transcript:items[k].text,...(template?{template,seed:c.id||k}:{}),...(wantsLabels(c,job)?{labels:true}:{})};})},{env,...(fetchImpl?{fetchImpl}:{}),...(client?{client}:{})});
-  out=out.map((c,k)=>{const a=result.clips[k]||{};const title=!c.titleEdited&&a.title?tidy(a.title):c.title,hook=c.hookEdited?c.hook:pickHook(a.hook||c.hook,title,items[k].people);const next={...c,title,hook,titleOptions:titleOptions(yt(title,c,items[k].people),(c.titleEdited&&a.title?[a.title]:[]).map(t=>yt(t,c,items[k].people,1)),(a.altTitles||[]).map((t,n)=>yt(t,c,items[k].people,n+2))),titleSource:c.titleEdited?'owner':a.title?'ai':c.titleSource,settings:{...c.settings,...(c.hookEdited?{}:{hookText:hook})}};
+  out=out.map((c,k)=>{const a=result.clips[k]||{};const title=!c.titleEdited&&a.title?tidy(a.title):c.title,hook=c.hookEdited?c.hook:a.hook||!genzVoice(c,job,templates)?pickHook(a.hook||c.hook,title,items[k].people):genzHook(title,items[k].people)||c.hook;const next={...c,title,hook,...(!c.hookEdited&&genzVoice(c,job,templates)?{hookVoice:'genz'}:{}),titleOptions:titleOptions(yt(title,c,items[k].people),(c.titleEdited&&a.title?[a.title]:[]).map(t=>yt(t,c,items[k].people,1)),(a.altTitles||[]).map((t,n)=>yt(t,c,items[k].people,n+2))),titleSource:c.titleEdited?'owner':a.title?'ai':c.titleSource,settings:{...c.settings,...(c.hookEdited?{}:{hookText:hook})}};
    const people=items[k].people,meta=templateMetadata(c,job,templates),ai=a.metadata&&{...localMetadata(next,job,people,{templates}),...a.metadata,categoryId:'24',generatedBy:`ai:${result.model}`};
    // AI packaging goes through the same template shaping, so case, emoji, length and hashtags hold even if the model ignored them.
    const shaped=ai&&meta?packageWithTemplate(ai,meta,{host:hostName(job,people),people,seed:c.id||c.title,source:[people[0]?.name,sourceName(job.title)].filter(Boolean).join(' · '),sourceUrl:job.source?.url||'',isShort:(c.settings?.outputFormat||job.options?.outputFormat||'shorts')!=='video'}):ai;

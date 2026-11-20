@@ -28,7 +28,7 @@ export function readiness(clip,job,exportInfo){
  // 2. Short on-screen hook that names who it is about.
  const hook=String(s.hookText||clip.hook||'').trim(),host=job?.host;
  if(s.hookEnabled===false||!hook)add('hook','On-screen title','warn','Turn on the on-video title so viewers know what they are watching');
- else if(words(hook).length>6)add('hook',`Hook is ${words(hook).length} words`,'warn','Keep the on-screen hook to 6 words or fewer');
+ else if(words(hook).length>9)add('hook',`Hook is ${words(hook).length} words`,'warn','Keep the on-screen hook to 9 words or fewer');
  else if(host&&![host.name,host.short].filter(Boolean).some(n=>nameRe(n).test(hook)))add('hook',`Hook doesn't name ${host.short||host.name}`,'warn',`Say who did it, like “${host.short||host.name} …”`);
  else add('hook','Short hook that says who','pass');
  // 3. Length that suits the format.
@@ -54,6 +54,8 @@ export function readiness(clip,job,exportInfo){
  const title=String(clip.title||'').trim(),said=norm(clip.sourceContext?.transcript||spoken.map(w=>w.text).join(' '));
  const quote=/^["“'‘]/.test(title)||(words(title).length>=4&&said&&said.includes(norm(title)));
  add('title',quote?'Title is a quote from the clip':'Title says who did what',quote?'warn':'pass','Rewrite it as “who did what”, or press Rewrite titles');
+ // 8. The finished file itself (server/qc.mjs): sound, black or frozen picture, measured after each export.
+ if(exportInfo&&Array.isArray(exportInfo.checks)&&!clip.dirty){const w=exportInfo.checks;add('file',w.length?w[0]:'Sound and picture look right',w.length?'warn':'pass',w.slice(1).join(' · ')||(w.length?'Open the clip and play it through before posting':''));}
  const failed=checks.filter(c=>c.level==='fail').length,warned=checks.filter(c=>c.level==='warn').length;
  return {ok:!failed,failed,warned,passed:checks.length-failed-warned,checks};
 }

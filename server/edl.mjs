@@ -35,6 +35,9 @@ export function cleanCuts(cuts,words,{start,end}){
  const shrunk=merged.map(c=>{let a=c.start,b=c.end;for(const w of kept){if(w.start<a&&w.end>b)return null;if(w.start<a&&w.end>a)a=w.end;if(w.start<b&&w.end>b)b=w.start;}return b-a>=.05?{start:a,end:b}:null;}).filter(Boolean);
  return {cuts:shrunk,words:kept};
 }
+/** Speech spans plus kept game-action ranges inside r, merged when they touch (within 0.3 s). */
+export function withKeep(spans,keep,r){const extra=(Array.isArray(keep)?keep:[]).filter(k=>k&&finite(k.start)&&finite(k.end)).slice(0,12).map(k=>({start:Math.max(r.start,k.start),end:Math.min(r.end,k.end)})).filter(k=>k.end-k.start>=.5);if(!extra.length)return spans;
+ const out=[];for(const x of [...spans.map(s=>({start:s.start,end:s.end})),...extra].sort((a,b)=>a.start-b.start)){const last=out.at(-1);if(last&&x.start<=last.end+.3)last.end=Math.max(last.end,x.end);else out.push({...x});}return out;}
 function subtract(spans,cuts){const out=[];for(const s of spans){let pieces=[{start:s.start,end:s.end}];for(const c of cuts)pieces=pieces.flatMap(p=>c.end<=p.start||c.start>=p.end?[p]:[{start:p.start,end:c.start},{start:c.end,end:p.end}]);out.push(...pieces.filter(p=>p.end-p.start>=FRAME));}return out;}
 // Split the main segment that contains t and put seg between the halves (or after it when t is its end).
 function insertAt(list,t,seg){const i=list.findIndex(s=>isMain(s)&&t>=s.start-.001&&t<=s.end+.001);if(i<0)return false;const s=list[i],pieces=[];if(t-s.start>=FRAME)pieces.push({...s,end:t});pieces.push(seg);if(s.end-t>=FRAME)pieces.push({...s,start:t});list.splice(i,1,...pieces);return true;}
@@ -49,7 +52,9 @@ export function payoffTime(clip,options={}){const s=clip.start,e=clip.end,replay
 export function buildClipEdl(words,clip,options={},{silences=[]}={}){
  const opts={threshold:options.threshold??.6,padding:options.padding??.12,silences},ranges=[{start:clip.start,end:clip.end}];
  for(const p of (Array.isArray(clip.parts)?clip.parts:[]).slice(0,3))if(p&&finite(p.start)&&finite(p.end)&&p.end-p.start>=2&&p.end-p.start<=30)ranges.push({start:p.start,end:p.end});
- let list=[];for(const r of ranges){const inRange=words.filter(w=>w.end>r.start&&w.start<r.end),{cuts,words:kept}=cleanCuts(clip.cuts,inRange,r);list.push(...subtract(kept.length?buildEdl(kept,{start:r.start,end:r.end,...opts}):[],cuts).map(s=>({start:s.start,end:s.end,kind:'main'})));}
+ let list=[];for(const r of ranges){const inRange=words.filter(w=>w.end>r.start&&w.start<r.end),{cuts,words:kept}=cleanCuts(clip.cuts,inRange,r);// Keep pauses (gameplay, clip links): the whole range plays, so action while nobody talks is not trimmed away.
+  // Game action the picker kept (clip.keep): silent stretches where the game explodes stay in, not trimmed as pauses.
+  const base=options.keepPauses?[{start:r.start,end:r.end}]:withKeep(kept.length?buildEdl(kept,{start:r.start,end:r.end,...opts}):[],clip.keep,r);list.push(...subtract(base,cuts).map(s=>({start:s.start,end:s.end,kind:'main'})));}
  if(!list.length)return [];
  // Loop ending: stop right after the last word, no trailing room tone, so the Short wraps straight into its start.
  if(options.loopEnding){const last=list.at(-1),word=words.filter(w=>w.start<last.end&&w.end>last.start).at(-1);if(word)last.end=Math.max(last.start+FRAME,Math.min(last.end,word.end+.04));}
@@ -71,6 +76,8 @@ export function buildClipEdl(words,clip,options={},{silences=[]}={}){
  if(options.coldOpen){const S=num(options.coldOpenSeconds,1,3,1.6),p=payoffTime(clip,options);let b=Math.min(clip.end,p+S*.4),a=Math.max(clip.start,b-S);b=Math.min(clip.end,a+S);if(b-a>=.5)list.unshift({kind:'cold',start:a,end:b});}
  return list;
 }
+/** The source time an output time shows (main and cold segments; freezes show their frame), or null. */
+export function sourceTime(edl,out){const s=edl.find(x=>out>=x.outputStart-1e-6&&out<=x.outputEnd+1e-6);if(!s)return null;return s.kind==='freeze'||s.kind==='skull'?s.start:+(s.start+(out-s.outputStart)*(s.speed||1)).toFixed(3);}
 /** Seconds the finished edit plays: pauses tightened, cuts removed, parts, freezes, replays and cold open added. */
 export const playedLength=(words,clip,options={})=>buildClipEdl(words,clip,options).reduce((n,s)=>n+outLength(s),0);
 /** Pull the end back to a sentence end (else any word end) until the edit plays for at most `max` seconds. */

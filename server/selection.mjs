@@ -1,5 +1,6 @@
+import {chatSignal} from './twitch-chat.mjs';import {lessonBonus} from './learning.mjs';import {gameKeeps,ACTION_KEEP} from './signals.mjs';
 import {randomUUID} from 'node:crypto';
-import {laugh,strong,clipCue,clamp,maskProfanity,dropProfanity,loudness,cueSums,categoryScores} from './moments.mjs';import {clipPeople} from './people.mjs';import {EDIT_TEMPLATES} from './templates.mjs';
+import {laugh,strong,clipCue,clamp,maskProfanity,dropProfanity,loudness,cueSums,categoryScores} from './moments.mjs';import {clipPeople} from './people.mjs';import {EDIT_TEMPLATES} from './templates.mjs';import {crowdWeight} from './twitch-clips.mjs';
 const CATEGORIES=['funny','highlight','clippable'];
 /** Shorts play at most 60 s (longer ones are blocked worldwide once a Content ID claim lands); the source window may run to 90 s because pauses are trimmed. */
 export const PLAY_MAX=60,SPAN_MAX=90;
@@ -21,7 +22,7 @@ const leadFiller=/^(?:(?:yo+|bro|bruh|dude|man|like|uh+|um+|okay|ok|so|and|but|y
 const stamp=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 const wordCount=s=>String(s||'').split(/\s+/).filter(Boolean).length;
 const SMALL=new Set(['a','an','the','of','to','in','on','at','and','or','for','by','with','as']);
-export const titleCase=s=>String(s||'').replace(/[\p{L}\p{N}'’]+/gu,(w,at,all)=>at&&!/[“"(:]\s*$/.test(all.slice(0,at))&&SMALL.has(w.toLowerCase())?w.toLowerCase():/[A-Z].*[A-Z]|\d/.test(w)?w:w[0].toUpperCase()+w.slice(1));
+export const titleCase=s=>String(s||'').replace(/[\p{L}\p{N}'’]+/gu,(w,at,all)=>at&&!/[“"(:]\s*$/.test(all.slice(0,at))&&SMALL.has(w.toLowerCase())?w.toLowerCase():/[A-Z].*[A-Z]|\d|^\p{Ll}+\p{Lu}/u.test(w)?w:w[0].toUpperCase()+w.slice(1));
 function quotable(line){const s=dropProfanity(String(line||'').replace(/\s+/g,' ').trim()).replace(leadFiller,'').replace(/^[,.;:\s]+/,'').replace(/[,;:]+$/,'').trim();return s?s[0].toUpperCase()+s.slice(1):'';}
 // A quote earns a title only if it says something: no repeated words, at least two words that are not filler.
 const FILLER=new Set('okay ok alright yeah yes no like bro uh um oh yo so go what wait huh man dude bruh just the a and i you it is'.split(' '));
@@ -52,25 +53,38 @@ export function localTitles(text,{category='clippable',peakText='',people=[],cou
  return {title,hook:titleCase(hook)};
 }
 
+/** Best on-screen action (workers/signals.py, 0–3) within ±2 s of each second; all zero without signals. */
+export function gameSignal(signals,secs){const out=new Float32Array(secs+1),a=signals?.action;if(!Array.isArray(a))return out;for(let t=0;t<=secs;t++){let m=0;for(let d=-2;d<=2;d++)m=Math.max(m,Number(a[t+d])||0);out[t]=m;}return out;}
 /**
  * Modern-clipper picking: find reaction peaks (laughs, hype words, "clip that", loudness against the stream's own baseline),
  * then choose a sentence-aligned window per peak with setup before it and an ending once the reaction settles.
  */
-export function pickClips(transcript,options={},{people={host:null,named:[]}}={}){
+export function pickClips(transcript,options={},{people={host:null,named:[]},crowd=[],signals=null,chat=[],lessons=null}={}){
  const {count='auto',threshold=.6,padding=.12}=options,shape=momentShape(options),minDuration=shape?.min??options.minDuration??45,maxDuration=shape?.max??options.maxDuration??90;
  const words=transcript.words||[],duration=transcript.duration||words.at(-1)?.end||0;if(words.length<8||duration<minDuration)return [];
  const n=words.length,wanted=clipCount(count,duration),cues=cueSums(words),loud=loudness(transcript);
  const isStart=words.map((w,i)=>i===0||/[.!?]$/.test(words[i-1].text)||w.start-words[i-1].end>.7);
  const isEnd=words.map((w,i)=>i===n-1||/[.!?]$/.test(w.text)||words[i+1].start-w.end>.6);
- const longGap=[0];for(let i=1;i<n;i++)longGap[i]=longGap[i-1]+Math.max(0,words[i].start-words[i-1].end-1.5);
- const cut=[0];for(let i=1;i<n;i++){const gap=words[i].start-words[i-1].end;cut[i]=cut[i-1]+(gap>threshold?gap-2*padding:0);}
+ // On-screen action (workers/signals.py): a chase or a fight counts even while nobody talks, so a wild moment the
+ // streamer watches in silence can be picked; those silent seconds are kept in the edit (clip.keep), not trimmed.
+ const secs=Math.ceil(duration),game=gameSignal(signals,secs),gameAt=t=>game[clamp(Math.round(t),0,secs)]||0;
+ const live=[0];for(let t=0;t<=secs;t++)live[t+1]=live[t]+(game[t]>=ACTION_KEEP?1:0);const liveIn=(a,b)=>{const i=clamp(Math.ceil(a),0,secs+1),j=clamp(Math.floor(b),0,secs+1);return j>i?live[j]-live[i]:0;};
+ const longGap=[0];for(let i=1;i<n;i++)longGap[i]=longGap[i-1]+Math.max(0,words[i].start-words[i-1].end-1.5-liveIn(words[i-1].end,words[i].start));
+ const cut=[0];for(let i=1;i<n;i++){const gap=words[i].start-words[i-1].end;cut[i]=cut[i-1]+(gap>threshold?Math.max(0,gap-2*padding-liveIn(words[i-1].end,words[i].start)):0);}
  const kept=(i,j)=>words[j].end-words[i].start-(cut[j]-cut[i])+2*padding;
  const firstAt=t=>{let lo=0,hi=n;while(lo<hi){const m=(lo+hi)>>1;if(words[m].start<t)lo=m+1;else hi=m;}return lo;};
  // Excitement per second: cue weights within ±3 s plus a loudness boost.
- const secs=Math.ceil(duration),cue=new Float32Array(secs+1),speech=new Uint8Array(secs+1);
+ const cue=new Float32Array(secs+1),speech=new Uint8Array(secs+1);
  words.forEach((w,i)=>{const s=clamp(Math.floor(w.start),0,secs),t=w.text||'',pair=`${words[i-1]?.text||''} ${t}`;speech[s]=1;cue[s]+=(laugh.test(t)?3:0)+(strong.test(t)||strong.test(pair)?2.5:0)+(clipCue.test(pair)?4:0)+(/!$/.test(t)?.6:0)+(/\?$/.test(t)?.3:0);});
+ // Viewers' clips (Twitch): the clip button is pressed right after the payoff, so each clip's last 12 s weigh most.
+ // Those seconds count as active even without speech, so a silent gameplay moment can still be picked.
+ for(const c of crowd){if(!Number.isFinite(c.start)||!Number.isFinite(c.end))continue;const w=crowdWeight(c.views),a=clamp(Math.floor(Math.max(c.start,c.end-12)),0,secs),b=clamp(Math.ceil(c.end),0,secs);for(let t=a;t<=b;t++){cue[t]+=w;speech[t]=1;}}
+ // Live chat (Twitch, recorded while the stream was live): a spike of messages, laughs and hype emotes marks a moment.
+ const chatty=chatSignal(chat,secs);for(let t=0;t<=secs;t++)if(chatty[t]>0){cue[t]+=1.5*chatty[t];if(chatty[t]>=1)speech[t]=1;}
+ const chatAt=t=>Math.max(...[-2,-1,0,1,2].map(d=>chatty[clamp(Math.round(t)+d,0,secs)]||0));
+ const crowdHit=(start,end)=>crowd.filter(c=>Math.min(end,c.end)-Math.max(start,c.end-12)>=6).reduce((m,c)=>Math.max(m,c.views||0),-1);
  const excite=new Float32Array(secs+1);
- for(let t=0;t<=secs;t++){let c=0,talk=0;for(let k=Math.max(0,t-3);k<=Math.min(secs,t+3);k++){c+=cue[k];talk+=speech[k];}if(!talk){excite[t]=0;continue;}const {ratio,peak}=loud.at(Math.max(0,t-1.5),t+1.5);excite[t]=c+2.5*clamp(peak-1,0,1.5)+1.5*clamp(ratio-1,0,2);}
+ for(let t=0;t<=secs;t++){let c=0,talk=0;for(let k=Math.max(0,t-3);k<=Math.min(secs,t+3);k++){c+=cue[k];talk+=speech[k];}if(!talk&&game[t]<ACTION_KEEP){excite[t]=0;continue;}const {ratio,peak}=loud.at(Math.max(0,t-1.5),t+1.5);excite[t]=c+(talk?2.5*clamp(peak-1,0,1.5)+1.5*clamp(ratio-1,0,2):0)+1.5*game[t];}
  // Peaks: strongest seconds first, at least 25 s apart, away from the very edges.
  const order=[...excite.keys()].filter(t=>t>4&&t<duration-2).sort((a,b)=>excite[b]-excite[a]),peaks=[];
  const spacing=shape?Math.max(12,shape.max*.6):25;for(const t of order){if(peaks.length>=Math.max(20,wanted*5))break;if(peaks.every(p=>Math.abs(p-t)>=spacing))peaks.push(t);}
@@ -95,11 +109,14 @@ export function pickClips(transcript,options={},{people={host:null,named:[]}}={}
     const settleTail=loud.at(Math.max(start,end-1.5),end).ratio,settle=loud.available?2*clamp(loud.at(p-1,p+1).ratio-settleTail,0,2):0;
     const fit=(k>=lo&&k<=hi?0:-1.2*(k<lo?lo-k:k-hi))-.25*Math.abs(k-target),dead=-.8*(longGap[j]-longGap[i]),thin=(j+1-i)/len<1?-4:0;
     const ending=shape?.ending?(cues.range('laugh',firstAt(end-3),j+1)?4:0)+(cues.range('strong',firstAt(end-3),j+1)?2:0):0;
-    const raw=base+setup+payoff+settle+fit+dead+thin+reveal+ending+(/[!?]$/.test(words[j].text)?1:0);
+    const raw=base+setup+payoff+settle+fit+dead+thin+reveal+ending+2*gameAt(p)+2*chatAt(p)+(/[!?]$/.test(words[j].text)?1:0);
     if(!best||raw>best.raw)best={start:+start.toFixed(3),end:+end.toFixed(3),i,j,p,raw,category,scores,peak,kept:k};
    }
   }
-  if(best)candidates.push(best);
+  if(best){const views=crowdHit(best.start,best.end);if(views>=0){best.crowd=views;best.raw+=Math.min(15,3+3*Math.log10(1+views));}
+   // What the owner's channel rewards (server/learning.mjs): a small bonus or penalty per trait, from real view counts.
+   if(lessons){const traits=[cues.range('laugh',best.i,best.j+1)&&'laugh',cues.range('strong',best.i,best.j+1)&&'hype',cues.range('clip',best.i,best.j+1)&&'clipCue',best.peak>1.1&&'loud',gameAt(p)>=1.5&&'action',chatAt(p)>=1&&'chat',views>=0&&'crowd',`category:${best.category}`].filter(Boolean),{bonus,note}=lessonBonus(lessons,traits);best.raw+=bonus;best.lesson=note;}
+   candidates.push(best);}
  }
  candidates.sort((a,b)=>b.raw-a.raw);const selected=[];
  for(const c of candidates){if(selected.some(s=>Math.max(0,Math.min(c.end,s.end)-Math.max(c.start,s.start))>Math.min(3,(c.end-c.start)*.1)))continue;selected.push(c);if(selected.length===wanted)break;}
@@ -107,7 +124,8 @@ export function pickClips(transcript,options={},{people={host:null,named:[]}}={}
   const text=words.slice(c.i,c.j+1).map(w=>w.text).join(' '),peakText=words.slice(firstAt(c.p-4),firstAt(c.p+3)).map(w=>w.text).join(' ');
   const laughs=cues.range('laugh',c.i,c.j+1),hype=cues.range('strong',c.i,c.j+1),clipped=cues.range('clip',c.i,c.j+1),nearby=words.slice(firstAt(c.start-30),firstAt(c.end+15)).map(w=>w.text).join(' ');
   const {title,hook}=localTitles(text,{category:c.category,peakText,people:clipPeople(people,nearby),counts:{laughs,hype},loudPeak:c.peak>1.1});
-  const reasons=[`Peak ${stamp(c.p-c.start)} in${[laughs&&`${laughs} laugh${laughs>1?'s':''}`,hype&&`${hype} hype word${hype>1?'s':''}`,clipped&&'"clip that" cue',c.peak>1.1&&'loud reaction'].filter(Boolean).map(s=>' · '+s).join('')}`,`Setup ${Math.round(c.p-c.start)}s before the payoff`,`About ${Math.round(c.kept)}s after pause trimming`,...(shape?[`${shape.label} for this template`]:[])];
-  return {start:c.start,end:c.end,title,hook,score:Math.round(clamp(99*(1-Math.exp(-Math.max(0,c.raw)/40)),1,99)),reasons,category:c.category,peakAt:+(c.p-c.start).toFixed(2),titleSource:'local'};
+  const reasons=[`Peak ${stamp(c.p-c.start)} in${[laughs&&`${laughs} laugh${laughs>1?'s':''}`,hype&&`${hype} hype word${hype>1?'s':''}`,clipped&&'"clip that" cue',c.peak>1.1&&'loud reaction',chatAt(c.p)>=1&&'chat went wild',gameAt(c.p)>=1.5&&'busy on-screen action'].filter(Boolean).map(s=>' · '+s).join('')}`,`Setup ${Math.round(c.p-c.start)}s before the payoff`,`About ${Math.round(c.kept)}s after pause trimming`,...(shape?[`${shape.label} for this template`]:[]),...(c.crowd>=0?[`Viewers clipped this · ${c.crowd.toLocaleString('en-US')} view${c.crowd===1?'':'s'}`]:[]),...(c.lesson?[c.lesson]:[])];
+  const keep=gameKeeps(signals,words.slice(c.i,c.j+1),c.start,c.end);
+  return {start:c.start,end:c.end,...(keep.length?{keep}:{}),title,hook,score:Math.round(clamp(99*(1-Math.exp(-Math.max(0,c.raw)/40)),1,99)),reasons,category:c.category,peakAt:+(c.p-c.start).toFixed(2),titleSource:'local'};
  }),duration,{min:Math.min(20,minDuration)});
 }
