@@ -29,17 +29,21 @@ All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* 
 ## What it does
 
 - **Runs locally.** Transcription (Whisper), editing and rendering (FFmpeg) all happen on your machine. No account and no API key are required.
-- **Finds moments for you.** Laughs, hype words, loud reactions and pauses rank every part of the stream. Each pick gets the setup it needs before the payoff.
-- **15 edit templates**, including two meme edits (Meme Reveal and Skull Ending) built from frame-by-frame measurements of viral Shorts.
-- **Optional AI.** A free Gemini or Groq key adds AI titles, descriptions and tags. For meme templates, the same key picks the moments that actually work as that meme.
+- **Finds moments for you.** Laughs, hype words, "clip that", loud reactions, busy on-screen action and (for Twitch) live chat going wild rank every part of the stream. Each pick gets the setup it needs before the payoff, and silent action like a chase is kept instead of trimmed as a pause.
+- **17 edit templates**, including facecam layouts for streams (Cam Split, Glow Card) and two meme edits (Meme Reveal and Skull Ending) built from frame-by-frame measurements of viral Shorts.
+- **Optional AI.** A free Gemini or Groq key adds AI titles, descriptions and tags, and lets the AI choose the best moments from the picker's candidates.
 - **Edit everything.** Trim on words, fix captions, cut out the middle, add zooms, freezes, replays, sounds and labels.
-- **Post it.** A posting calendar with private-by-default YouTube uploads and scheduling.
+- **Checks every export.** Too quiet, clipping sound, black or frozen picture, or blurry footage get a warning on the clip before you post.
+- **Post it.** A posting calendar with YouTube uploads and scheduling, and optional **auto-post**: when a project finishes, the best clips upload right away and the rest are spread over the next days.
+- **Learns from your channel.** Once you have a few uploads, OpenClip reads their view counts and favours the kinds of moments your channel does best with.
 
 ---
 
 ## 1. Install the requirements
 
 You need four programs. Install them once, and make sure each one is on your `PATH`.
+
+OpenClip is developed and tested on Windows 11; macOS and Linux should work but are less tested. No graphics card is needed. Plan for about 10 GB of free disk space.
 
 | Program | Version | Where to get it |
 | --- | --- | --- |
@@ -113,14 +117,16 @@ OpenClip downloads (or uploads), transcribes, finds the moments and edits every 
 | Neon Phrase | Story setups |
 | Lowercase Rage | Rage and meme edits |
 | Letterbox Raw | Long story clips |
+| Cam Split | Streams with a facecam: the facecam on top, gameplay below, found automatically, with zooms on big reactions |
+| Glow Card | Streams with a facecam: the webcam in a rounded, glowing card over the gameplay |
 | **Meme Reveal** *(meme edit)* | 11–24 s clips: the frame freezes in silence, then the reveal lands with a flash and a boom. Green and red tints on yes and no, and *ACTION* labels. |
 | **Skull Ending** *(meme edit)* | 12–25 s clips that end on the punchline, then freeze with a smear, a warm glow, flames, an animated skull and a slow 808 beat. |
 
-Meme templates pick their own kind of moment (short, with the payoff where the format needs it). With an AI key set, the AI chooses the best of up to 30 candidates. Without one, the local picker chooses.
+Meme templates pick their own kind of moment (short, with the payoff where the format needs it). With an AI key set, the AI chooses the best moments from the local picker's candidates (up to 30 for meme edits, 18 for the others). Without one, the local picker chooses.
 
 Templates are starting points. Every setting can be changed per clip, and **Apply to kept** restyles a whole project at once.
 
-## Optional: AI titles and smarter meme picks
+## Optional: AI titles and smarter picks
 
 Copy the example settings file and add **one** key (free options are listed first):
 
@@ -130,7 +136,7 @@ copy .env.example .env      # macOS/Linux: cp .env.example .env
 
 | Setting in `.env` | What it does | Cost |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | AI titles, descriptions and tags, plus meme moment picking | Free tier: <https://aistudio.google.com/app/apikey> |
+| `GEMINI_API_KEY` | AI titles, descriptions and tags, plus AI moment picking | Free tier: <https://aistudio.google.com/app/apikey> |
 | `GROQ_API_KEY` | Same features, used as a backup if Gemini is busy | Free tier: <https://console.groq.com/keys> |
 | `ANTHROPIC_API_KEY` | Same features with Claude, plus the optional Claude clip picker | Paid |
 | `OPENAI_API_KEY` | Optional OpenAI clip picker | Paid |
@@ -147,6 +153,9 @@ Restart the app after editing `.env`. AI features send transcript text to the pr
 4. In OpenClip, open **Automation**, load that JSON and click **Connect YouTube** (the browser asks for your consent once).
 5. Open **Posting calendar**, add edited clips (or any finished MP4), edit the title, description and tags, and save drafts.
 6. Select drafts and press **Upload selected**. Uploads are **private by default**. A scheduled post uploads now and YouTube publishes it at the time you set. New Google Cloud projects may be limited to private uploads until Google audits them.
+7. Optional: in **Posting calendar → Auto-post**, turn on auto-posting. When a project finishes, its best clean clips (kept, exported, no warnings) upload as public right away (2 by default) and up to 9 more are scheduled at your daily release times, using titles built from the on-screen hook with an emoji and hashtags. Each project auto-posts once, and nothing already uploaded is uploaded again. YouTube allows about 6 uploads a day by default, so keep the numbers near that.
+
+**Learning from your channel.** With YouTube connected, OpenClip reads the view counts of the clips it uploaded (twice a day; turn it off with `LESSONS_AUTO=0` in `.env`). After four or more uploads that are at least three days old, the picker favours the kinds of moments that did better on your channel, and says so on the clip (for example "Your channel: loud reactions get 40% more views").
 
 **Automatic thumbnails.** When you add a regular (horizontal) video to the posting calendar, OpenClip makes a 1280×720 thumbnail from the clip's project: the streamer's biggest reaction cut out with a white outline over a bright gameplay frame, two to four big words from the clip title (or your own), the game name, and an optional LIVE badge. Change the words or make it again from the post's thumbnail panel. YouTube does not let apps set a Shorts thumbnail, so for Shorts the panel makes an image to download and set in the YouTube app. The official game logo is never used; the game name is drawn in OpenClip's own lettering. Run `npm run setup:faces` once to download the face models.
 
@@ -163,7 +172,9 @@ npm run setup:references                                             # optional:
 ## Troubleshooting
 
 - **Captions don't render, or setup complains about libass.** Install a full FFmpeg build and make sure it's first on your `PATH`.
-- **A YouTube, Twitch or Kick link fails.** These sites change often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only, subscriber-only and DRM videos aren't supported, and live channels aren't supported yet: wait for the stream to end and paste the past broadcast.
+- **A YouTube, Twitch or Kick link fails.** These sites change often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only, subscriber-only and DRM videos aren't supported. For a Kick stream, wait until it has ended.
+- **A clip has a "Blurry" warning.** For long or live streams each clip is rendered from a 1080p download of its part. If the platform only offered a low quality, or that download failed, the clip is made from the light copy and marked. Render it again later to retry; auto-post skips these clips.
+- **Twitch live chat.** When you import a Twitch channel that is live, OpenClip reads its public chat (anonymously, text only, no usernames) and uses chat spikes to find moments when you paste the link again later.
 - **Twitch: favour what viewers clipped.** Add your own free Twitch app's `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` to `.env` (see `.env.example`). For Twitch VODs, OpenClip then reads the clips viewers made of the broadcast and ranks those moments higher; each such clip says "Viewers clipped this" with the view count.
 - **Face follow falls back to center.** Run `npm run setup:faces`. Dark scenes, side profiles and fast motion can still fall back to center.
 - **Port 5173 is in use.** Set `PORT=5180` (or another free port) in `.env`.
