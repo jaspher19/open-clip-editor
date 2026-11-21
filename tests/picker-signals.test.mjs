@@ -52,3 +52,11 @@ test('file checks: silence, clipping, black and frozen picture become warnings; 
  assert.deepEqual(warningsFor({...p,lufs:-15,peak:-3,black:[]},{duration:40,held:2.9}),[],'a 2.9 s skull hold plus 1.3 s is fine');
  assert.deepEqual(await checkExport('x.mp4',{duration:40},{runCommand:async()=>{throw new Error('no ffmpeg');}}),[],'a failed check never fails the export');
 });
+
+test('clips end where the moment finishes, not while the streamer keeps talking',()=>{
+ // Steady chatter with a short breath (2 s) every few sentences, and a hype moment in the middle.
+ const words=[];let t=0,k=0;const say=text=>{for(const w of text.split(' ')){words.push({text:w,start:+t.toFixed(2),end:+(t+.28).toFixed(2)});t+=.34;}t+=++k%4===0?2:.12;};
+ while(t<1200){if(t>590&&t<600){say('NO WAY bro that is insane LETS GO.');say('clip that clip that chat.');continue;}say('we are just driving around looking for the next mission now.');}
+ const clips=pickClips({words,duration:t},validateOptions({count:3}));assert.ok(clips.length>=1);
+ for(const c of clips){const i=words.findLastIndex(w=>w.end<=c.end+.05),gap=words[i+1]?words[i+1].start-words[i].end:9;assert.ok(gap>=1,`clip ${c.start}-${c.end} ends ${gap.toFixed(2)} s before the next word`);}
+});

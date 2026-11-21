@@ -60,6 +60,9 @@ test('people come from the channel, the title and names spoken nearby; unknown n
 test('default clips play close to a minute after pause trimming, never over 60 s',async()=>{
  const {playedLength,fitPlayed}=await import('../server/edl.mjs'),o=validateOptions({}),t=stream(30),clips=pickClips(t,{...o,count:3},{people:{host:{name:'Kai Cenat',short:'Kai'},named:[]}});
  assert.ok(clips.length>=2);for(const c of clips){const plays=playedLength(t.words,c,o);assert.ok(plays>=45&&plays<=60,`plays ${plays.toFixed(1)} s`);assert.ok(c.end-c.start<=90);}
- // An over-long pick (e.g. from the AI picker) is pulled back to a word end inside the limit.
- const long={start:400,end:480},fitted=fitPlayed(t.words,long,o);assert.ok(playedLength(t.words,fitted,o)<=60&&fitted.end<480&&fitted.start===400);
+ // An over-long pick (e.g. from the AI picker) keeps its ending and loses setup instead, at a sentence start.
+ const long={start:400,end:480,peakAt:60},fitted=fitPlayed(t.words,long,o);assert.ok(playedLength(t.words,fitted,o)<=60&&fitted.end===480&&fitted.start>400,JSON.stringify(fitted));
+ assert.ok(fitted.start<=452,'at least 8 s before the peak');assert.equal(fitted.peakAt,+(60-(fitted.start-400)).toFixed(2));
+ // With the peak near the start there is no setup to lose: the end comes back, to a word followed by a pause when there is one.
+ const early=fitPlayed(t.words,{start:400,end:480,peakAt:5},o);assert.ok(playedLength(t.words,early,o)<=60&&early.start===400&&early.end<480);
 });

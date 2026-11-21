@@ -35,3 +35,11 @@ test('auto thumbnail: 1080p section, facecam box, reaction frames and the words 
  await autoThumbnail(job,folder,clip,out,{text:'Day 1',runWorker});assert.equal(spec.text,'Day 1');assert.equal(spec.badge,'');
  await assert.rejects(autoThumbnail(job,folder,clip,out,{runWorker:async()=>({stdout:JSON.stringify({error:'No frames could be read from the clip'})})}),/No frames/);
 });
+
+test('summary thumbnail words: no streamer name, game or stream filler; numbers only with what they count',async()=>{
+ const {summaryText}=await import('../server/autothumb.mjs');
+ assert.equal(summaryText('Speed Beating Gta 6 Right Now 100 Final Mission Best Moments',{host:{name:'Speed'}}),'GTA 6 Final Mission');
+ assert.equal(summaryText('Speed Playing Gta 6 Early Access Gameplay Get in Here! Best Moments',{host:{name:'Speed'}}),'GTA 6 Early Access');
+ assert.equal(summaryText('I Survived 100 Hours In GTA 6',{}),'GTA 6 Survived 100 Hours');
+ assert.equal(summaryText('Insane 52 Hour Finale, Speed finishes GTA 6',{host:{name:'Speed'},sourceInfo:{categories:['Grand Theft Auto VI']}}),'Insane 52 Hour','the game label is drawn, so not repeated');
+});

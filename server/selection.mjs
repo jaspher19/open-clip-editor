@@ -94,6 +94,11 @@ export function pickClips(transcript,options={},{people={host:null,named:[]},cro
  const hi=shape?shape.play[1]:Math.min(PLAY_MAX-1,maxDuration),target=shape?(shape.play[0]+shape.play[1])/2:hi-2,lo=shape?shape.play[0]:target-10,[early,late]=shape?.payoff||[.35,.85];
  // Longest pause just before a peak: the jump cut a reveal lands on.
  const gapBefore=p=>{let g=0;for(let k=Math.max(1,firstAt(p-1.5));k<n&&words[k].start<=p+.5;k++)g=Math.max(g,words[k].start-words[k-1].end);return g;};
+ // Does the moment finish here? Ending while the streamer keeps talking (next word within half a second) or while the
+ // on-screen action is still going cut good scenes midway; a real pause after the last word is where a moment lands.
+ const finish=j=>{const gap=j+1<n?words[j+1].start-words[j].end:9,talkOn=gap<.5?-5:gap<1?-2:gap>=1.5?2:0,end=words[j].end;
+  // A quiet gap is no ending when the game is busy in it (or about to be): the scene is still playing.
+  const actionOn=gap>=1&&[1,2,3,4].some(d=>gameAt(end+d)>=ACTION_KEEP)?-6:0;return talkOn+actionOn;};
  const candidates=[];
  for(const p of peaks){
   let best=null;const iFrom=firstAt(p-maxDuration+2),iTo=firstAt(p-3),jFrom=firstAt(p+1.5),jTo=firstAt(shape?.after?p+shape.after:p+maxDuration-4);
@@ -109,7 +114,7 @@ export function pickClips(transcript,options={},{people={host:null,named:[]},cro
     const settleTail=loud.at(Math.max(start,end-1.5),end).ratio,settle=loud.available?2*clamp(loud.at(p-1,p+1).ratio-settleTail,0,2):0;
     const fit=(k>=lo&&k<=hi?0:-1.2*(k<lo?lo-k:k-hi))-.25*Math.abs(k-target),dead=-.8*(longGap[j]-longGap[i]),thin=(j+1-i)/len<1?-4:0;
     const ending=shape?.ending?(cues.range('laugh',firstAt(end-3),j+1)?4:0)+(cues.range('strong',firstAt(end-3),j+1)?2:0):0;
-    const raw=base+setup+payoff+settle+fit+dead+thin+reveal+ending+2*gameAt(p)+2*chatAt(p)+(/[!?]$/.test(words[j].text)?1:0);
+    const raw=base+setup+payoff+settle+fit+dead+thin+reveal+ending+finish(j)+2*gameAt(p)+2*chatAt(p)+(/[!?]$/.test(words[j].text)?1:0);
     if(!best||raw>best.raw)best={start:+start.toFixed(3),end:+end.toFixed(3),i,j,p,raw,category,scores,peak,kept:k};
    }
   }

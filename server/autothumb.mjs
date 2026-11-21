@@ -15,6 +15,23 @@ export function thumbText(clip,job={}){
  const n=words.findIndex(w=>/\d/.test(w));if(n>=0)return words.slice(Math.max(0,n-1),n+2).join(' ');
  return words.filter(w=>!FILLER.has(w.toLowerCase())).slice(0,4).join(' ');
 }
+// Stream-title filler that says nothing on a thumbnail ("RIGHT NOW", "GET IN HERE", "BEST MOMENTS").
+const STREAM_FILLER=new Set('right now get in here best moments moment highlights highlight playing beating gameplay stream streaming live full day part ep episode the a an and of on with for to is i im i\'m my we our'.split(' '));
+/**
+ * Words for a stream summary's thumbnail, from its title: without the streamer's name, the game (drawn separately)
+ * and filler, at most three words; numbers only with what they count ("100 HOURS", not a bare "100").
+ * When the thumbnail has no game label but the title names GTA 6, the words start with it.
+ * "Speed Beating Gta 6 Right Now 100 Final Mission Best Moments" → "GTA 6 Final Mission".
+ */
+const COUNTED=/^(hours?|hrs?|days?|stars?|k|m|million|kills?|wins?|minutes?|mins?|times|people|subs?|levels?)$/i;
+export function summaryText(title,job={}){
+ const names=new Set([job.host?.name,job.host?.short,job.sourceInfo?.uploader,job.sourceInfo?.channel].filter(Boolean).flatMap(n=>String(n).toLowerCase().split(/\s+/)));
+ const label=gameLabel(job),key=w=>w.toLowerCase().replace(/[^\p{L}\d']/gu,''),text=String(title||''),gta=/\bgta\s*(?:6|vi)\b/i.test(text);
+ const raw=text.replace(/\bgta\s*(?:6|vi)\b/gi,' ').replace(/[“”"|()[\]!?,.:;]/g,' ').split(/\s+/).filter(w=>key(w));
+ const game=new Set(label.toLowerCase().split(/\s+/).filter(Boolean));
+ const words=raw.filter((w,i)=>{const k=key(w);if(names.has(k)||game.has(k)||STREAM_FILLER.has(k))return false;if(/^\d+%?$/.test(k))return COUNTED.test(key(raw[i+1]||''));return true;}).slice(0,3);
+ return [...(gta&&!label?['GTA 6']:[]),...words].join(' ');
+}
 /** Short game name for the corner label: "GTA 6" for Grand Theft Auto VI; nothing for non-game categories. */
 export function gameLabel(job={}){
  const c=String(job.sourceInfo?.categories?.[0]||job.sourceInfo?.game||'').trim();if(!c||/just chatting|irl|talk shows|music|people & blogs|entertainment|gaming$/i.test(c))return '';

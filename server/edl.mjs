@@ -80,11 +80,19 @@ export function buildClipEdl(words,clip,options={},{silences=[]}={}){
 export function sourceTime(edl,out){const s=edl.find(x=>out>=x.outputStart-1e-6&&out<=x.outputEnd+1e-6);if(!s)return null;return s.kind==='freeze'||s.kind==='skull'?s.start:+(s.start+(out-s.outputStart)*(s.speed||1)).toFixed(3);}
 /** Seconds the finished edit plays: pauses tightened, cuts removed, parts, freezes, replays and cold open added. */
 export const playedLength=(words,clip,options={})=>buildClipEdl(words,clip,options).reduce((n,s)=>n+outLength(s),0);
-/** Pull the end back to a sentence end (else any word end) until the edit plays for at most `max` seconds. */
+/**
+ * Fit the edit into `max` seconds of playback. The ending is where the moment lands, so setup goes first: the start moves
+ * to a later sentence start, keeping at least 8 s before the peak. Only if that is not enough is the end pulled back,
+ * to a word followed by a pause, else a sentence end, else any word end.
+ */
 export function fitPlayed(words,clip,options={},max=60){
  if(playedLength(words,clip,options)<=max)return clip;
- const inside=words.filter(w=>w.end>clip.start+20&&w.end<clip.end).reverse();
- for(const pass of [w=>/[.!?]$/.test(w.text),()=>true])for(const w of inside.filter(pass)){const end=+(w.end+.1).toFixed(3);if(playedLength(words,{...clip,end},options)<=max)return {...clip,end};}
+ const peak=Number.isFinite(clip.peakAt)?clip.start+clip.peakAt:clip.start+(clip.end-clip.start)/2,latest=Math.min(peak-8,clip.end-20);
+ const starts=words.map((w,i)=>({w,i})).filter(({w,i})=>w.start>clip.start&&w.start<=latest&&i>0&&(/[.!?]$/.test(words[i-1].text)||w.start-words[i-1].end>.7));
+ for(const {w} of starts){const start=+Math.max(0,w.start-.08).toFixed(3);if(playedLength(words,{...clip,start},options)<=max)return {...clip,start,...(Number.isFinite(clip.peakAt)?{peakAt:+(clip.peakAt-(start-clip.start)).toFixed(2)}:{})};}
+ const inside=words.map((w,i)=>({w,next:words[i+1]})).filter(({w})=>w.end>clip.start+20&&w.end<clip.end).reverse();
+ const pause=({w,next})=>!next||next.start-w.end>=1,sentence=({w})=>/[.!?]$/.test(w.text);
+ for(const pass of [x=>pause(x)&&sentence(x),pause,sentence,()=>true])for(const {w} of inside.filter(pass)){const end=+(w.end+.1).toFixed(3);if(playedLength(words,{...clip,end},options)<=max)return {...clip,end};}
  return clip;
 }
 /**

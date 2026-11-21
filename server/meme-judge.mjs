@@ -41,11 +41,15 @@ export function fitPick(pick,c,words,options){const shape=judgeShape(options),fr
  // End on a whole sentence: finish the one the pick stops inside (up to 2.5 s more), never past the format's limit after the payoff.
  let stop=[...inside].reverse().find(w=>w.end<=Math.min(pick.end+.3,limit)&&w.end>payoff);if(!stop)return null;
  if(!/[.!?]$/.test(stop.text)){const ends=w=>/[.!?]$/.test(w.text),close=inside.find(w=>w.start>=stop.end-.01&&w.end<=Math.min(stop.end+2.5,limit)&&ends(w))||[...inside].reverse().find(w=>w.end<stop.end&&w.end>payoff&&ends(w));if(close)stop=close;}
- const end=+(stop.end+.1).toFixed(3);
- const len=end-start,played=playedLength(words.filter(w=>w.end>start&&w.start<end),{start,end},options);
- if(len<shape.min||len>shape.max||played<shape.play[0]-2||played>shape.play[1]+2)return null;
- const pos=(payoff-start)/len;if(pos<shape.payoff[0]-.15||pos>shape.payoff[1]+.1)return null;
- return {start,end,peakAt:+(payoff-start).toFixed(2)};}
+ // Still talking right after that sentence? Carry on to the next breath (a pause of 1 s, at most 8 s more) so the
+ // moment is not cut midway; the 60 s fit later drops setup from the start rather than this ending.
+ const ends=[stop];if(!shape.after){let k=words.indexOf(stop);while(k+1<words.length&&words[k+1].start-words[k].end<1&&words[k+1].end<=stop.end+8)k++;
+  if(k>words.indexOf(stop)&&(k+1>=words.length||words[k+1].start-words[k].end>=1))ends.unshift(words[k]);}
+ for(const last of ends){const end=+(last.end+.1).toFixed(3),len=end-start,played=playedLength(words.filter(w=>w.end>start&&w.start<end),{start,end},options);
+  if(len<shape.min||len>shape.max||played<shape.play[0]-2||played>shape.play[1]+(last===stop?2:10))continue;
+  const pos=(payoff-start)/len;if(pos<shape.payoff[0]-.15||pos>shape.payoff[1]+.1)continue;
+  return {start,end,peakAt:+(payoff-start).toFixed(2)};}
+ return null;}
 /** Whether the AI judge runs: the local picker and at least one AI key (any template; off with aiJudge:false). */
 export const judgeReady=(options,env=process.env)=>options.picker==='heuristic'&&options.aiJudge!==false&&metadataProviders(env).length>0;
 /**
