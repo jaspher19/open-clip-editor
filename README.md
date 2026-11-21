@@ -52,14 +52,87 @@ OpenClip is developed and tested on Windows 11; macOS and Linux should work but 
 | FFmpeg and ffprobe | A **full** build with the `libass` subtitle filter | <https://ffmpeg.org/download.html> (on Windows, the "full" build from gyan.dev works) |
 | Git | Any | <https://git-scm.com/downloads> |
 
-Check them in a terminal (PowerShell on Windows):
+FFmpeg must be a **full** build: the captions are drawn with its `libass` subtitle filter, and cut-down builds leave it out.
+
+### Windows 11
+
+Open **PowerShell** and run these four commands. `winget` comes with Windows 11.
 
 ```powershell
-node --version      # v24.x
-python --version    # 3.12.x
+winget install OpenJS.NodeJS.LTS
+winget install Python.Python.3.12
+winget install Gyan.FFmpeg
+winget install Git.Git
+```
+
+**Close PowerShell and open a new window** so it finds the new programs.
+
+Without winget, use the installers instead:
+
+- **Node.js:** the LTS installer from <https://nodejs.org/>.
+- **Python 3.12:** the installer from <https://www.python.org/downloads/>. On its first screen, tick **Add python.exe to PATH**.
+- **FFmpeg:** download `ffmpeg-release-full.7z` from <https://www.gyan.dev/ffmpeg/builds/>. Unzip it somewhere permanent, such as `C:\ffmpeg`, then add its `bin` folder to your `PATH`:
+  1. Open *Start*, search for **Edit environment variables for your account**, and open it.
+  2. Choose *Path*, then *Edit*, then *New*.
+  3. Enter `C:\ffmpeg\bin` and click *OK*.
+- **Git:** the installer from <https://git-scm.com/downloads>.
+
+### macOS
+
+Install [Homebrew](https://brew.sh/) if you don't have it, then run:
+
+```bash
+brew install node ffmpeg git uv
+```
+
+Homebrew's own Python can be newer than the transcriber supports. With `uv` installed, `npm run setup` downloads Python 3.12 into the project instead.
+
+### Linux (Ubuntu or Debian)
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv ffmpeg git curl
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+Ubuntu 24.04 comes with Python 3.12. On older releases, install uv (below) and setup will use it instead. Without uv, if `npm run setup` can't find Python, run it as `PYTHON=python3 npm run setup`.
+
+### Optional: uv
+
+[uv](https://docs.astral.sh/uv/getting-started/installation/) can stand in for a separate Python install. When `uv` is installed, `npm run setup` uses it, and uv downloads Python 3.12 into the project for you.
+
+- **Windows:** `winget install astral-sh.uv`
+- **macOS and Linux:** `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+### Check everything
+
+In a new terminal (PowerShell on Windows), run:
+
+```powershell
+node --version      # v24.x (v20.19 or newer works)
+python --version    # 3.12.x (3.11 to 3.13 work; macOS/Linux: python3 --version)
 ffmpeg -version
 ffprobe -version
+git --version
 ```
+
+To check that your FFmpeg has `libass`:
+
+- **Windows:** `ffmpeg -hide_banner -filters | findstr " ass "`
+- **macOS and Linux:** `ffmpeg -hide_banner -filters | grep " ass "`
+
+The check should print a line containing `ass`. If it prints nothing, your FFmpeg is a cut-down build. Install the full build as described above.
+
+### What setup installs for you
+
+You don't install any of these by hand:
+
+- **Python packages:** `npm run setup` installs [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (transcription) and [yt-dlp](https://github.com/yt-dlp/yt-dlp) (YouTube, Twitch and Kick downloads) into `.venv` inside the project.
+- **Face-follow model:** `npm run setup:faces` installs it (optional).
+- **Whisper models:** they download the first time you transcribe.
+
+None of these need a GPU, and yt-dlp uses your Node.js for YouTube, so you don't need anything else.
 
 > Use a drive with free space: Whisper models, downloads and renders can take several GB. OpenClip keeps all of its caches, models, uploads and temporary files **inside the project folder**.
 
@@ -75,7 +148,6 @@ npm run build          # builds the web app
 ```
 
 `npm run setup` checks that FFmpeg has `libass`. If it says FFmpeg needs the libass filter, install a full FFmpeg build and run it again.
-
 ## 3. Start the app
 
 ```powershell
@@ -171,6 +243,8 @@ npm run setup:references                                             # optional:
 
 ## Troubleshooting
 
+- **"node", "python", "ffmpeg" or "git" is not recognized.** Close the terminal and open a new one after installing. If it still fails, the program's folder isn't on your `PATH`: reinstall it, and for Python tick *Add python.exe to PATH*. On Windows, `python` can also open the Microsoft Store instead. Turn that off under *Settings > Apps > Advanced app settings > App execution aliases*.
+- **Setup fails installing faster-whisper.** Your Python is probably too new (3.14 or later). Install Python 3.12, or install uv, then delete the `.venv` folder and run `npm run setup` again.
 - **Captions don't render, or setup complains about libass.** Install a full FFmpeg build and make sure it's first on your `PATH`.
 - **A YouTube, Twitch or Kick link fails.** These sites change often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only, subscriber-only and DRM videos aren't supported. For a Kick stream, wait until it has ended.
 - **A clip has a "Blurry" warning.** For long or live streams each clip is rendered from a 1080p download of its part. If the platform only offered a low quality, or that download failed, the clip is made from the light copy and marked. Render it again later to retry; auto-post skips these clips.
