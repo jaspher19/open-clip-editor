@@ -1,4 +1,4 @@
-import 'dotenv/config';import fs from 'node:fs';import path from 'node:path';import {JobStore} from './jobs.mjs';import {runPipeline} from './pipeline.mjs';import {parseSourceUrl,jobSource} from './sources.mjs';import {ROOT} from './config.mjs';
+import './env.mjs';import fs from 'node:fs';import path from 'node:path';import {JobStore} from './jobs.mjs';import {runPipeline} from './pipeline.mjs';import {parseSourceUrl,jobSource} from './sources.mjs';import {ROOT} from './config.mjs';
 const args=process.argv.slice(2),input=args[0];
 if(!input){console.log('Usage: npm run clip -- <video-path-or-youtube-url> [--model small|small.en|medium] [--language en] [--count 3] [--analyze-only]');process.exit(1);}
 const option=name=>{const i=args.indexOf(name);return i>=0?args[i+1]:undefined;};

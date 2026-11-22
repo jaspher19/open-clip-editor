@@ -175,3 +175,9 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .cut-word-input{width:110px;min-height:0;padding:3px 6px;font:700 13px/1.2 'Comic Neue',sans-serif;border:2px solid var(--blue-deep);border-radius:8px}
 
 .cut-item-actions .primary{min-height:36px;padding:5px 14px;font-size:14px}
+
+/* Settings check on the home page (SettingsNotice.tsx). */
+.settings-ok{display:flex;align-items:center;gap:6px;margin:14px 0 0;font:700 13px/1.3 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.settings-notice{display:flex;align-items:flex-start;gap:10px;margin:16px 0 0;padding:12px 14px;background:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);font:600 14px/1.4 'Comic Neue',sans-serif;color:var(--ink)}
+.settings-notice>div{flex:1}.settings-notice ul{margin:6px 0;padding-left:18px}.settings-notice small{color:var(--ink-soft)}
+.settings-notice code{background:var(--paper-2,#ffeeb8);padding:1px 4px;border-radius:4px}
