@@ -117,7 +117,11 @@
 .cutter-hd>span{display:inline-flex;align-items:center;gap:6px}
 .cut-quality{display:flex;flex-wrap:wrap;gap:8px}
 /* Tip jar (TipJar.tsx): the author's QR, the Tip me button and the credit under the logo. */
-.brand-by{display:block;margin:-6px 0 12px 4px;font:700 12px/1.2 'Comic Neue',sans-serif;color:#fff;opacity:.9;letter-spacing:.2px}
+.brand-by{grid-column:1/-1;justify-self:start;display:inline-flex;align-items:center;gap:7px;width:max-content;margin:-2px 0 16px 40px;padding:2px 9px 2px 3px;background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:3px 3px 0 var(--ink);transform:rotate(-3deg);font:400 13px/1 var(--display);letter-spacing:1px;color:var(--ink);text-transform:uppercase;transition:transform .18s ease;cursor:default}
+.brand-by b{font:800 9px/1 'Comic Neue',sans-serif;letter-spacing:.6px;color:#fff;background:var(--red);border:2px solid var(--ink);border-radius:999px;padding:2px 6px}
+.brand-by span{text-shadow:1px 1px 0 var(--yellow)}
+.brand-by:hover{transform:rotate(2deg) scale(1.06)}
+@media (prefers-reduced-motion:reduce){.brand-by{transition:none}.brand-by:hover{transform:rotate(-3deg)}}
 .topbar-actions{display:inline-flex;align-items:center;gap:10px}
 .tip-button{display:inline-flex;align-items:center;gap:7px;border:3px solid var(--ink);border-radius:999px;background:var(--yellow);color:var(--ink);font:800 15px/1 'Comic Neue',sans-serif;padding:8px 14px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);white-space:nowrap}
 .tip-button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
