@@ -23,3 +23,16 @@ export async function probe(file,options={}){
  if(duration>30*3600)throw new Error('Use a video under 30 hours');
  const rate=String(video.avg_frame_rate||video.r_frame_rate).split('/').map(Number);return {duration,audioDuration:Number(audio.duration)>0?Number(audio.duration):duration,width:video.width,height:video.height,fps:rate[1]?rate[0]/rate[1]:rate[0],audioCodec:audio.codec_name,videoCodec:video.codec_name,size:Number(data.format.size)||0};
 }
+
+/**
+ * How to hand FFmpeg a filter graph stored in a file. `-/filter_complex <file>` works from FFmpeg 7.0 on, and newer
+ * builds removed `-filter_complex_script` (a user's renders failed with "Unrecognized option"); FFmpeg 6 and older
+ * (Ubuntu 22.04 and 24.04) only know the old spelling. Tested once with a tiny graph, then remembered.
+ */
+let filterScriptMode=null;
+export function filterScriptArgs(file){
+ filterScriptMode??=(async()=>{const dir=fs.mkdtempSync(`${localEnv().TMP}/fc-`),graph=`${dir}/g.txt`;fs.writeFileSync(graph,'[0:v]null[v]');
+  try{await run('ffmpeg',['-v','error','-nostdin','-f','lavfi','-i','color=c=black:s=16x16:d=0.04','-/filter_complex',graph,'-map','[v]','-f','null','-'],{timeout:30000});return 'new';}
+  catch{return 'old';}finally{fs.rmSync(dir,{recursive:true,force:true});}})();
+ return filterScriptMode.then(mode=>mode==='new'?['-/filter_complex',file]:['-filter_complex_script',file]);
+}

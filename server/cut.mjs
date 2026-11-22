@@ -3,7 +3,7 @@
 // source, each placed on the output). Text the owner typed is drawn in the browser (the same canvas as the preview,
 // so fonts and sizes match exactly) and laid over the whole video as one transparent PNG.
 import fs from 'node:fs';import path from 'node:path';
-import {run,probe} from './process.mjs';import {ensureSection} from './remote.mjs';
+import {run,probe,filterScriptArgs} from './process.mjs';import {ensureSection} from './remote.mjs';
 import {validBox} from '../web/src/logic.mjs';
 
 export const CUT_FORMATS={
@@ -103,7 +103,7 @@ export async function renderCut(job,folder,{id,segments,format,quality=1080,fram
  if(overlay){fs.writeFileSync(text,overlay);inputs.push('-i',text);}
  fs.writeFileSync(graph,cutGraph(segments,{width,height,framing,layout,overlay:!!overlay}));
  try{
-  await runCommand('ffmpeg',['-hide_banner','-nostdin','-y',...inputs,'-filter_complex_script',graph,'-map','[v]','-map','[a]','-t',total.toFixed(3),'-c:v','libx264','-preset',preset,'-crf',String(crf),'-threads','4','-c:a','aac','-b:a','160k','-ar','48000','-ac','2','-movflags','+faststart','-progress','pipe:1','-nostats',temp],{cwd:folder,signal,timeout:0,idleTimeout:10*60*1000,logFile:path.join(work,`${id}.log`),onLine:line=>{const m=line.match(/^out_time_us=(\d+)/);if(m)onProgress?.(Math.min(1,Number(m[1])/1e6/Math.max(.1,total)));}});
+  await runCommand('ffmpeg',['-hide_banner','-nostdin','-y',...inputs,...await filterScriptArgs(graph),'-map','[v]','-map','[a]','-t',total.toFixed(3),'-c:v','libx264','-preset',preset,'-crf',String(crf),'-threads','4','-c:a','aac','-b:a','160k','-ar','48000','-ac','2','-movflags','+faststart','-progress','pipe:1','-nostats',temp],{cwd:folder,signal,timeout:0,idleTimeout:10*60*1000,logFile:path.join(work,`${id}.log`),onLine:line=>{const m=line.match(/^out_time_us=(\d+)/);if(m)onProgress?.(Math.min(1,Number(m[1])/1e6/Math.max(.1,total)));}});
   const meta=await probeFile(temp,{signal});if(meta.width!==width||meta.height!==height)throw new Error('The cut came out in the wrong size');
   fs.renameSync(temp,out);
   // The sharpest picture any part came from, so the app can say when 2K was made from a 1080p stream.
