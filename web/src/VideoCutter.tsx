@@ -3,7 +3,7 @@ import {Loader2,Play,Pause,Plus,Minus,Trash2,ArrowUp,ArrowDown,Download,Scissors
 import type {Job,Cut} from './types';import {clock,parseClock} from './logic.mjs';
 import {OUTPUT,PRESETS,defaultLayout,applyPreset,withPanel,withCamera,pixelAspect,shareRatio,coverSource,sameShapeLayout,refit} from './cutlayout.mjs';
 import {TEXT_FONTS,newText,drawTexts,loadFonts,textLayer,type TextItem} from './cutText';
-import CutBox from './CutBox';
+import CutBox from './CutBox';import {askTip} from './TipJar';
 import './cutter.css';
 
 type Seg={start:number;end:number};
@@ -141,7 +141,7 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
  const editText=(id:string,patch:Partial<TextItem>)=>setTexts(texts.map(x=>x.id===id?{...x,...patch}:x));
  function addText(){const t=newText(texts.length);setTexts([...texts,t]);setSelected(t.id);}
  // Export.
- async function exportCut(){setSending(true);setError('');try{const overlay=await textLayer(texts,exportSize.width,exportSize.height);
+ async function exportCut(){askTip();setSending(true);setError('');try{const overlay=await textLayer(texts,exportSize.width,exportSize.height);
   await call<Cut>(`/api/jobs/${job.id}/cuts`,{method:'POST',body:JSON.stringify({segments:segs,format,quality,framing,title,layout:split?layout:undefined,overlay:overlay||undefined,texts})});onChanged(await call<Job>(`/api/jobs/${job.id}`));}
   catch(e){setError((e as Error).message);}finally{setSending(false);}}
  async function cancelCut(c:Cut){try{await call(`/api/jobs/${job.id}/cuts/${c.id}/cancel`,{method:'POST'});}catch(e){setError((e as Error).message);}}

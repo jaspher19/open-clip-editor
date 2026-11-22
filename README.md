@@ -4,6 +4,12 @@ Turn a long stream, a podcast or any recording into captioned, edited Shorts (9:
 
 Paste a public YouTube, Twitch or Kick link (a past broadcast, a clip, or a YouTube or Twitch stream that is still live) or drop in a video file. OpenClip transcribes it locally, finds the best moments, edits each one with the template you choose, and exports ready-to-post MP4s. If you want, it also writes titles with AI and schedules the uploads to your YouTube channel.
 
+## Spare me some change ☕
+
+OpenClip is free and made by one person, **Jaspher Tampos**. If it saves you time, a small tip keeps it going. Scan with any InstaPay bank or e-wallet (GCash, Maya, BPI, BDO and more).
+
+<img src="docs/media/tip-qr.png" alt="InstaPay QR code for Open Clip (BPI)" width="220">
+
 ## See it in action
 
 All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* (credited below). The app transcribed it, found the moments and edited them; only the on-screen hook text was typed by hand. Click a preview to watch the full MP4 with sound.
