@@ -8,7 +8,7 @@ import {ReferenceLibrary} from './references.mjs';
 import {validateClipEdits} from './clip-edits.mjs';import {clipTraits,refreshLessons,loadLessons} from './learning.mjs';import {autoPostJob,loadAutopost,saveAutopost} from './autopost.mjs';import {playedLength} from './edl.mjs';import {PLAY_MAX,SPAN_MAX,momentShape} from './selection.mjs';import {jobTimeline,bestUnused} from './timeline.mjs';import {MusicLibrary} from './music.mjs';import {titleClips} from './titles.mjs';import {cueSums,loudness,categoryScores} from './moments.mjs';
 // Sound and publishing routes live in their own modules.
 import {registerSoundRoutes} from './sounds.mjs';import {registerPublishRoutes} from './publish-routes.mjs';
-import {YouTubeClient,uploadBody} from './youtube.mjs';import {AutomationStore,AutomationEngine,validateRecipe} from './automation.mjs';import {enrichClip,publicationMetadata,normalizeTemplateMeta} from './context.mjs';import {renderCompilation} from './compilation.mjs';import {rawClip} from './raw.mjs';import {validateCut,renderCut} from './cut.mjs';
+import {YouTubeClient,uploadBody} from './youtube.mjs';import {AutomationStore,AutomationEngine,validateRecipe} from './automation.mjs';import {enrichClip,publicationMetadata,normalizeTemplateMeta} from './context.mjs';import {renderCompilation} from './compilation.mjs';import {rawClip} from './raw.mjs';import {validateCut,renderCut} from './cut.mjs';import {ensureSection,readSections} from './remote.mjs';
 const busyStatuses=['queued','running','exporting'];
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 function providerReady(options){if(options.picker==='openai'&&!process.env.OPENAI_API_KEY)throw fail('Add OPENAI_API_KEY to .env or use the free heuristic picker');if(options.picker==='anthropic'&&!process.env.ANTHROPIC_API_KEY)throw fail('Add ANTHROPIC_API_KEY to .env or use the free heuristic picker');}
@@ -187,12 +187,21 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),automa
  const cutting=new Map();
  for(const j of store.list())if((j.cuts||[]).some(c=>c.status==='rendering'))store.update(j.id,{cuts:j.cuts.map(c=>c.status==='rendering'?{...c,status:'failed',error:'The app stopped while this cut was rendering. Cut it again.'}:c)});
  const setCut=(jobId,id,patch)=>{const job=store.get(jobId);store.update(jobId,{cuts:(job.cuts||[]).map(c=>c.id===id?{...c,...patch}:c)});};
+ // Sharp preview for long streams: the cutter plays full-quality parts (the same files exports use) instead of the light copy.
+ const hdChains=new Map(),hdList=job=>readSections(store.folder(job.id)).map(x=>({start:x.start,end:x.end,width:x.width,height:x.height,url:`/api/jobs/${job.id}/hd/${encodeURIComponent(x.file)}`}));
+ app.get('/api/jobs/:id/hd',(req,res)=>{const job=get(req);res.json({proxy:!!job.remote?.proxy,sourceHeight:job.remote?.sourceHeight||Math.min(job.metadata?.width||0,job.metadata?.height||0)||null,sections:job.remote?.proxy?hdList(job):[]});});
+ app.post('/api/jobs/:id/hd',async(req,res)=>{const job=get(req);if(!job.remote?.proxy)throw fail('This video is already in full quality',409);const start=Number(req.body?.start),end=Number(req.body?.end),duration=job.metadata?.duration||0;
+  if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>duration+1||end-start>600)throw fail('Choose up to 10 minutes inside the video');
+  // One download at a time per project, in the order asked.
+  const task=(hdChains.get(job.id)||Promise.resolve()).catch(()=>{}).then(()=>ensureSection(job,store.folder(job.id),start,end));hdChains.set(job.id,task.catch(()=>{}));
+  await task;res.json({sections:hdList(job)});});
+ app.get('/api/jobs/:id/hd/:file',(req,res)=>{const job=get(req),name=req.params.file;if(!/^[\w.-]+\.(mp4|mkv|webm)$/.test(name)||!readSections(store.folder(job.id)).some(x=>x.file===name))throw fail('Not found',404);res.sendFile(path.join(store.folder(job.id),'hires',name),FILES);});
  // Camera + gameplay layout: find the streamer's camera in a stretch of the video (cached per range).
  app.post('/api/jobs/:id/facecam',async(req,res)=>{const job=get(req);if(!job.sourcePath||!job.metadata?.duration)throw fail('The video is not ready yet',409);
   const start=Number(req.body?.start),end=Number(req.body?.end);if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>job.metadata.duration+1||end-start>600)throw fail('Choose a range inside the video, up to 10 minutes');
   const found=await clipFacecam(job,store.folder(job.id),{id:`cutter-${Math.round(start)}-${Math.round(end)}`,start,end});res.json({facecam:{found:!!found.found,box:found.box||null,full:!!found.full,face:Array.isArray(found.face)?found.face:null}});});
  app.post('/api/jobs/:id/cuts',(req,res)=>{const job=get(req);editable(job);if(!job.sourcePath||!fs.existsSync(job.sourcePath)||!job.metadata?.duration)throw fail('The video is not ready yet',409);if(cutting.has(job.id))throw fail('A cut of this video is already rendering; wait for it to finish',409);
-  const cut=validateCut(req.body,job.metadata.duration),id=randomUUID().slice(0,8),record={id,status:'rendering',progress:0,title:cut.title||`Cut of ${job.title||'video'}`.slice(0,80),format:cut.format,framing:cut.framing,layout:cut.layout,texts:cut.texts,segments:cut.segments,length:+cut.total.toFixed(2),createdAt:new Date().toISOString()};
+  const cut=validateCut(req.body,job.metadata.duration),id=randomUUID().slice(0,8),record={id,status:'rendering',progress:0,title:cut.title||`Cut of ${job.title||'video'}`.slice(0,80),format:cut.format,quality:cut.quality,framing:cut.framing,layout:cut.layout,texts:cut.texts,segments:cut.segments,length:+cut.total.toFixed(2),createdAt:new Date().toISOString()};
   if((job.cuts||[]).length>=30)throw fail('A project can keep up to 30 cuts; delete an old one first');
   store.update(job.id,{cuts:[record,...(job.cuts||[])]});const controller=new AbortController();cutting.set(job.id,controller);let last=0;
   renderCut(store.get(job.id),store.folder(job.id),{id,...cut},{signal:controller.signal,onProgress:p=>{if(p-last>=.02){last=p;setCut(job.id,id,{progress:+p.toFixed(3)});}}})

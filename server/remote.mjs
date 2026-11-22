@@ -24,18 +24,18 @@ const BASE=()=>['-m','yt_dlp','--no-playlist','--no-cache-dir','--js-runtimes',`
  * yt-dlp format selector. Quality limits apply to the short side: a vertical stream's 1080p is 1080×1920, so with
  * `portrait` the limits move from height to width (otherwise 1080p vertical lost to 608×1080, and the light copy to 202×360).
  */
-export function formatFor(platform,mode,height=PROXY_HEIGHT,{portrait=false}={}){const sel=selector(platform,mode,height);return portrait?sel.replace(/\[height(?=[<>=?])/g,'[width'):sel;}
-function selector(platform,mode,height){
+export function formatFor(platform,mode,height=PROXY_HEIGHT,{portrait=false,section=1080}={}){const sel=selector(platform,mode,height,section);return portrait?sel.replace(/\[height(?=[<>=?])/g,'[width'):sel;}
+function selector(platform,mode,height,section=1080){
  if(platform==='youtube'){
   if(mode==='full')return YOUTUBE_FULL;
   if(mode==='proxy')return `bv*[vcodec^=avc1][height<=${height}]+ba[acodec^=mp4a]/bv*[height<=${height}]+ba/b[height<=${height}]/wv*+ba/w`;
   // Sections: YouTube throttles ffmpeg's many small range requests on a plain file (a 12 s section took over 4 min),
   // while its HLS formats come in small segments (75 s of 1080p in 9 s), so HLS first.
-  return 'bv*[protocol^=m3u8][vcodec^=avc1][height<=1080]+ba[protocol^=m3u8]/bv*[protocol^=m3u8][height<=1080]+ba[protocol^=m3u8]/b[protocol^=m3u8][height<=1080]/bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/bv*[height<=1080]+ba/b[height<=1080]';
+  return `bv*[protocol^=m3u8][vcodec^=avc1][height<=${section}]+ba[protocol^=m3u8]/bv*[protocol^=m3u8][height<=${section}]+ba[protocol^=m3u8]/b[protocol^=m3u8][height<=${section}]/bv*[vcodec^=avc1][height<=${section}]+ba[acodec^=mp4a]/bv*[height<=${section}]+ba/b[height<=${section}]`;
  }
  if(mode==='proxy')return `b[height<=${height}][vcodec!=none]/w[vcodec!=none]`;
  // Twitch clips also offer vertical 'portrait-*' crops (we frame our own) and 1440p; Kick clips list one stream with no height or codec.
- return 'b[height<=1080][vcodec!=none][format_id!*=portrait]/b[height<=?1080][vcodec!=?none][format_id!*=portrait]/b[vcodec!=?none]';
+ return `b[height<=${section}][vcodec!=none][format_id!*=portrait]/b[height<=?${section}][vcodec!=?none][format_id!*=portrait]/b[vcodec!=?none]`;
 }
 /** Pick how to import: a light copy for long streams, the whole file otherwise. Clip links are always downloaded whole. */
 export function importMode(source,duration){return source.kind!=='clip'&&duration>PROXY_AFTER?'proxy':'full';}
@@ -195,6 +195,11 @@ export async function sectionFrames(file,{signal}={}){
 /** Rewrite a section whose frames are hidden into `<name>.fixed.mp4` (the original is kept). Returns the new name or null. */
 async function fixSection(folder,name,{signal,frames=sectionFrames}={}){
  const n=await frames(path.join(folder,'hires',name),{signal});if(!n||n.read>=n.stored*.9||n.stored<1)return null;
+ // Hidden frames are often a legitimate trim (HLS parts start on a segment boundary and the edit list skips the
+ // lead-in). Only repair when the frames that do play fall clearly short of the sound; otherwise the "repair" would
+ // expose the lead-in and push the picture out of sync (28 s of picture over 22 s of sound, then rejected).
+ const meta=await probe(path.join(folder,'hires',name),{signal}).catch(()=>null);
+ if(meta?.fps>0&&n.read/meta.fps>=(meta.audioDuration||meta.duration)*.9)return null;
  const fixed=name.replace(/(\.fixed)?\.[^.]+$/,'')+'.fixed.mp4',src=path.join(folder,'hires',name),out=path.join(folder,'hires',fixed),temp=out+'.partial.mp4';
  await run('ffmpeg',['-v','error','-nostdin','-y','-ignore_editlist','1','-i',src,'-map','0:v:0','-map','0:a:0?','-c','copy','-bsf:v','setts=pts=PTS-STARTDTS:dts=DTS-STARTDTS','-movflags','+faststart','-f','mp4',temp],{signal,timeout:10*60*1000});
  const after=await frames(temp,{signal});if(!after||after.read<n.stored*.9){fs.rmSync(temp,{force:true});throw new Error(`The full-quality part of the stream (${name}) has a broken picture and could not be repaired`);}
@@ -205,34 +210,37 @@ function forgetBlindFacecams(folder,sec){
  const dir=path.join(folder,'clips');let names=[];try{names=fs.readdirSync(dir).filter(f=>f.endsWith('.facecam.json'));}catch{return;}
  for(const f of names)try{const r=JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));if(!r.found&&r.start<sec.end&&r.end>sec.start)fs.rmSync(path.join(dir,f),{force:true});}catch{}
 }
-export async function ensureSection(job,folder,start,end,{signal,runCommand=run,align=alignSection,probeFile=probe,frames=sectionFrames}={}){
+/** `height`: the most the section may have (1080 by default; the Video cutter asks for 1440 for 2K exports). */
+export async function ensureSection(job,folder,start,end,{signal,height=1080,runCommand=run,align=alignSection,probeFile=probe,frames=sectionFrames}={}){
  const remote=job.remote;if(!remote?.proxy)throw new Error('This project has the full-quality source already');
  const total=remote.duration||Infinity;end=Math.min(end,total-1);start=Math.max(0,Math.min(start,end-.5));
  // A cached section well below the stream's quality (fetched while YouTube listed only 144p–480p) is fetched again once.
  for(const low of readSections(folder).filter(s=>covers(s,start,end)&&lowQuality(job,s)&&!s.lowAccepted)){await forget(folder,low.file);fs.rmSync(path.join(folder,'hires',low.file),{force:true});}
- let hit=readSections(folder).find(s=>covers(s,start,end));
+ // Above 1080p only a section that is that sharp (or was already asked for at that height) will do.
+ const sharp=s=>height<=1080||Math.min(Number(s.width)||0,Number(s.height)||0)>=Math.min(height,Number(remote.sourceHeight)||height)-8||(s.requestedHeight||1080)>=height;
+ let hit=readSections(folder).filter(s=>covers(s,start,end)&&sharp(s)).sort((x,y)=>Math.min(y.width||0,y.height||0)-Math.min(x.width||0,x.height||0))[0];
  // Sections cached before the picture check get it once.
  if(hit&&!hit.framesChecked){const fixed=await fixSection(folder,hit.file,{signal,frames});hit={...hit,file:fixed||hit.file,framesChecked:true,...(fixed?{repairedFrom:hit.file}:{})};if(fixed){await forget(folder,hit.repairedFrom);forgetBlindFacecams(folder,hit);}await remember(folder,hit);}
  if(hit)return {...hit,file:path.join(folder,'hires',hit.file)};
- const pending=inflight.get(folder)||[];for(const p of pending)if(covers({start:p.a+MAX_SHIFT,end:p.b-MAX_SHIFT},start,end)){const got=await p.promise;if(covers(got,start,end))return got;}
+ const pending=inflight.get(folder)||[];for(const p of pending)if((p.h||1080)>=height&&covers({start:p.a+MAX_SHIFT,end:p.b-MAX_SHIFT},start,end)){const got=await p.promise;if(covers(got,start,end))return got;}
  const a=Math.max(0,Math.floor(start-SECTION_PAD)),b=Math.min(Math.ceil(total),Math.ceil(end+SECTION_PAD));
  if(!(b>a))throw new Error('Invalid source section');
- const grab=()=>downloadSection(job,folder,a,b,{signal,runCommand,align,probeFile,frames});
+ const grab=()=>downloadSection(job,folder,a,b,{signal,height,runCommand,align,probeFile,frames});
  // YouTube's live listing sometimes offers only low qualities for a moment: one more try, then keep what came back.
  const promise=grab().then(async got=>{if(!lowQuality(job,got))return got;const again=await grab();if(!lowQuality(job,again))return again;
-  const kept={...again,lowAccepted:true};await remember(folder,{...kept,file:path.basename(kept.file)});return kept;});const entry={a,b,promise};inflight.set(folder,[...pending,entry]);
+  const kept={...again,lowAccepted:true};await remember(folder,{...kept,file:path.basename(kept.file)});return kept;});const entry={a,b,h:height,promise};inflight.set(folder,[...pending,entry]);
  try{const got=await promise;if(!covers(got,start,end))throw new Error(`The downloaded section (${got.start.toFixed(1)}–${got.end.toFixed(1)} s) does not cover ${start.toFixed(1)}–${end.toFixed(1)} s`);return got;}
  finally{inflight.set(folder,(inflight.get(folder)||[]).filter(x=>x!==entry));}
 }
-async function downloadSection(job,folder,a,b,{signal,runCommand,align,probeFile,frames}){
- const dir=path.join(folder,'hires');fs.mkdirSync(dir,{recursive:true});const base=`s-${a}-${b}`;
+async function downloadSection(job,folder,a,b,{signal,height=1080,runCommand,align,probeFile,frames}){
+ const dir=path.join(folder,'hires');fs.mkdirSync(dir,{recursive:true});const base=`s-${a}-${b}${height>1080?`-${height}`:''}`;
  for(const f of fs.readdirSync(dir))if(f.startsWith(base+'.'))fs.rmSync(path.join(dir,f),{force:true});
  // The light copy's 16 kHz audio is the timing reference; rebuild it if it was cleaned up.
  if(!fs.existsSync(path.join(folder,'audio.wav'))){const m=await probe(job.sourcePath,{signal});await prepareAudio({sourcePath:job.sourcePath,audioPath:path.join(folder,'audio.wav'),sourceDuration:m.audioDuration||m.duration,signal});}
  // Taken from a live stream: fetch the fragments directly while it is still live (their timestamps give the true start).
- let expected=a;const live=job.remote.live?await grabLive(job.remote,path.join(dir,`${base}.mp4`),{from:a,to:b,height:1080,signal,runCommand,logFile:path.join(dir,`${base}.log`)}):null;
+ let expected=a;const live=job.remote.live?await grabLive(job.remote,path.join(dir,`${base}.mp4`),{from:a,to:b,height,signal,runCommand,logFile:path.join(dir,`${base}.log`)}):null;
  if(live)expected=live.start;
- else await runCommand(PYTHON,[...BASE(),'--concurrent-fragments','4','-f',formatFor(job.remote.platform,'section',PROXY_HEIGHT,{portrait:portraitJob(job)}),'--download-sections',`*${a}-${b}`,'--merge-output-format','mp4','--windows-filenames','-o',path.join(dir,`${base}.%(ext)s`),job.remote.url],{cwd:dir,signal,timeout:30*60*1000,idleTimeout:5*60*1000,logFile:path.join(dir,`${base}.log`)}).catch(e=>{if(signal?.aborted)throw new Error('Job cancelled');throw new Error(gone(e.message)||`Could not download the full-quality part of the stream (${a}–${b} s): ${e.message}`);});
+ else await runCommand(PYTHON,[...BASE(),'--concurrent-fragments','4','-f',formatFor(job.remote.platform,'section',PROXY_HEIGHT,{portrait:portraitJob(job),section:height}),'--download-sections',`*${a}-${b}`,'--merge-output-format','mp4','--windows-filenames','-o',path.join(dir,`${base}.%(ext)s`),job.remote.url],{cwd:dir,signal,timeout:30*60*1000,idleTimeout:5*60*1000,logFile:path.join(dir,`${base}.log`)}).catch(e=>{if(signal?.aborted)throw new Error('Job cancelled');throw new Error(gone(e.message)||`Could not download the full-quality part of the stream (${a}–${b} s): ${e.message}`);});
  let name=fs.readdirSync(dir).find(f=>f.startsWith(base+'.')&&/\.(mp4|mkv|webm)$/.test(f)&&!f.includes('.part'));if(!name)throw new Error(`The platform returned no video for ${a}–${b} s of the stream`);
  name=await fixSection(folder,name,{signal,frames})||name;
  const file=path.join(dir,name),meta=await probeFile(file,{signal});// A post-processing stream can hand back a few seconds instead of the window; never cache that.
@@ -240,7 +248,7 @@ async function downloadSection(job,folder,a,b,{signal,runCommand,align,probeFile
  if(meta.duration&&Number.isFinite(meta.audioDuration)&&meta.audioDuration<meta.duration*.9)throw new Error(`The full-quality part of the stream (${a}–${b} s) came back without its full sound`);
  if(!meta.duration||meta.duration<(b-a)*.8)throw new Error(`The full-quality part of the stream (${a}–${b} s) came back incomplete`);
  const at=await align({folder,file,expected,runCommand,signal});
- const entry={file:name,requested:[a,b],start:at.start,end:at.start+meta.duration,confidence:at.confidence,aligned:at.aligned,width:meta.width,height:meta.height,fps:meta.fps||null,framesChecked:true};
+ const entry={file:name,requested:[a,b],start:at.start,end:at.start+meta.duration,confidence:at.confidence,aligned:at.aligned,width:meta.width,height:meta.height,fps:meta.fps||null,framesChecked:true,...(height>1080?{requestedHeight:height}:{})};
  await remember(folder,entry);return {...entry,file};
 }
 /** Start fetching sections for upcoming renders, a couple at a time; failures surface later when that clip renders. */

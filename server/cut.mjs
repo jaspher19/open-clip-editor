@@ -10,6 +10,9 @@ export const CUT_FORMATS={
  video:{width:1920,height:1080,label:'Landscape 16:9'},
  shorts:{width:1080,height:1920,label:'Portrait 9:16'},
 };
+/** Export quality: the short side in pixels. 1440 is 2K (1440 × 2560 portrait, 2560 × 1440 landscape). */
+export const CUT_QUALITIES={720:{crf:21,preset:'veryfast',label:'720p HD'},1080:{crf:19,preset:'veryfast',label:'1080p Full HD'},1440:{crf:18,preset:'faster',label:'1440p 2K'}};
+export function cutSize(format,quality=1080){const base=CUT_FORMATS[format],k=Number(quality)/1080,even=v=>Math.round(v*k/2)*2;return {width:even(base.width),height:even(base.height)};}
 export const CUT_LIMITS={segments:50,min:.5,total:3*3600,overlayBytes:4e6};
 const PNG=Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
 
@@ -42,12 +45,13 @@ export function validateCut(body={},duration=0){
  const format=body.format==='shorts'?'shorts':body.format==='video'?'video':null;if(!format)throw fail('Choose portrait or landscape');
  const framing=['fill','fit','split'].includes(body.framing)?body.framing:format==='video'?'fit':'fill';
  const layout=framing==='split'?validateLayout(body.layout):null;
- const overlay=body.overlay?decodeOverlay(body.overlay,CUT_FORMATS[format]):null;
+ const quality=body.quality===undefined?1080:Number(body.quality);if(!CUT_QUALITIES[quality])throw fail('Choose 720p, 1080p or 1440p (2K)');
+ const overlay=body.overlay?decodeOverlay(body.overlay,cutSize(format,quality)):null;
  // The typed text is kept with the cut (not used to render) so "Load these parts" can bring it back for editing.
  const texts=Array.isArray(body.texts)?body.texts.slice(0,8).filter(t=>t&&typeof t.text==='string').map(t=>({...t,text:t.text.slice(0,200)})):[];
  if(JSON.stringify(texts).length>8000)throw fail('Too much text');
  const title=typeof body.title==='string'?body.title.trim().slice(0,80):'';
- return {segments,format,framing,layout,overlay,texts,title,total};
+ return {segments,format,quality,framing,layout,overlay,texts,title,total};
 }
 
 const even=v=>Math.max(2,Math.round(v/2)*2),evenAt=v=>Math.max(0,Math.round(v/2)*2);
@@ -88,20 +92,22 @@ export function cutGraph(segments,{width,height,framing,layout=null,overlay=fals
  * Render a cut to work/<job>/exports/cut-<id>.mp4. Long streams imported as a light copy read each part from its
  * full-quality section; if that fails the part comes from the light copy and the result says so.
  */
-export async function renderCut(job,folder,{id,segments,format,framing,layout=null,overlay=null},{signal,onProgress,runCommand=run,probeFile=probe,section=ensureSection}={}){
- const {width,height}=CUT_FORMATS[format],dir=path.join(folder,'exports'),work=path.join(folder,'cuts');fs.mkdirSync(dir,{recursive:true});fs.mkdirSync(work,{recursive:true});
+export async function renderCut(job,folder,{id,segments,format,quality=1080,framing,layout=null,overlay=null},{signal,onProgress,runCommand=run,probeFile=probe,section=ensureSection}={}){
+ const {width,height}=cutSize(format,quality),{crf,preset}=CUT_QUALITIES[quality],dir=path.join(folder,'exports'),work=path.join(folder,'cuts');fs.mkdirSync(dir,{recursive:true});fs.mkdirSync(work,{recursive:true});
  const out=path.join(dir,`cut-${id}.mp4`),temp=path.join(dir,`cut-${id}.partial.mp4`),graph=path.join(work,`${id}.ffscript`),text=path.join(work,`${id}.text.png`),total=segments.reduce((n,s)=>n+s.end-s.start,0);
- let preview=false;const inputs=[];
+ let preview=false,previewReason='',sourceSide=0;const inputs=[];
  for(const s of segments){let file=job.sourcePath,at=s.start;
-  if(job.remote?.proxy){try{const sec=await section(job,folder,s.start,s.end,{signal});file=sec.file;at=Math.max(0,s.start-sec.start);}catch(e){if(signal?.aborted)throw e;preview=true;}}
+  if(job.remote?.proxy){try{const sec=await section(job,folder,s.start,s.end,{signal,height:quality>1080?1440:1080});file=sec.file;at=Math.max(0,s.start-sec.start);sourceSide=Math.max(sourceSide,Math.min(Number(sec.width)||0,Number(sec.height)||0));}catch(e){if(signal?.aborted)throw e;preview=true;previewReason||=e.message;}}
   inputs.push('-ss',at.toFixed(3),'-t',(s.end-s.start+.1).toFixed(3),'-i',file);}
+ if(!job.remote?.proxy)sourceSide=Math.min(Number(job.metadata?.width)||0,Number(job.metadata?.height)||0);
  if(overlay){fs.writeFileSync(text,overlay);inputs.push('-i',text);}
  fs.writeFileSync(graph,cutGraph(segments,{width,height,framing,layout,overlay:!!overlay}));
  try{
-  await runCommand('ffmpeg',['-hide_banner','-nostdin','-y',...inputs,'-filter_complex_script',graph,'-map','[v]','-map','[a]','-t',total.toFixed(3),'-c:v','libx264','-preset','veryfast','-crf','20','-threads','4','-c:a','aac','-b:a','160k','-ar','48000','-ac','2','-movflags','+faststart','-progress','pipe:1','-nostats',temp],{cwd:folder,signal,timeout:0,idleTimeout:10*60*1000,logFile:path.join(work,`${id}.log`),onLine:line=>{const m=line.match(/^out_time_us=(\d+)/);if(m)onProgress?.(Math.min(1,Number(m[1])/1e6/Math.max(.1,total)));}});
+  await runCommand('ffmpeg',['-hide_banner','-nostdin','-y',...inputs,'-filter_complex_script',graph,'-map','[v]','-map','[a]','-t',total.toFixed(3),'-c:v','libx264','-preset',preset,'-crf',String(crf),'-threads','4','-c:a','aac','-b:a','160k','-ar','48000','-ac','2','-movflags','+faststart','-progress','pipe:1','-nostats',temp],{cwd:folder,signal,timeout:0,idleTimeout:10*60*1000,logFile:path.join(work,`${id}.log`),onLine:line=>{const m=line.match(/^out_time_us=(\d+)/);if(m)onProgress?.(Math.min(1,Number(m[1])/1e6/Math.max(.1,total)));}});
   const meta=await probeFile(temp,{signal});if(meta.width!==width||meta.height!==height)throw new Error('The cut came out in the wrong size');
   fs.renameSync(temp,out);
-  return {file:path.basename(out),duration:meta.duration,bytes:fs.statSync(out).size,width,height,preview};
+  // The sharpest picture any part came from, so the app can say when 2K was made from a 1080p stream.
+  return {file:path.basename(out),duration:meta.duration,bytes:fs.statSync(out).size,width,height,preview,...(previewReason?{previewReason}:{}),sourceSide};
  }catch(e){fs.rmSync(temp,{force:true});throw e;}
  finally{fs.rmSync(graph,{force:true});fs.rmSync(text,{force:true});}
 }

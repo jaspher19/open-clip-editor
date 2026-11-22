@@ -54,3 +54,18 @@ test('video cutter: the layout and the text layer are checked',()=>{
  const cut=validateCut({segments:[{start:0,end:5}],format:'shorts',framing:'split',layout:defaultLayout('shorts'),overlay:png(1080),texts:[{id:'a',text:'Hi'}]},60);
  assert.equal(cut.framing,'split');assert.ok(cut.layout.camOnTop);assert.equal(cut.overlay.length,33);assert.deepEqual(cut.texts,[{id:'a',text:'Hi'}]);
 });
+test('video cutter: export quality sets the size (2K is 1440 × 2560 / 2560 × 1440) and fetches 1440p parts',async()=>{
+ const {cutSize,renderCut}=await import('../server/cut.mjs'),{formatFor}=await import('../server/remote.mjs');
+ assert.deepEqual(cutSize('shorts',1440),{width:1440,height:2560});assert.deepEqual(cutSize('video',1440),{width:2560,height:1440});assert.deepEqual(cutSize('video',720),{width:1280,height:720});assert.deepEqual(cutSize('shorts',1080),{width:1080,height:1920});
+ assert.equal(validateCut({segments:[{start:0,end:5}],format:'video'},60).quality,1080);
+ assert.throws(()=>validateCut({segments:[{start:0,end:5}],format:'video',quality:4320},60),/2K/);
+ const png=(w,h)=>{const b=Buffer.alloc(33);Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]).copy(b);b.writeUInt32BE(13,8);b.write('IHDR',12);b.writeUInt32BE(w,16);b.writeUInt32BE(h,20);return 'data:image/png;base64,'+b.toString('base64');};
+ assert.equal(validateCut({segments:[{start:0,end:5}],format:'shorts',quality:1440,overlay:png(1440,2560)},60).quality,1440);
+ assert.throws(()=>validateCut({segments:[{start:0,end:5}],format:'shorts',quality:1440,overlay:png(1080,1920)},60),/1440×2560/);
+ assert.match(formatFor('youtube','section',360,{section:1440}),/height<=1440/);assert.match(formatFor('twitch','section',360,{section:1440}),/height<=1440/);assert.match(formatFor('youtube','section'),/height<=1080/);
+ // A 2K cut of a long stream asks for 1440p parts and encodes at 2560 × 1440.
+ const asked=[],args=[];const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');const folder=fs.mkdtempSync(path.join(process.env.TMP||os.tmpdir(),'cut-'));
+ const out=await renderCut({remote:{proxy:true},sourcePath:'light.mp4',metadata:{width:640,height:360}},folder,{id:'t',segments:[{start:10,end:15}],format:'video',quality:1440,framing:'fit'},{section:async(j,f,a,b,o)=>{asked.push(o.height);return {file:'hd.mp4',start:5,width:2560,height:1440};},runCommand:async(cmd,a)=>{args.push(...a);fs.writeFileSync(a.at(-1),'x');},probeFile:async()=>({width:2560,height:1440,duration:5})});
+ fs.rmSync(folder,{recursive:true,force:true});
+ assert.deepEqual(asked,[1440]);assert.equal(out.sourceSide,1440);assert.deepEqual([out.width,out.height],[2560,1440]);assert.ok(args.join(' ').includes('-crf 18'));
+});

@@ -13,6 +13,10 @@ type Format='shorts'|'video';type Framing='fill'|'fit'|'split';
 type Bucket={t:number;loud:number;laugh:number;hype:number;cue:number};
 type Candidate={start:number;end:number;score:number;category:string;title:string;reasons?:string[]};
 type Timeline={duration:number;bucket:number;buckets:Bucket[];candidates:Candidate[];clips:{id:string;start:number;end:number;title:string;kept:boolean}[]};
+type HdSection={start:number;end:number;width:number;height:number;url:string};
+type Quality=720|1080|1440;
+const QUALITIES:[Quality,string][]=[[720,'720p HD'],[1080,'1080p Full HD'],[1440,'1440p 2K']];
+const short=(s:{width:number;height:number})=>Math.min(s.width||0,s.height||0);
 type Look={format:Format;framing:Framing;layouts:Record<Format,Layout|null>;texts:TextItem[]};
 const busy=(j:Job)=>['queued','running','exporting'].includes(j.status);
 const round=(t:number)=>Number(t.toFixed(2));
@@ -58,23 +62,48 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
  const [title,setTitle]=useState(''),[error,setError]=useState(''),[sending,setSending]=useState(false),[showAll,setShowAll]=useState(false);
  const [look,setLookRaw]=useState<Look>(()=>loadLook(job)),[size,setSize]=useState<[number,number]>([job.metadata?.width||1920,job.metadata?.height||1080]);
  const [selected,setSelected]=useState<string|null>(null),[camBusy,setCamBusy]=useState(false),[camNote,setCamNote]=useState(''),[bounds,setBounds]=useState<Record<string,Box>>({});
+ const proxy=!!job.remote?.proxy,[hd,setHdRaw]=useState<HdSection[]>([]),hdRef=useRef<HdSection[]>([]),[hdBusy,setHdBusy]=useState(''),[hdNote,setHdNote]=useState(''),[sourceSide,setSourceSide]=useState<number|null>(null);
+ const [src,setSrc]=useState<HdSection|null>(null),srcRef=useRef<HdSection|null>(null),pendingSeek=useRef<{t:number;play:boolean}|null>(null);
+ const [quality,setQualityRaw]=useState<Quality>(()=>{const q=Number(store.get('openclip-cut-quality',1080));return q===720||q===1440?q:1080;});const setQuality=(q:Quality)=>{setQualityRaw(q);store.set('openclip-cut-quality',q);};
+ const [cs,setCs]=useState(360);
+ const setHd=(list:HdSection[])=>{hdRef.current=list;setHdRaw(list);};
+ // Source time of the playhead: the player shows either the light copy or a full-quality part that starts at src.start.
+ const cur=()=>{const v=video.current;return v?v.currentTime+(srcRef.current?.start||0):0;};
+ const covering=(t:number)=>hdRef.current.filter(x=>t>=x.start+.05&&t<x.end-.4).sort((a,b)=>short(b)-short(a))[0]||null;
+ /** Jump to source time t, on the sharpest copy that has it (switching files when needed). */
+ function go(t:number,play?:boolean){const v=video.current;if(!v)return;const want=proxy?covering(t):null,now=srcRef.current,resume=play??!v.paused;
+  if((want?.url||null)===(now?.url||null)){v.currentTime=Math.max(0,t-(now?.start||0));if(play)v.play().catch(()=>{});return;}
+  pendingSeek.current={t,play:resume};srcRef.current=want;setSrc(want);}
  const {format,framing,texts}=look,[sw,sh]=size,out=OUTPUT[format],layout:Layout=(look.layouts[format]||defaultLayout(format,sw,sh)) as Layout,split=framing==='split';
  const setSegs=(next:Seg[])=>{setSegsRaw(next);saveDraft(job.id,next);};
  const setLook=(patch:Partial<Look>)=>setLookRaw(old=>{const next={...old,...patch};store.set(`openclip-cut-look-${job.id}`,next);return next;});
  const setLayout=(next:Layout)=>setLook({layouts:{...look.layouts,[format]:next}});
  const setTexts=(next:TextItem[])=>setLook({texts:next});
  useEffect(()=>{let live=true;call<Timeline>(`/api/jobs/${job.id}/timeline`).then(d=>{if(live)setData(d);}).catch(e=>{if(live)setTimelineNote(/not ready/i.test((e as Error).message)?'Suggestions appear once the project has found its moments.':(e as Error).message);});return()=>{live=false;};},[job.id,job.status]);
+ useEffect(()=>{call<{sections:HdSection[];sourceHeight:number|null}>(`/api/jobs/${job.id}/hd`).then(d=>{setHd(d.sections);setSourceSide(d.sourceHeight);}).catch(()=>{});},[job.id]);
+ // Long streams: fetch full quality for every part (one at a time), so the preview is sharp where it matters.
+ const partsKey=segs.map(x=>`${x.start}-${x.end}`).join();
+ useEffect(()=>{if(!proxy||!segs.length)return;let stop=false;(async()=>{for(const [i,p] of segs.entries()){if(stop)return;const end=Math.min(p.end,p.start+600);if(hdRef.current.some(x=>x.start<=p.start+.05&&x.end>=end-.4))continue;
+   setHdBusy(`Getting full quality for part ${i+1} of ${segs.length}…`);try{const r=await call<{sections:HdSection[]}>(`/api/jobs/${job.id}/hd`,{method:'POST',body:JSON.stringify({start:p.start,end})});if(!stop){setHd(r.sections);setHdNote('');}}catch(e){if(!stop)setHdNote(`Full quality for part ${i+1} didn’t download (${(e as Error).message}). The export will try again.`);}}
+  if(!stop)setHdBusy('');})();return()=>{stop=true;};},[partsKey,proxy]);
+ // Paused on the light copy for a moment: fetch full quality around the playhead (once per spot).
+ const hdBusyRef=useRef('');hdBusyRef.current=hdBusy;const autoTimer=useRef(0),asked=useRef<number[]>([]);
+ function maybeSharpen(){if(!proxy)return;window.clearTimeout(autoTimer.current);{const v=video.current;if(v&&v.paused&&!srcRef.current&&!pendingSeek.current&&covering(cur())){go(cur());return;}}autoTimer.current=window.setTimeout(()=>{const v=video.current;if(!v||!v.paused||hdBusyRef.current||pendingSeek.current)return;const at=cur();if(covering(at)){if(!srcRef.current)go(at);return;}if(asked.current.some(a=>Math.abs(a-at)<25))return;asked.current.push(at);sharpenHere();},1200);}
+ useEffect(()=>()=>window.clearTimeout(autoTimer.current),[]);
+ async function sharpenHere(){const t=cur();setHdBusy('Getting full quality around the playhead…');setHdNote('');try{const r=await call<{sections:HdSection[]}>(`/api/jobs/${job.id}/hd`,{method:'POST',body:JSON.stringify({start:Math.max(0,t-5),end:Math.min(duration,t+40)})});setHd(r.sections);go(t);}catch(e){setHdNote((e as Error).message);}finally{setHdBusy('');}}
+ // Sharp preview canvas: as many pixels as the screen shows (up to the export size).
+ useEffect(()=>{const c=canvas.current;if(!c)return;const ro=new ResizeObserver(()=>{const w=Math.min(OUTPUT[format].width,Math.round(c.clientWidth*(window.devicePixelRatio||1)));if(w>40)setCs(w);});ro.observe(c);return()=>ro.disconnect();},[format]);
  // Cuts render in the background: keep the project fresh until they finish (the live connection also pushes updates).
  const rendering=(job.cuts||[]).some(c=>c.status==='rendering');
  useEffect(()=>{if(!rendering)return;const timer=setInterval(()=>{call<Job>(`/api/jobs/${job.id}`).then(onChanged).catch(()=>{});},2000);return()=>clearInterval(timer);},[rendering,job.id]);
  // Keyboard: space plays, I marks the start, O adds the part from the mark to the playhead.
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(isTyping(e.target)||e.ctrlKey||e.metaKey||e.altKey||(e.target as HTMLElement)?.closest?.('.cut-box'))return;const v=video.current;if(!v)return;const k=e.key.toLowerCase();
-  if(e.key===' '){e.preventDefault();if(v.paused)v.play().catch(()=>{});else v.pause();}else if(k==='i')setMarkIn(round(v.currentTime));else if(k==='o')endHere();
-  else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();v.currentTime=Math.max(0,Math.min(duration,v.currentTime+(e.key==='ArrowLeft'?-1:1)*(e.shiftKey?5:1)));}};
+  if(e.key===' '){e.preventDefault();if(v.paused)v.play().catch(()=>{});else v.pause();}else if(k==='i')setMarkIn(round(cur()));else if(k==='o')endHere();
+  else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();go(Math.max(0,Math.min(duration,cur()+(e.key==='ArrowLeft'?-1:1)*(e.shiftKey?5:1))));}};
   window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
  // Live preview: redraw every animation frame from the source video, with the text on top.
  const latest=useRef({framing,layout,texts,format});latest.current={framing,layout,texts,format};
- useEffect(()=>{let frame=0,lastBounds='';const draw=()=>{frame=requestAnimationFrame(draw);const c=canvas.current,v=video.current;if(!c||!v)return;const ctx=c.getContext('2d');if(!ctx)return;const s=latest.current;
+ useEffect(()=>{let frame=0,lastBounds='';const draw=()=>{frame=requestAnimationFrame(draw);const c=canvas.current,v=video.current;if(!c||!v)return;const ctx=c.getContext('2d');if(!ctx)return;ctx.imageSmoothingQuality='high';const s=latest.current;
   drawFrame(ctx,v,c.width,c.height,s.framing,s.framing==='split'?s.layout:null);const b=drawTexts(ctx,s.texts,c.width,c.height),key=JSON.stringify(b);if(key!==lastBounds){lastBounds=key;setBounds(b as Record<string,Box>);}};
   frame=requestAnimationFrame(draw);return()=>cancelAnimationFrame(frame);},[]);
  useEffect(()=>{loadFonts(texts).then(()=>setBounds(b=>({...b})));},[texts.map(t=>t.font).join()]);
@@ -82,23 +111,26 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
  const visible=useMemo(()=>(data?.buckets||[]).filter(b=>b.t+(data?.bucket||5)>=v0&&b.t<=v1),[data,v0,v1]),maxLoud=useMemo(()=>Math.max(1.5,...(data?.buckets||[]).map(b=>b.loud)),[data]);
  const suggestions=useMemo(()=>[...(data?.candidates||[])].sort((a,b)=>b.score-a.score).slice(0,showAll?30:8),[data,showAll]);
  const total=segs.reduce((n,s)=>n+s.end-s.start,0),overlapping=segs.some((s,i)=>segs.some((o,k)=>k!==i&&s.start<o.end&&o.start<s.end));
- const seek=(x:number,play=false)=>{const v=video.current;if(!v)return;queue.current=null;v.currentTime=Math.max(0,Math.min(duration,x));if(play)v.play().catch(()=>{});};
+ const seek=(x:number,play=false)=>{queue.current=null;go(Math.max(0,Math.min(duration,x)),play||undefined);};
  function add(seg:Seg){const s={start:round(Math.max(0,seg.start)),end:round(Math.min(duration,seg.end))};if(s.end-s.start<.5){setError('A part must be at least half a second long.');return;}setError('');setSegs([...segs,s]);}
- function endHere(){const v=video.current;if(!v)return;const now=round(v.currentTime);if(markIn===null){setError('Press I (or Mark start) first, then O at the end of the part.');return;}add({start:Math.min(markIn,now),end:Math.max(markIn,now)});setMarkIn(null);}
- function playList(list:Seg[]){const v=video.current;if(!v||!list.length)return;queue.current={list,i:0};v.currentTime=list[0].start;v.play().catch(()=>{});}
- function onTime(){const v=video.current;if(!v)return;setT(v.currentTime);const q=queue.current;if(!q)return;const cur=q.list[q.i];if(cur&&v.currentTime>=cur.end-.03){q.i++;const next=q.list[q.i];if(next)v.currentTime=next.start;else{v.pause();queue.current=null;}}}
+ function endHere(){if(!video.current)return;const now=round(cur());if(markIn===null){setError('Press I (or Mark start) first, then O at the end of the part.');return;}add({start:Math.min(markIn,now),end:Math.max(markIn,now)});setMarkIn(null);}
+ function playList(list:Seg[]){if(!video.current||!list.length)return;queue.current={list,i:0};go(list[0].start,true);}
+ function onTime(){const v=video.current;if(!v||pendingSeek.current)return;const now=cur();setT(now);const q=queue.current,part=q?.list[q.i];
+  if(q&&part&&now>=part.end-.03){q.i++;const next=q.list[q.i];if(next)go(next.start,true);else{v.pause();queue.current=null;}return;}
+  // Leaving a full-quality part: carry on in the light copy (or the next part). Entering one while playing: switch up.
+  const at=srcRef.current;if(at&&now>=at.end-.45)go(now);else if(!at&&proxy&&!v.paused&&covering(now+.3))go(now+.05,true);}
  const update=(i:number,patch:Partial<Seg>)=>setSegs(segs.map((s,k)=>k===i?{...s,...patch}:s));
  const move=(i:number,d:number)=>{const k=i+d;if(k<0||k>=segs.length)return;const next=[...segs];[next[i],next[k]]=[next[k],next[i]];setSegs(next);};
  const timeAt=(x:number)=>{const r=strip.current!.getBoundingClientRect();return Math.max(0,Math.min(duration,v0+(x-r.left)/r.width*span));};
  function down(e:React.PointerEvent){if((e.target as HTMLElement).closest('button'))return;e.currentTarget.setPointerCapture(e.pointerId);drag.current=timeAt(e.clientX);setPick([drag.current,drag.current]);}
  function moveDrag(e:React.PointerEvent){if(drag.current===null)return;const x=timeAt(e.clientX);setPick([Math.min(drag.current,x),Math.max(drag.current,x)]);}
  function up(){if(drag.current===null)return;const p=pick;drag.current=null;setPick(null);if(!p)return;if(p[1]-p[0]<Math.max(.5,span/400))seek(p[0]);else add({start:p[0],end:p[1]});}
- const zoom=(f:number)=>{const c=video.current?.currentTime??(v0+v1)/2,next=Math.max(10,Math.min(duration,span*f));if(next>=duration){setView(null);return;}const a=Math.max(0,Math.min(duration-next,c-next/2));setView([a,a+next]);};
+ const zoom=(f:number)=>{const c=video.current?cur():(v0+v1)/2,next=Math.max(10,Math.min(duration,span*f));if(next>=duration){setView(null);return;}const a=Math.max(0,Math.min(duration-next,c-next/2));setView([a,a+next]);};
  const ticks=useMemo(()=>Array.from({length:5},(_,k)=>v0+span*k/4),[v0,span]);
  // Shapes and layouts.
  const chooseFormat=(f:Format)=>{if(f===format)return;setLook({format:f,framing:framing==='split'?'split':f==='video'?'fit':'fill'});};
  const camRatio=shareRatio(pixelAspect(layout.camOut,out.width,out.height),sw,sh),gameRatio=shareRatio(pixelAspect(layout.gameOut,out.width,out.height),sw,sh);
- async function findCamera(){const v=video.current,at=v?.currentTime??0,range={start:Math.max(0,at-20),end:Math.min(duration,Math.max(at+20,Math.min(duration,40)))};setCamBusy(true);setCamNote('');setError('');
+ async function findCamera(){const at=cur(),range={start:Math.max(0,at-20),end:Math.min(duration,Math.max(at+20,Math.min(duration,40)))};setCamBusy(true);setCamNote('');setError('');
   try{const r=await call<{facecam:{found:boolean;box:Box|null;full:boolean;face:Box|null}}>(`/api/jobs/${job.id}/facecam`,{method:'POST',body:JSON.stringify({start:range.start,end:range.end})});
    if(r.facecam.found&&r.facecam.box){setLayout(withCamera(layout,r.facecam.box,format,sw,sh) as Layout);setCamNote('Found the camera. Drag the pink box to adjust.');}
    else if(r.facecam.face){const f=r.facecam.face,b:Box=[Math.max(0,f[0]-f[2]*.9),Math.max(0,f[1]-f[3]*.7),Math.min(1,f[2]*2.8),Math.min(1,f[3]*2.4)];setLayout({...layout,cam:refit(b,pixelAspect(layout.camOut,out.width,out.height),sw,sh) as Box,camHidden:false});setCamNote('No camera border found; boxed the streamer’s face instead.');}
@@ -109,13 +141,13 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
  const editText=(id:string,patch:Partial<TextItem>)=>setTexts(texts.map(x=>x.id===id?{...x,...patch}:x));
  function addText(){const t=newText(texts.length);setTexts([...texts,t]);setSelected(t.id);}
  // Export.
- async function exportCut(){setSending(true);setError('');try{const overlay=await textLayer(texts,out.width,out.height);
-  await call<Cut>(`/api/jobs/${job.id}/cuts`,{method:'POST',body:JSON.stringify({segments:segs,format,framing,title,layout:split?layout:undefined,overlay:overlay||undefined,texts})});onChanged(await call<Job>(`/api/jobs/${job.id}`));}
+ async function exportCut(){setSending(true);setError('');try{const overlay=await textLayer(texts,exportSize.width,exportSize.height);
+  await call<Cut>(`/api/jobs/${job.id}/cuts`,{method:'POST',body:JSON.stringify({segments:segs,format,quality,framing,title,layout:split?layout:undefined,overlay:overlay||undefined,texts})});onChanged(await call<Job>(`/api/jobs/${job.id}`));}
   catch(e){setError((e as Error).message);}finally{setSending(false);}}
  async function cancelCut(c:Cut){try{await call(`/api/jobs/${job.id}/cuts/${c.id}/cancel`,{method:'POST'});}catch(e){setError((e as Error).message);}}
  async function removeCut(c:Cut){try{onChanged(await call<Job>(`/api/jobs/${job.id}/cuts/${c.id}`,{method:'DELETE'}));}catch(e){setError((e as Error).message);}}
- function loadCut(c:Cut){setSegs(c.segments);setTitle(c.title);const f=c.format==='video'?'video':'shorts';setLook({format:f,framing:c.framing,texts:Array.isArray(c.texts)?c.texts as TextItem[]:[],layouts:{...look.layouts,...(c.layout&&sameShapeLayout(c.layout)?{[f]:c.layout}:{})}});}
- const locked=busy(job),aspect=sw/sh,previewWidth=format==='video'?640:360;
+ function loadCut(c:Cut){setSegs(c.segments);setTitle(c.title);if(c.quality===720||c.quality===1080||c.quality===1440)setQuality(c.quality);const f=c.format==='video'?'video':'shorts';setLook({format:f,framing:c.framing,texts:Array.isArray(c.texts)?c.texts as TextItem[]:[],layouts:{...look.layouts,...(c.layout&&sameShapeLayout(c.layout)?{[f]:c.layout}:{})}});}
+ const locked=busy(job),aspect=sw/sh,k=quality/1080,exportSize={width:Math.round(out.width*k/2)*2,height:Math.round(out.height*k/2)*2},upscaled=!!sourceSide&&quality>sourceSide+8;
  const framings:[Framing,string,string,React.ReactNode][]=format==='video'?[['fit','Whole picture','The full frame, over a blurred copy if it doesn’t fit',<Maximize size={17}/>],['split','Camera + gameplay','Box the camera and the gameplay, place each one',<LayoutPanelTop size={17}/>]]:[['fill','Fill','Crops the sides so the picture fills the phone',<Maximize size={17}/>],['fit','Whole picture','Keeps everything, over a blurred copy',<Columns2 size={17}/>],['split','Camera + gameplay','Box the camera and the gameplay, place each one',<LayoutPanelTop size={17}/>]];
 
  return <section className="cutter" aria-labelledby="cutter-title">
@@ -126,7 +158,8 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
   <div className="cutter-grid">
    <div className="cutter-player">
     <div className="cutter-video" style={{aspectRatio:String(aspect),width:`min(100%, calc(62vh * ${aspect.toFixed(4)}))`}}>
-     <video ref={video} src={job.sourceUrl} preload="auto" playsInline onLoadedMetadata={e=>{const v=e.currentTarget;if(v.videoWidth&&v.videoHeight)setSize([v.videoWidth,v.videoHeight]);}} onTimeUpdate={onTime} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} onClick={e=>{const v=e.currentTarget;if(v.paused)v.play().catch(()=>{});else v.pause();}}/>
+     <video ref={video} src={src?.url||job.sourceUrl} preload="auto" playsInline onLoadedMetadata={e=>{const v=e.currentTarget;if(v.videoWidth&&v.videoHeight)setSize([v.videoWidth,v.videoHeight]);const p=pendingSeek.current;if(p){pendingSeek.current=null;v.currentTime=Math.max(0,p.t-(srcRef.current?.start||0));if(p.play)v.play().catch(()=>{});}}} onTimeUpdate={onTime} onPlay={()=>setPlaying(true)} onPause={()=>{setPlaying(false);maybeSharpen();}} onSeeked={maybeSharpen} onCanPlay={maybeSharpen} onClick={e=>{const v=e.currentTarget;if(v.paused)v.play().catch(()=>{});else v.pause();}}/>
+     <span className={`cut-quality-badge ${src||!proxy?'hd':''}`}>{src?`Full quality · ${short(src)}p`:proxy?`Light copy · ${short({width:size[0],height:size[1]})}p`:`${short({width:size[0],height:size[1]})}p`}</span>
      {split&&<div className="cut-box-layer">
       <CutBox box={layout.game} tone="game" label="Gameplay" ratio={gameRatio} lines={[0,.5,1]} selected={selected==='game'} onSelect={()=>setSelected('game')} onChange={b=>setLayout({...layout,game:b})}/>
       {!layout.camHidden&&<CutBox box={layout.cam} tone="cam" label="Camera" ratio={camRatio} lines={[0,.5,1]} selected={selected==='cam'} onSelect={()=>setSelected('cam')} onChange={b=>setLayout({...layout,cam:b})}/>}
@@ -136,10 +169,11 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
     <div className="cutter-controls">
      <button type="button" className="secondary" onClick={()=>{const v=video.current;if(!v)return;queue.current=null;if(v.paused)v.play().catch(()=>{});else v.pause();}}>{playing?<Pause size={16}/>:<Play size={16}/>}{playing?'Pause':'Play'}</button>
      <span className="cutter-clock" aria-live="off">{clock(t)} / {clock(duration)}</span>
-     <button type="button" className="secondary" title="Shortcut: I" onClick={()=>setMarkIn(round(video.current?.currentTime??0))}>Mark start (I)</button>
+     <button type="button" className="secondary" title="Shortcut: I" onClick={()=>setMarkIn(round(cur()))}>Mark start (I)</button>
      <button type="button" className="primary" title="Shortcut: O" disabled={markIn===null} onClick={endHere}><Plus size={16}/>Add part to here (O)</button>
      {markIn!==null&&<span className="cutter-mark">Start marked at {clock(markIn)}<button type="button" className="text-button" aria-label="Clear the start mark" onClick={()=>setMarkIn(null)}><X size={14}/></button></span>}
     </div>
+    {proxy&&<div className="cutter-hd">{hdBusy?<span><Loader2 className="spin" size={14}/>{hdBusy}</span>:<span>{hd.length?`Full quality is ready for ${hd.length} stretch${hd.length===1?'':'es'} of the stream; the preview switches to it there.`:'Pause anywhere (or add a part) and full quality downloads there for a sharp preview.'}</span>}<button type="button" className="text-button" disabled={!!hdBusy} onClick={sharpenHere}>Sharpen here</button>{hdNote&&<small className="trim-warning">{hdNote}</small>}</div>}
     <div className="cutter-timeline">
      <div className="cutter-zoom"><span className="muted">Drag across the strip to add a part · click to jump · taller bars are louder</span><span><button type="button" className="text-button" onClick={()=>zoom(.25)}><ZoomIn size={15}/>Zoom in</button><button type="button" className="text-button" disabled={!view} onClick={()=>zoom(4)}><ZoomOut size={15}/>Zoom out</button>{view&&<button type="button" className="text-button" onClick={()=>setView(null)}>Whole video</button>}</span></div>
      <div ref={strip} className="timeline-strip cutter-strip" role="presentation" onPointerDown={down} onPointerMove={moveDrag} onPointerUp={up}>
@@ -158,7 +192,7 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
     <section className="cutter-panel" aria-labelledby="look-title"><div className="cutter-panel-head"><h2 id="look-title">Preview</h2><span className="cutter-total">{format==='video'?'16:9 · 1920 × 1080':'9:16 · 1080 × 1920'}</span></div>
      <div className="cut-shape-tabs" role="radiogroup" aria-label="Video shape">{([['shorts','Portrait 9:16',<RectangleVertical key="v" size={17}/>],['video','Landscape 16:9',<RectangleHorizontal key="h" size={17}/>]] as const).map(([f,name,icon])=><button type="button" role="radio" key={f} aria-checked={format===f} className={format===f?'selected':''} onClick={()=>chooseFormat(f)}>{icon}{name}</button>)}</div>
      <div className={`cut-preview ${format}`} style={{maxWidth:format==='video'?'100%':'300px'}}>
-      <canvas ref={canvas} width={previewWidth} height={Math.round(previewWidth*out.height/out.width)} aria-label="Preview of the exported video"/>
+      <canvas ref={canvas} width={cs} height={Math.round(cs*out.height/out.width)} aria-label="Preview of the exported video"/>
       <div className="cut-box-layer" onPointerDown={()=>setSelected(null)}>
        {split&&<CutBox box={layout.gameOut} tone="game" label="Gameplay panel" lines={[0,.5,1,...(layout.camHidden?[]:[layout.camOut[1],layout.camOut[1]+layout.camOut[3],layout.camOut[0],layout.camOut[0]+layout.camOut[2]])]} selected={selected==='gameOut'} onSelect={()=>setSelected('gameOut')} onChange={b=>setLayout(withPanel(layout,'game',b,format,sw,sh) as Layout)}/>}
        {split&&!layout.camHidden&&<CutBox box={layout.camOut} tone="cam" label="Camera panel" lines={[0,.5,1,layout.gameOut[1],layout.gameOut[1]+layout.gameOut[3],layout.gameOut[0],layout.gameOut[0]+layout.gameOut[2]]} selected={selected==='camOut'} onSelect={()=>setSelected('camOut')} onChange={b=>setLayout(withPanel(layout,'cam',b,format,sw,sh) as Layout)}/>}
@@ -190,6 +224,9 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
      </div>
     </section>
     <section className="cutter-panel" aria-labelledby="export-title"><h2 id="export-title">Export</h2>
+     <div className="cut-quality" role="radiogroup" aria-label="Export quality">{QUALITIES.map(([q,name])=><button type="button" role="radio" key={q} aria-checked={quality===q} className={`chip ${quality===q?'selected':''}`} onClick={()=>setQuality(q)}>{name}</button>)}</div>
+     <p className="cutter-hint">{exportSize.width} × {exportSize.height}{quality===1440?' · the sharpest. Uses 1440p from the stream when the platform serves it (Twitch can; YouTube parts come in 1080p and are scaled up)':quality===720?' · smallest file, fastest export':' · the usual for Shorts and YouTube'}.</p>
+     {upscaled&&<p className="cutter-note">This video is {sourceSide}p at most, so {quality}p is scaled up from it: a bigger file, but no extra detail.</p>}
      <label><span className="field-label">Name (optional)</span><input aria-label="Cut name" maxLength={80} value={title} placeholder={`Cut of ${job.title||'this video'}`.slice(0,80)} onChange={e=>setTitle(e.target.value)}/></label>
      {format==='shorts'&&total>60&&<p className="cutter-note">This runs over a minute. YouTube allows Shorts up to 3 minutes, but blocks any Short over 1 minute that gets a copyright claim.</p>}
      {error&&<p className="trim-warning" role="alert"><CircleAlert size={15}/>{error}</p>}
@@ -210,10 +247,11 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
   </section>
   {!!job.cuts?.length&&<section className="cutter-panel" aria-labelledby="cuts-title"><h2 id="cuts-title">Your cuts</h2><ul className="cut-list">{job.cuts.map(c=><li key={c.id} className={`cut-item ${c.status}`}>
    {c.status==='done'?<video controls preload="none" src={`/api/jobs/${job.id}/cuts/${c.id}?v=${encodeURIComponent(c.finishedAt||'')}`} className={c.format==='video'?'wide':'tall'}/>:<div className={`cut-thumb ${c.format==='video'?'wide':'tall'}`}>{c.status==='rendering'?<Loader2 className="spin" size={26}/>:<CircleAlert size={26}/>}</div>}
-   <div className="cut-info"><strong>{c.title}</strong><small>{c.format==='video'?'Landscape 16:9':'Portrait 9:16'} · {c.framing==='split'?'camera + gameplay':c.framing==='fit'?'whole picture':'fill'}{c.texts?.length?` · ${c.texts.length} text${c.texts.length===1?'':'s'}`:''} · {c.segments.length} part{c.segments.length===1?'':'s'} · {clock(c.duration||c.length)}{c.bytes?` · ${mb(c.bytes)}`:''}</small>
+   <div className="cut-info"><strong>{c.title}</strong><small>{c.quality||1080}p · {c.format==='video'?'Landscape 16:9':'Portrait 9:16'} · {c.framing==='split'?'camera + gameplay':c.framing==='fit'?'whole picture':'fill'}{c.texts?.length?` · ${c.texts.length} text${c.texts.length===1?'':'s'}`:''} · {c.segments.length} part{c.segments.length===1?'':'s'} · {clock(c.duration||c.length)}{c.bytes?` · ${mb(c.bytes)}`:''}</small>
     {c.status==='rendering'&&<><div className="progress-track"><i style={{width:`${Math.max(2,c.progress*100)}%`}}/></div><button type="button" className="text-button" onClick={()=>cancelCut(c)}>Cancel</button></>}
     {c.status==='failed'&&<p className="trim-warning">{c.error||'The cut failed.'}</p>}
-    {c.preview&&<p className="cutter-note">Some parts came from the light copy (lower quality) because the full-quality download failed. Export again to retry.</p>}
+    {c.status==='done'&&!!c.sourceSide&&(c.quality||1080)>c.sourceSide+8&&<p className="cutter-note">Scaled up: this part of the stream was only {c.sourceSide}p.</p>}
+    {c.preview&&<p className="cutter-note">Some parts came from the light copy (lower quality) because the full-quality download failed{c.previewReason?`: ${c.previewReason}`:''}. Export again to retry.</p>}
     <span className="cut-item-actions">{c.status==='done'&&<a className="secondary" href={`/api/jobs/${job.id}/cuts/${c.id}?download=1`}><Download size={15}/>Download</a>}{c.status!=='rendering'&&<><button type="button" className="text-button" onClick={()=>loadCut(c)}>Edit again</button><button type="button" className="text-button danger-text" onClick={()=>removeCut(c)}><Trash2 size={14}/>Delete</button></>}</span></div></li>)}</ul></section>}
  </section>;
 }

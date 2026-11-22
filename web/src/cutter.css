@@ -110,3 +110,9 @@
 .cut-text-grid label,.cut-text-edit>label{display:grid;gap:4px}
 .cut-text-grid input[type=range]{width:100%}
 .cut-text-edit textarea{resize:vertical;font-size:15px}
+/* Quality: what the player shows, full-quality downloads, export quality. */
+.cut-quality-badge{position:absolute;right:8px;bottom:8px;z-index:4;pointer-events:none;font:800 12px/1 'Comic Neue',sans-serif;color:#16121f;background:#ffd23f;border:2px solid #16121f;border-radius:999px;padding:4px 9px}
+.cut-quality-badge.hd{background:#9be15d}
+.cutter-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:600 13px/1.35 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.cutter-hd>span{display:inline-flex;align-items:center;gap:6px}
+.cut-quality{display:flex;flex-wrap:wrap;gap:8px}

@@ -212,7 +212,9 @@ Open **Video cutter** in the sidebar (or **Cut video** on a project) to cut any 
 - **Text:** add captions, titles or an @handle, choose a font (Anton, Montserrat, Barlow Condensed, Work Sans, Luckiest Guy, Bangers, Comic Neue), size, colour and outline or box, and drag it into place on the preview. The export uses the same drawing as the preview, so it matches exactly.
 - **Export** the cut with that look. Cuts render in the background; download them, delete them, or **Edit again** to bring back the parts, layout and text.
 
-For long streams imported as a light copy, the preview is the 360p copy, but the export downloads each part in full quality.
+- **Quality:** export in 720p, 1080p Full HD or 1440p 2K. 2K uses 1440p footage when the platform serves it for parts of a stream (Twitch can; YouTube serves parts in 1080p, so 2K is scaled up from that, and the cut says so).
+
+Long streams are imported as a light 360p copy. The cutter downloads full quality for every part you add, and for wherever you pause, and the preview switches to it (the badge on the player says which you're watching). Exports always use full quality.
 
 ## Optional: AI titles and smarter picks
 
