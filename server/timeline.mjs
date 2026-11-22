@@ -1,5 +1,5 @@
 import fs from 'node:fs';import path from 'node:path';
-import {laugh,strong,clipCue,loudness} from './moments.mjs';import {pickClips,momentShape} from './selection.mjs';import {streamPeople} from './people.mjs';import {loadCrowd} from './twitch-clips.mjs';import {loadSignals} from './signals.mjs';import {jobChat} from './twitch-chat.mjs';import {loadLessons} from './learning.mjs';
+import {laugh,strong,clipCue,loudness} from './moments.mjs';import {pickClips,momentShape} from './selection.mjs';import {streamPeople} from './people.mjs';import {loadCrowd} from './twitch-clips.mjs';import {loadSignals} from './signals.mjs';import {jobChat} from './twitch-chat.mjs';import {rawMoments,rawTitle,rawReasons} from './raw.mjs';import {loadLessons} from './learning.mjs';
 // Whole-stream view for choosing moments by hand: activity per bucket plus the picker's ranked moments.
 const overlaps=(a,b)=>Math.min(a.end,b.end)-Math.max(a.start,b.start)>Math.min(3,(a.end-a.start)*.1);
 
@@ -13,6 +13,8 @@ export function streamActivity(transcript,{bucket=5}={}){
 /** Ranked moments across the whole stream (up to 30, non-overlapping). */
 export function streamCandidates(job,transcript,{folder}={}){
  const duration=transcript.duration||job.metadata?.duration||transcript.words?.at(-1)?.end||0;
+ // Raw projects (no words): the loudest and busiest moments.
+ if(transcript.raw||!transcript.words?.length)return rawMoments({energy:transcript.energy,action:loadSignals(folder)?.action,duration,count:30}).map(m=>({start:m.start,end:m.end,score:m.score,category:'highlight',title:rawTitle(job,m.start),hook:'',peakAt:m.peakAt,reasons:rawReasons(m)}));
  return pickClips({...transcript,duration},{...job.options,count:30,minDuration:20,maxDuration:90},{people:streamPeople(job,{folder}),crowd:loadCrowd(folder),signals:loadSignals(folder),chat:jobChat(job),lessons:loadLessons(path.dirname(folder))}).map(c=>({start:c.start,end:c.end,score:c.score,category:c.category,title:c.title,hook:c.hook,peakAt:c.peakAt,reasons:c.reasons}));
 }
 

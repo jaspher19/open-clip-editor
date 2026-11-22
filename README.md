@@ -30,7 +30,9 @@ All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* 
 
 - **Runs locally.** Transcription (Whisper), editing and rendering (FFmpeg) all happen on your machine. No account and no API key are required.
 - **Finds moments for you.** Laughs, hype words, "clip that", loud reactions, busy on-screen action and (for Twitch) live chat going wild rank every part of the stream. Each pick gets the setup it needs before the payoff, and silent action like a chase is kept instead of trimmed as a pause.
-- **17 edit templates**, including facecam layouts for streams (Cam Split, Glow Card) and two meme edits (Meme Reveal and Skull Ending) built from frame-by-frame measurements of viral Shorts.
+- **18 edit templates**, including facecam layouts for streams (Cam Split, Glow Card), two meme edits (Meme Reveal and Skull Ending) built from frame-by-frame measurements of viral Shorts, and **Raw Clip**: no transcription and no edits, just the loudest and busiest moments cut as they happened.
+- **Portrait or landscape.** Choose 9:16 (Shorts, TikTok, Reels) or 16:9 (YouTube videos) before you start. Every template follows the shape you chose.
+- **Video cutter.** Cut any parts of a video into one MP4: drag across the loudness timeline or mark with I and O, add suggested moments, reorder, box the camera and the gameplay and place them, add text in any of 8 fonts, and export in 9:16 or 16:9 exactly as the live preview shows.
 - **Optional AI.** A free Gemini or Groq key adds AI titles, descriptions and tags, and lets the AI choose the best moments from the picker's candidates.
 - **Edit everything.** Trim on words, fix captions, cut out the middle, add zooms, freezes, replays, sounds and labels.
 - **Checks every export.** Too quiet, clipping sound, black or frozen picture, or blurry footage get a warning on the clip before you post.
@@ -161,7 +163,7 @@ The first transcription downloads the Whisper model you picked (the `small.en` d
 ## 4. Make your first clips
 
 1. **Your video.** Paste a public YouTube video or live stream, a Twitch VOD, clip or live channel, or a Kick VOD or clip, or drop an MP4, MOV, MKV, WebM or M4V file (up to 4 GB). Streams longer than 90 minutes (up to 30 hours) download as a light 360p copy for finding moments; each finished clip is then rendered from a 1080p download of just that part of the stream. A Twitch or Kick clip link becomes one edited clip. **Live streams:** paste a YouTube live link or a Twitch channel that is live, and everything streamed so far is imported (an 11-hour stream takes about 8 minutes at 360p); clips render from 1080p fetched straight from the live stream. Paste again later for the newer part. Kick only shares the last few seconds while live, so paste a Kick stream once it has ended. A Twitch channel must save past broadcasts. Streams over 2 hours get a **fast scan**: a quick draft of the whole stream finds the likely moments, and only those (about a fifth of the stream) are transcribed properly. Add a moment anywhere on the timeline and that part is transcribed on the spot. Choose *Full transcript* under *Long streams* if you want every word. You can add a line of context, for example *"A costume challenge at a Halloween party"*.
-2. **Edit style.** Choose **Meme edit** or **Standard clips**, then pick a template. Each card plays a preview.
+2. **Shape and edit style.** Choose **Portrait 9:16** or **Landscape 16:9**, then **Meme edit**, **Standard clips** or **Raw clips**, and pick a template. Each card plays a preview. Your shape stays when you switch templates. In 16:9 the whole picture is kept; the facecam, letterbox and white-canvas layouts only apply to 9:16.
 3. **Moments.** Choose how many clips you want (or *Auto*, about one per 11 minutes of video). Then press the start button.
 
 OpenClip downloads (or uploads), transcribes, finds the moments and edits every one. When it's done, each clip is ready to download or post. Open any clip to change it:
@@ -192,11 +194,25 @@ OpenClip downloads (or uploads), transcribes, finds the moments and edits every 
 | Cam Split | Streams with a facecam: the facecam on top, gameplay below, found automatically, with zooms on big reactions |
 | Glow Card | Streams with a facecam: the webcam in a rounded, glowing card over the gameplay |
 | **Meme Reveal** *(meme edit)* | 11–24 s clips: the frame freezes in silence, then the reveal lands with a flash and a boom. Green and red tints on yes and no, and *ACTION* labels. |
+| **Raw Clip** *(raw clips)* | No transcription and no edits: the loudest and busiest moments (about 30 s each), cut as they happened. No captions, title, effects or pause trimming. |
 | **Skull Ending** *(meme edit)* | 12–25 s clips that end on the punchline, then freeze with a smear, a warm glow, flames, an animated skull and a slow 808 beat. |
 
 Meme templates pick their own kind of moment (short, with the payoff where the format needs it). With an AI key set, the AI chooses the best moments from the local picker's candidates (up to 30 for meme edits, 18 for the others). Without one, the local picker chooses.
 
 Templates are starting points. Every setting can be changed per clip, and **Apply to kept** restyles a whole project at once.
+
+## Video cutter
+
+Open **Video cutter** in the sidebar (or **Cut video** on a project) to cut any parts of a project's video into one MP4, with no transcription, captions or effects.
+
+- **Add parts** by dragging across the timeline, by pressing **I** at the start and **O** at the end while the video plays, or by adding a suggested moment. Taller bars on the timeline are louder.
+- **Adjust** each part's start and end, play it, reorder the parts or sort them by time. **Watch the whole cut** plays them back to back.
+- **Preview** the finished video live, in Portrait 9:16 or Landscape 16:9, as fill, whole picture, or **Camera + gameplay**.
+- **Camera + gameplay:** a pink box (camera) and a green box (gameplay) sit on the video. Drag them over the streamer's camera and the game, and drag a corner to resize. In the preview, drag and resize each panel to place it: camera on top, gameplay on top, camera in a corner, side by side, or anywhere you like. **Find the camera here** looks for the camera around the playhead. Each box keeps the shape of its panel, so what you box is exactly what shows.
+- **Text:** add captions, titles or an @handle, choose a font (Anton, Montserrat, Barlow Condensed, Work Sans, Luckiest Guy, Bangers, Comic Neue), size, colour and outline or box, and drag it into place on the preview. The export uses the same drawing as the preview, so it matches exactly.
+- **Export** the cut with that look. Cuts render in the background; download them, delete them, or **Edit again** to bring back the parts, layout and text.
+
+For long streams imported as a light copy, the preview is the 360p copy, but the export downloads each part in full quality.
 
 ## Optional: AI titles and smarter picks
 
@@ -244,6 +260,7 @@ npm run setup:references                                             # optional:
 ## Troubleshooting
 
 - **"node", "python", "ffmpeg" or "git" is not recognized.** Close the terminal and open a new one after installing. If it still fails, the program's folder isn't on your `PATH`: reinstall it, and for Python tick *Add python.exe to PATH*. On Windows, `python` can also open the Microsoft Store instead. Turn that off under *Settings > Apps > Advanced app settings > App execution aliases*.
+- **Every job fails during transcription (often on a Mac).** The project's Python environment was made with a Python older than 3.11. macOS comes with Python 3.9. Run `npm run setup` again: it finds Python 3.11–3.13 (or uses uv) and rebuilds the environment. If it says no such Python was found, run `brew install uv` and run setup again.
 - **Setup fails installing faster-whisper.** Your Python is probably too new (3.14 or later). Install Python 3.12, or install uv, then delete the `.venv` folder and run `npm run setup` again.
 - **Captions don't render, or setup complains about libass.** Install a full FFmpeg build and make sure it's first on your `PATH`.
 - **A YouTube, Twitch or Kick link fails.** These sites change often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only, subscriber-only and DRM videos aren't supported. For a Kick stream, wait until it has ended.

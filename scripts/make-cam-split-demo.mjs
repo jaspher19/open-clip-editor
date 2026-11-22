@@ -3,7 +3,7 @@
 import fs from 'node:fs';import path from 'node:path';import {ROOT,localEnv} from '../server/config.mjs';import {run} from '../server/process.mjs';
 import {renderClip} from '../server/render.mjs';import {applyTemplate} from '../server/templates.mjs';import {validateOptions} from '../server/options.mjs';
 Object.assign(process.env,localEnv());
-const id=process.argv[2]||'cam-split';if(!['cam-split','glow-card'].includes(id))throw new Error('Use cam-split or glow-card');
+const id=process.argv[2]||'cam-split';if(!['cam-split','glow-card','raw-clip'].includes(id))throw new Error('Use cam-split, glow-card or raw-clip');
 const folder=path.join(ROOT,'work',`${id}-demo`),publicDir=path.join(ROOT,'web/public/templates');fs.mkdirSync(folder,{recursive:true});fs.mkdirSync(publicDir,{recursive:true});
 const sourcePath=path.join(folder,'source.mp4'),font='assets/fonts/WorkSans-Bold.ttf';
 // Cam box: x 0-320, y 90-270 of 1280x720 (shares [0, .125, .25, .25]); a simple figure, a white border.

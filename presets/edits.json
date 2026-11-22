@@ -1026,5 +1026,58 @@
       ],
       "descriptionTemplate": "{title}\n\n{context}\n\nFull stream: {source}\n{sourceUrl}\n\n{hashtags}"
     }
+  },
+  {
+    "id": "raw-clip",
+    "name": "Raw Clip",
+    "category": "Moments as they happened",
+    "group": "raw",
+    "description": "No transcription and no edits: the loudest and busiest moments of the stream, cut as they happened. No captions, no title, no effects, no pause trimming. Trim each one in the editor, or cut your own in the Video cutter.",
+    "basis": "Owner request (2026-11-22): a template for raw clips with no edits and no transcription. Moments come from loudness and on-screen action (server/raw.mjs).",
+    "sample": "",
+    "accent": "#d9d9d9",
+    "fontFamily": "Work Sans",
+    "requiresCompilation": false,
+    "settings": {
+      "rawClip": true,
+      "keepPauses": true,
+      "captionsEnabled": false,
+      "hookEnabled": false,
+      "titleMode": "opening",
+      "hookDuration": 2.8,
+      "style": "clean",
+      "font": "work",
+      "accentColor": "auto",
+      "captionPosition": "lower",
+      "captionReveal": "progressive",
+      "captionOffsetMs": 0,
+      "motionIntensity": "off",
+      "punchIn": false,
+      "progressBar": false,
+      "framing": "center",
+      "faceTrack": false,
+      "vfx": "none",
+      "soundEffects": "off",
+      "autoEffects": false,
+      "coldOpen": false,
+      "loopEnding": false,
+      "grade": "none",
+      "flashColor": "auto",
+      "watermark": "",
+      "profanityAudio": "keep"
+    },
+    "metadata": {
+      "titleGuide": "<What happened> (<timestamp>)",
+      "emoji": [],
+      "emojiCount": 0,
+      "case": "title",
+      "maxLength": 90,
+      "hashtags": [
+        "#shorts",
+        "#{host}",
+        "#stream"
+      ],
+      "descriptionTemplate": "{title}\n\nFull stream: {source}\n{sourceUrl}\n\n{hashtags}"
+    }
   }
 ]

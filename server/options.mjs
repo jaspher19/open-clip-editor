@@ -8,7 +8,7 @@ export function validateOptions(input={}){
  if(RETIRED_TEMPLATES.includes(input.editTemplate))input={...input,editTemplate:'custom'};
  const template=input.editTemplate&&input.editTemplate!=='custom'?EDIT_TEMPLATES.find(t=>t.id===input.editTemplate):null;
  if(input.editTemplate&&input.editTemplate!=='custom'&&!template)throw new Error('Invalid edit template');
- const out={camBox:null,gameBox:null,stackSplit:null,camTakeover:'off',stackStyle:'panels',count:'auto',autoExport:true,minDuration:45,maxDuration:90,threshold:.6,padding:.12,style:'clean',picker:'heuristic',model:'small',language:'auto',punchIn:false,progressBar:false,faceTrack:false,framing:'center',musicEnabled:false,musicVolume:-29,editTemplate:'custom',font:'auto',accentColor:'auto',captionPosition:'lower',motionIntensity:'balanced',punchInterval:2.8,punchZoom:1.08,hookEnabled:false,hookText:'',hookDuration:2.8,titleMode:'persistent',contextText:'',seriesLabel:'',captionsEnabled:true,rankItems:[],rankActive:0,outputFormat:'shorts',captionReveal:'progressive',captionOffsetMs:0,vfx:'none',soundEffects:'off',soundVolume:-27,autoEffects:true,coldOpen:false,coldOpenSeconds:1.6,coldOpenAt:null,loopEnding:false,profanityAudio:'keep',cropX:null,musicTrack:'',letterboxAspect:'3:4',watermark:'',watermarkY:.82,flashColor:'auto',grade:'none',revealFx:false,cutFlash:false,tintFlashes:false,skullEnding:false,actionLabels:false,hookReveal:'pop',hookPosition:'top',keepPauses:false,scan:'auto',aiJudge:true,...template?.settings,...input};
+ const out={camBox:null,gameBox:null,stackSplit:null,camTakeover:'off',stackStyle:'panels',count:'auto',autoExport:true,minDuration:45,maxDuration:90,threshold:.6,padding:.12,style:'clean',picker:'heuristic',model:'small',language:'auto',punchIn:false,progressBar:false,faceTrack:false,framing:'center',musicEnabled:false,musicVolume:-29,editTemplate:'custom',font:'auto',accentColor:'auto',captionPosition:'lower',motionIntensity:'balanced',punchInterval:2.8,punchZoom:1.08,hookEnabled:false,hookText:'',hookDuration:2.8,titleMode:'persistent',contextText:'',seriesLabel:'',captionsEnabled:true,rankItems:[],rankActive:0,outputFormat:'shorts',captionReveal:'progressive',captionOffsetMs:0,vfx:'none',soundEffects:'off',soundVolume:-27,autoEffects:true,coldOpen:false,coldOpenSeconds:1.6,coldOpenAt:null,loopEnding:false,profanityAudio:'keep',cropX:null,musicTrack:'',letterboxAspect:'3:4',watermark:'',watermarkY:.82,flashColor:'auto',grade:'none',revealFx:false,cutFlash:false,tintFlashes:false,skullEnding:false,actionLabels:false,hookReveal:'pop',hookPosition:'top',keepPauses:false,scan:'auto',aiJudge:true,rawClip:false,...template?.settings,...input};
  if(out.count!=='auto'&&(!Number.isInteger(out.count)||out.count<3||out.count>12))throw new Error('Invalid count: expected auto or 3–12');
  for(const [key,min,max] of [['minDuration',20,90],['maxDuration',20,90],['threshold',.2,2],['padding',.04,.25]])if(typeof out[key]!=='number'||!Number.isFinite(out[key])||out[key]<min||out[key]>max)throw new Error(`Invalid ${key}: expected ${min}–${max}`);
  if(out.minDuration>out.maxDuration)throw new Error('Invalid duration range');
@@ -49,12 +49,14 @@ export function validateOptions(input={}){
  if(!['pop','typewriter'].includes(out.hookReveal))throw new Error('Invalid hookReveal');
  if(input.framing!==undefined)out.faceTrack=out.framing==='face';else if(out.faceTrack)out.framing='face';
  if(typeof out.musicVolume!=='number'||!Number.isFinite(out.musicVolume)||out.musicVolume< -35||out.musicVolume> -20)throw new Error('Invalid musicVolume: choose -35 to -20 LUFS');
- for(const k of ['autoEffects','coldOpen','loopEnding','keepPauses','aiJudge'])if(typeof out[k]!=='boolean')throw new Error(`Invalid ${k}`);
+ for(const k of ['autoEffects','coldOpen','loopEnding','keepPauses','aiJudge','rawClip'])if(typeof out[k]!=='boolean')throw new Error(`Invalid ${k}`);
  if(typeof out.coldOpenSeconds!=='number'||!Number.isFinite(out.coldOpenSeconds)||out.coldOpenSeconds<1||out.coldOpenSeconds>3)throw new Error('Invalid coldOpenSeconds: choose 1–3');
  if(out.coldOpenAt!==null&&(typeof out.coldOpenAt!=='number'||!Number.isFinite(out.coldOpenAt)||out.coldOpenAt<0))throw new Error('Invalid coldOpenAt');
  if(out.cropX!==null&&(typeof out.cropX!=='number'||!Number.isFinite(out.cropX)||out.cropX<0||out.cropX>1))throw new Error('Invalid cropX: choose 0–1');
  if(!['keep','beep','mute'].includes(out.profanityAudio))throw new Error('Invalid profanityAudio');
  // Music library entries are plain file names inside work/music-library; anything path-like is rejected.
  if(typeof out.musicTrack!=='string'||(out.musicTrack&&!MUSIC_NAME.test(out.musicTrack)))throw new Error('Invalid music track');
+ // Raw clips (server/raw.mjs) have no transcript: the whole range plays and there is nothing to caption.
+ if(out.rawClip){out.keepPauses=true;out.captionsEnabled=false;}
  return out;
 }

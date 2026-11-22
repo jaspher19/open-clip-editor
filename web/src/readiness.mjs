@@ -21,25 +21,29 @@ export function readiness(clip,job,exportInfo){
  const s=clip.settings||{},checks=[],add=(id,label,level,fix='')=>checks.push({id,label,pass:level==='pass',level,fix});
  const format=s.outputFormat||job?.options?.outputFormat||'shorts',cuts=clip.cuts||[];
  const spoken=(clip.words||[]).filter(w=>w.end>clip.start&&w.start<clip.end&&!cuts.some(c=>w.start>=c.start-.01&&w.end<=c.end+.01)).sort((a,b)=>a.start-b.start);
- // 1. Somebody talks right away (a cold open starts on the payoff, so it counts).
- if(s.coldOpen)add('speech','Opens on the payoff (cold open)','pass');
+ const raw=!!s.rawClip;
+ // 1. Somebody talks right away (a cold open starts on the payoff, so it counts). Raw clips are cut as they happened.
+ if(raw){}
+ else if(s.coldOpen)add('speech','Opens on the payoff (cold open)','pass');
  else if(!spoken.length)add('speech','Speech in the first 2 seconds','warn','Open the editor to check the first words');
  else{const first=Math.max(0,outputTime(clip,spoken[0].start));add('speech',first<=2?'Speech in the first 2 seconds':`First words at ${first.toFixed(1)} s`,first<=2?'pass':'fail','Trim the start or cut the silence at the beginning');}
  // 2. Short on-screen hook that names who it is about.
  const hook=String(s.hookText||clip.hook||'').trim(),host=job?.host;
- if(s.hookEnabled===false||!hook)add('hook','On-screen title','warn','Turn on the on-video title so viewers know what they are watching');
+ if(raw){}
+ else if(s.hookEnabled===false||!hook)add('hook','On-screen title','warn','Turn on the on-video title so viewers know what they are watching');
  else if(words(hook).length>9)add('hook',`Hook is ${words(hook).length} words`,'warn','Keep the on-screen hook to 9 words or fewer');
  else if(host&&![host.name,host.short].filter(Boolean).some(n=>nameRe(n).test(hook)))add('hook',`Hook doesn't name ${host.short||host.name}`,'warn',`Say who did it, like “${host.short||host.name} …”`);
  else add('hook','Short hook that says who','pass');
  // 3. Length that suits the format.
  const length=playLength(clip),moment=job?.moments?.[s.editTemplate||job?.options?.editTemplate];
- if(length>60)add('length',`Plays for ${Math.round(length)} s`,'fail','Cut it to 60 seconds or less');
+ if(format!=='video'&&length>60)add('length',`Plays for ${Math.round(length)} s`,'fail','Cut it to 60 seconds or less');
  else if(moment)add('length',`Plays for ${Math.round(length)} s`,length<moment.play[0]-2?'warn':'pass',`${moment.label}s play ${moment.play[0]}–${moment.play[1]} s; add setup before the payoff`);
  else if(length<20)add('length',`Plays for ${Math.round(length)} s`,'warn','Very short clips rarely hold attention; add setup');
- else if(format==='shorts'&&length<40)add('length',`Plays for ${Math.round(length)} s`,'warn','Add setup: about a minute gives viewers the context before the payoff');
+ else if(format==='shorts'&&length<40&&!raw)add('length',`Plays for ${Math.round(length)} s`,'warn','Add setup: about a minute gives viewers the context before the payoff');
  else add('length',`Plays for ${Math.round(length)} s`,'pass');
  // 4. Captions.
- add('captions',s.captionsEnabled===false?'Captions are off':'Captions on',s.captionsEnabled===false?'warn':'pass','Most viewers watch muted; turn captions on');
+ if(raw)add('captions','Raw clip · no captions by design','pass');
+ else add('captions',s.captionsEnabled===false?'Captions are off':'Captions on',s.captionsEnabled===false?'warn':'pass','Most viewers watch muted; turn captions on');
  // 5. Exported with the latest edits.
  if(!exportInfo)add('export','Not exported yet','fail','Export the clip');
  else if(clip.dirty)add('export','Edits not exported yet','fail','Re-export to apply your edits');

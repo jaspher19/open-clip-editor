@@ -1,0 +1,112 @@
+/* Video cutter (VideoCutter.tsx): same paper-and-ink look as the stream timeline. */
+.cutter{display:grid;gap:18px;min-width:0}
+.cutter .muted{margin:0;color:var(--ink-soft)}
+.cutter-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.cutter-head h1{display:flex;align-items:center;gap:10px;font:40px/1 var(--display);letter-spacing:1px;margin:0 0 6px;color:var(--ink)}
+.cutter-project{display:grid;gap:4px;min-width:min(340px,100%)}
+.cutter-project select{max-width:100%}
+.cutter-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:18px;align-items:start}
+.cutter-player,.cutter-panel{background:var(--paper,#fffaf0);border:3px solid var(--ink);border-radius:18px;box-shadow:0 6px 0 var(--ink);padding:16px;display:grid;gap:12px;min-width:0}
+.cutter-panel h2{display:flex;align-items:center;gap:8px;font:26px/1 var(--display);letter-spacing:1px;margin:0;color:var(--ink)}
+.cutter-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.cutter-side{display:grid;gap:18px;min-width:0}
+.cutter-video{width:100%;max-height:62vh;margin:0 auto;background:#000;border:3px solid var(--ink);border-radius:12px;overflow:hidden;display:flex;justify-content:center}
+.cutter-video video{width:100%;height:100%;object-fit:contain;cursor:pointer;display:block}
+.cutter-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cutter-controls .secondary,.cutter-controls .primary{min-height:40px;padding:6px 14px;font-size:15px}
+.cutter-clock{font:700 16px/1 'Comic Neue',sans-serif;font-variant-numeric:tabular-nums;color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:8px;padding:8px 10px}
+.cutter-mark{display:inline-flex;align-items:center;gap:4px;font:700 14px/1 'Comic Neue',sans-serif;background:var(--yellow);border:2px solid var(--ink);border-radius:999px;padding:5px 6px 5px 12px;color:var(--ink)}
+.cutter-timeline{display:grid;gap:6px}
+.cutter-zoom{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.cutter-zoom>span:last-child{display:inline-flex;gap:10px}
+.cutter-strip{height:110px}
+.cut-suggestion{position:absolute;bottom:0;height:22px;min-width:3px;padding:0;border:2px solid var(--ink);border-radius:5px 5px 0 0;background:rgba(255,138,31,.55);cursor:pointer}
+.cut-suggestion:hover,.cut-suggestion:focus-visible{background:rgba(255,138,31,.85);outline:none}
+.cut-part{position:absolute;top:0;height:calc(100% - 26px);min-width:4px;padding:2px 4px;border:3px solid var(--ink);border-radius:6px;background:rgba(155,225,93,.55);color:var(--ink);font:800 13px/1 'Comic Neue',sans-serif;text-align:left;cursor:pointer;overflow:hidden}
+.cut-part:hover,.cut-part:focus-visible{background:rgba(155,225,93,.8);outline:none}
+.cut-part.warn{background:rgba(255,210,63,.7)}
+.cut-playhead{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--red,#ef3e36);pointer-events:none}
+.cut-markline{position:absolute;top:0;bottom:0;width:0;border-left:3px dashed var(--blue-deep,#1559a8);pointer-events:none}
+.cutter-legend{display:flex;align-items:center;gap:6px;margin:0;font:600 13px/1 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.cutter-legend i{display:inline-block;width:14px;height:10px;border:2px solid var(--ink);border-radius:3px;margin-left:8px}
+.cutter-legend i:first-child{margin-left:0}.lg-part{background:rgba(155,225,93,.8)}.lg-suggest{background:rgba(255,138,31,.85)}
+.cut-parts{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:360px;overflow:auto}
+.cut-parts li{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;border:2px solid var(--ink);border-radius:12px;padding:6px 8px}
+.cut-parts b{display:grid;place-items:center;width:26px;height:26px;border:2px solid var(--ink);border-radius:50%;background:var(--lime,#9be15d);font:800 13px/1 'Comic Neue',sans-serif}
+.cut-parts small{font-weight:700;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.cut-arrow{color:var(--ink-soft)}
+.cut-time{display:inline-flex;align-items:center;border:2px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden}
+.cut-time input{width:78px;border:0;padding:4px 2px;text-align:center;font:700 14px/1 'Comic Neue',sans-serif;font-variant-numeric:tabular-nums;min-height:0;box-shadow:none;border-radius:0}
+.cut-time button{display:grid;place-items:center;width:26px;height:28px;border:0;background:var(--paper-2,#ffeeb8);color:var(--ink);cursor:pointer;padding:0}
+.cut-row-actions{display:inline-flex;gap:4px;margin-left:auto}
+.cut-row-actions button{display:grid;place-items:center;width:30px;height:30px;border:2px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;padding:0}
+.cut-row-actions button:disabled{opacity:.35;cursor:default}
+.cut-parts-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cut-parts-actions .secondary{min-height:38px;padding:5px 14px;font-size:14px}
+.cutter-total{font:700 14px/1 'Comic Neue',sans-serif;background:var(--lime,#9be15d);border:2px solid var(--ink);border-radius:999px;padding:5px 10px;color:var(--ink)}
+.cut-shapes{display:grid;gap:8px}
+.cut-shapes button{display:flex;align-items:flex-start;gap:10px;text-align:left;padding:10px 12px;border:3px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);cursor:pointer}
+.cut-shapes button.selected{background:var(--yellow)}
+.cut-shapes button>span{flex:1}.cut-shapes strong{display:block;font-size:15px}.cut-shapes small{display:block;font-size:13px;color:var(--ink-soft)}
+.cut-export{justify-content:center}
+.cutter-note,.cutter-warning{margin:0;font:600 14px/1.35 'Comic Neue',sans-serif;border:2px solid var(--ink);border-radius:10px;padding:8px 12px;color:var(--ink)}
+.cutter-note{background:#e9f5ff}.cutter-warning{background:var(--yellow);display:flex;align-items:center;gap:8px}
+.cut-reason{font-weight:600;color:var(--ink-soft)}
+.cut-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.cut-item{display:flex;gap:14px;align-items:flex-start;background:#fff;border:2px solid var(--ink);border-radius:14px;padding:10px}
+.cut-item video,.cut-thumb{flex:none;background:#000;border:2px solid var(--ink);border-radius:8px}
+.cut-item video.wide,.cut-thumb.wide{width:240px;aspect-ratio:16/9}
+.cut-item video.tall,.cut-thumb.tall{width:110px;aspect-ratio:9/16}
+.cut-thumb{display:grid;place-items:center;color:#fff}
+.cut-info{display:grid;gap:6px;min-width:0;flex:1}
+.cut-info strong{font-size:16px;overflow-wrap:anywhere}.cut-info small{color:var(--ink-soft);font-weight:600}
+.cut-item-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cut-item-actions .secondary{min-height:36px;padding:5px 14px;font-size:14px;text-decoration:none}
+.danger-text{color:var(--red,#ef3e36)}
+.cutter-empty{display:grid;justify-items:center;gap:10px;text-align:center;padding:48px 16px;background:var(--paper,#fffaf0);border:3px solid var(--ink);border-radius:18px}
+.cutter-empty h2{font:30px/1 var(--display);margin:0}
+.raw-note{display:block;padding:12px;border:2px dashed var(--ink);border-radius:10px;background:#fff;font-weight:600}
+.project-heading-actions{display:flex;gap:10px;flex-wrap:wrap}
+.shape-kind{margin-bottom:12px}
+.shape-note{margin:-4px 0 12px;font:600 14px/1.35 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.edit-kind.kind-three{grid-template-columns:repeat(3,1fr)}
+@media(max-width:1100px){.cutter-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.edit-kind.kind-three{grid-template-columns:1fr}}
+@media(max-width:600px){.cut-item{flex-direction:column}.cut-item video.wide,.cut-thumb.wide{width:100%}.cutter-head h1{font-size:32px}}
+/* Camera + gameplay boxes and the live preview. */
+@font-face{font-family:'Luckiest Guy';src:url('/fonts/LuckiestGuy-Regular.ttf');font-display:swap}
+.cutter-video{position:relative}
+.cut-box-layer{position:absolute;inset:0;pointer-events:none}
+.cut-box{position:absolute;pointer-events:auto;cursor:move;touch-action:none;box-sizing:border-box;border:3px solid;border-radius:4px;transition:box-shadow .12s}
+.cut-box.cam{border-color:#ff5fc8;background:rgba(255,95,200,.12)}
+.cut-box.game{border-color:#3fe0a6;background:rgba(63,224,166,.08)}
+.cut-box.text{border:2px dashed transparent;background:transparent}
+.cut-box.text:hover,.cut-box.text.selected{border-color:#ffd23f;background:rgba(255,210,63,.12)}
+.cut-box.selected,.cut-box:focus-visible{box-shadow:0 0 0 3px rgba(255,255,255,.9),0 0 0 6px var(--ink);outline:none;z-index:2}
+.cut-box.cam{z-index:1}.cut-box.text{z-index:3}
+.cut-box-label{position:absolute;left:-3px;top:-3px;transform:translateY(-100%);padding:2px 7px;border-radius:5px 5px 0 0;font:800 11px/1.3 'Comic Neue',sans-serif;color:#16121f;white-space:nowrap;pointer-events:none}
+.cut-box.cam .cut-box-label{background:#ff5fc8}.cut-box.game .cut-box-label{background:#3fe0a6}
+.cut-box.text .cut-box-label{display:none}
+.cut-box-handle{position:absolute;width:14px;height:14px;background:#fff;border:2px solid var(--ink);border-radius:3px;touch-action:none}
+.cut-box-handle.nw{left:-8px;top:-8px;cursor:nwse-resize}.cut-box-handle.ne{right:-8px;top:-8px;cursor:nesw-resize}
+.cut-box-handle.sw{left:-8px;bottom:-8px;cursor:nesw-resize}.cut-box-handle.se{right:-8px;bottom:-8px;cursor:nwse-resize}
+.cut-box.game .cut-box-label{top:auto;bottom:-3px;transform:translateY(100%);border-radius:0 0 5px 5px}
+.cut-preview{position:relative;margin:0 auto;width:100%;border:3px solid var(--ink);border-radius:12px;overflow:visible;background:#000}
+.cut-preview canvas{display:block;width:100%;height:auto;border-radius:9px}
+.cut-preview .cut-box-label{font-size:10px}
+.cutter-hint{margin:0;font:600 13px/1.4 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.swatch{display:inline-block;width:11px;height:11px;border-radius:3px;border:2px solid var(--ink);margin:0 4px -1px 0}.swatch.cam{background:#ff5fc8}.swatch.game{background:#3fe0a6}
+.cut-shape-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cut-shape-tabs button{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border:3px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);font:800 14px/1 'Comic Neue',sans-serif;cursor:pointer}
+.cut-shape-tabs button.selected{background:var(--yellow)}
+.cut-layout-tools,.cut-texts,.cut-text-edit{display:grid;gap:10px}
+.cut-texts{border-top:2px dashed var(--ink);padding-top:12px}
+.cut-texts h3{display:flex;align-items:center;gap:6px;font:22px/1 var(--display);letter-spacing:1px;margin:0;color:var(--ink)}
+.cut-presets,.cut-text-chips,.cut-layout-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cut-layout-row .secondary,.cut-texts .secondary{min-height:36px;padding:5px 12px;font-size:14px}
+.chip{border:2px solid var(--ink);border-radius:999px;background:#fff;color:var(--ink);padding:6px 12px;font:700 13px/1 'Comic Neue',sans-serif;cursor:pointer}
+.chip:hover{background:var(--paper-2,#ffeeb8)}.chip.selected{background:var(--yellow)}
+.cut-text-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cut-text-grid label,.cut-text-edit>label{display:grid;gap:4px}
+.cut-text-grid input[type=range]{width:100%}
+.cut-text-edit textarea{resize:vertical;font-size:15px}

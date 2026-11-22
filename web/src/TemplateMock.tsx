@@ -11,7 +11,8 @@ export default function TemplateMock({template}:{template:EditTemplate}){
  const words=caption.split(' '),hit=Math.min(words.length-1,1);
  return <span className={`template-mock mock-${framing} caption-${String(s.captionPosition||'lower')}`} style={{'--mock-accent':template.accent,fontFamily:font} as CSSProperties} aria-hidden="true">
   {framing==='stack'?<span className="mock-scene"><span className="mock-cam"><span className="mock-person"/></span><span className="mock-game"/></span>:<span className="mock-scene"><span className="mock-person"/></span>}
-  <span className="mock-hook"><HookTitle text={template.sample} accent={template.accent} fontFamily={font}/></span>
-  <span className="mock-caption">{words.map((w,i)=><span key={i} className={i===hit?'accent':undefined}>{w} </span>)}</span>
+  {/* Raw clips have no title or captions: just the picture. */}
+  {!s.rawClip&&<><span className="mock-hook"><HookTitle text={template.sample} accent={template.accent} fontFamily={font}/></span>
+  <span className="mock-caption">{words.map((w,i)=><span key={i} className={i===hit?'accent':undefined}>{w} </span>)}</span></>}
  </span>;
 }
