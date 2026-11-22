@@ -5,6 +5,8 @@
 import fs from 'node:fs';import path from 'node:path';
 import {run,probe,filterScriptArgs} from './process.mjs';import {ensureSection} from './remote.mjs';
 import {validBox} from '../web/src/logic.mjs';
+import {cleanCaption,captionGroups,captionMetrics,cutFont} from '../web/src/cutCaptions.mjs';
+import {ensureTranscribed} from './scan.mjs';import {ROOT} from './config.mjs';
 
 export const CUT_FORMATS={
  video:{width:1920,height:1080,label:'Landscape 16:9'},
@@ -51,7 +53,42 @@ export function validateCut(body={},duration=0){
  const texts=Array.isArray(body.texts)?body.texts.slice(0,8).filter(t=>t&&typeof t.text==='string').map(t=>({...t,text:t.text.slice(0,200)})):[];
  if(JSON.stringify(texts).length>8000)throw fail('Too much text');
  const title=typeof body.title==='string'?body.title.trim().slice(0,80):'';
- return {segments,format,quality,framing,layout,overlay,texts,title,total};
+ const captions=body.captions?validateCaptions(body.captions,total):null;
+ return {segments,format,quality,framing,layout,overlay,texts,captions,title,total};
+}
+
+/** Auto captions: the look (cleaned) and word corrections ({start key: text}). Transcribing is CPU work: up to 30 minutes. */
+export const CAPTION_MAX_SECONDS=30*60;
+export function validateCaptions(c,total=0){
+ const fail=m=>Object.assign(new Error(m),{status:400});if(typeof c!=='object')throw fail('Invalid captions');
+ if(total>CAPTION_MAX_SECONDS)throw fail('Auto captions work on cuts up to 30 minutes long');
+ const edits={};for(const [k,v] of Object.entries(c.edits||{}).slice(0,5000)){if(!/^\d+\.\d{2}$/.test(k)||typeof v!=='string'||v.length>60)throw fail('Invalid caption correction');edits[k]=v;}
+ return {...cleanCaption(c),edits};
+}
+
+/** Transcript words inside each part (transcribing any part not transcribed yet), in source time. */
+export async function cutWords(job,folder,segments,{signal,ensure=ensureTranscribed}={}){
+ for(const s of segments)await ensure(job,folder,s.start,s.end,{signal});
+ const all=JSON.parse(fs.readFileSync(path.join(folder,'transcript.json'),'utf8')).words||[];
+ return segments.map(s=>all.filter(w=>w.start>=s.start-.05&&w.start<s.end-.05&&String(w.text||'').trim()).map(w=>({start:+w.start.toFixed(3),end:+Math.min(w.end,s.end).toFixed(3),text:String(w.text).trim()})));
+}
+
+const assTime=t=>{const c=Math.max(0,Math.round(t*100)),h=Math.floor(c/360000),m=Math.floor(c/6000)%60,sec=Math.floor(c/100)%60;return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(c%100).padStart(2,'0')}`;};
+const assColor=hex=>`&H00${hex.slice(5,7)}${hex.slice(3,5)}${hex.slice(1,3)}&`.toUpperCase();
+/**
+ * libass captions for a cut: `parts` are the words of each part (source time) and the parts themselves; groups never
+ * span two parts. Sizes come from captionMetrics on the PlayRes width, as the preview draws them.
+ */
+export function captionsAss(parts,segments,caption,{width,height}){
+ const c=cleanCaption(caption),f=cutFont(c.font),m=captionMetrics(c,width),margin=Math.round(width*.06);
+ const look=c.style==='box'?{bs:3,outline:m.pad,shadow:0,edge:assColor(c.boxColor)}:c.style==='shadow'?{bs:1,outline:0,shadow:m.shadow,edge:'&H00000000&'}:{bs:1,outline:m.bord,shadow:0,edge:'&H00000000&'};
+ const lines=[`[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nWrapStyle: 1\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Cap,${f.family},${m.ass.toFixed(1)},${assColor(c.color).slice(0,-1)},${assColor(c.color).slice(0,-1)},${look.edge.slice(0,-1)},&H40000000,${f.weight>=700?-1:0},0,0,0,100,100,0,0,${look.bs},${look.outline.toFixed(1)},${look.shadow.toFixed(1)},5,${margin},${margin},0,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`];
+ const pos=`{\\pos(${Math.round(c.x*width)},${Math.round(c.y*height)})}`,hot=assColor(c.highlight),base=assColor(c.color);let offset=0;
+ segments.forEach((s,i)=>{const shift=offset-s.start,limit=offset+(s.end-s.start);
+  for(const g of captionGroups(parts[i]||[],{per:c.words,edits:caption.edits||{},upper:c.upper})){g.words.forEach((w,k)=>{const a=Math.max(offset,(k?w.start:g.start)+shift),b=Math.min(limit,(k<g.words.length-1?g.words[k+1].start:g.end)+shift);if(b-a<.02)return;
+   const text=g.words.map((x,j)=>j===k&&c.highlight.toLowerCase()!==c.color.toLowerCase()?`{\\c${hot}}${x.text}{\\c${base}}`:x.text).join(' ');lines.push(`Dialogue: 0,${assTime(a)},${assTime(b)},Cap,,0,0,0,,${pos}${text}`);});}
+  offset=limit;});
+ return lines.join('\n')+'\n';
 }
 
 const even=v=>Math.max(2,Math.round(v/2)*2),evenAt=v=>Math.max(0,Math.round(v/2)*2);
@@ -78,13 +115,15 @@ export function frameFilter(input,output,{width,height,framing,layout,duration=1
 }
 
 /** The whole filter graph: each input is one part (already seeked and limited with -ss/-t); a text layer is the last input. */
-export function cutGraph(segments,{width,height,framing,layout=null,overlay=false}){
+export function cutGraph(segments,{width,height,framing,layout=null,overlay=false,captions=null}){
  const lines=[];segments.forEach((s,i)=>{const d=s.end-s.start,ds=d.toFixed(3);
   lines.push(...frameFilter(`${i}:v`,`f${i}`,{width,height,framing,layout,duration:d}));
   lines.push(`[f${i}]trim=duration=${ds},setpts=PTS-STARTPTS[v${i}]`);
   lines.push(`[${i}:a]aresample=48000,aformat=channel_layouts=stereo,apad,atrim=duration=${ds},asetpts=N/SR/TB,afade=t=in:d=0.01,afade=t=out:st=${Math.max(0,d-.02).toFixed(3)}:d=0.02[a${i}]`);});
- lines.push(segments.map((_,i)=>`[v${i}][a${i}]`).join('')+`concat=n=${segments.length}:v=1:a=1[${overlay?'vc':'v'}][a]`);
- if(overlay)lines.push(`[${segments.length}:v]format=rgba[txt]`,`[vc][txt]overlay=0:0:format=auto,format=yuv420p[v]`);
+ lines.push(segments.map((_,i)=>`[v${i}][a${i}]`).join('')+`concat=n=${segments.length}:v=1:a=1[${overlay||captions?'vc':'v'}][a]`);
+ // Captions (libass, under the typed text), then the text layer on top.
+ if(captions)lines.push(`[vc]ass=filename=${captions.file}:fontsdir=${captions.fontsdir}${overlay?'[vs]':',format=yuv420p[v]'}`);
+ if(overlay)lines.push(`[${segments.length}:v]format=rgba[txt]`,`[${captions?'vs':'vc'}][txt]overlay=0:0:format=auto,format=yuv420p[v]`);
  return lines.join(';\n');
 }
 
@@ -92,7 +131,7 @@ export function cutGraph(segments,{width,height,framing,layout=null,overlay=fals
  * Render a cut to work/<job>/exports/cut-<id>.mp4. Long streams imported as a light copy read each part from its
  * full-quality section; if that fails the part comes from the light copy and the result says so.
  */
-export async function renderCut(job,folder,{id,segments,format,quality=1080,framing,layout=null,overlay=null},{signal,onProgress,runCommand=run,probeFile=probe,section=ensureSection}={}){
+export async function renderCut(job,folder,{id,segments,format,quality=1080,framing,layout=null,overlay=null,captions=null},{signal,onProgress,runCommand=run,probeFile=probe,section=ensureSection,words=cutWords}={}){
  const {width,height}=cutSize(format,quality),{crf,preset}=CUT_QUALITIES[quality],dir=path.join(folder,'exports'),work=path.join(folder,'cuts');fs.mkdirSync(dir,{recursive:true});fs.mkdirSync(work,{recursive:true});
  const out=path.join(dir,`cut-${id}.mp4`),temp=path.join(dir,`cut-${id}.partial.mp4`),graph=path.join(work,`${id}.ffscript`),text=path.join(work,`${id}.text.png`),total=segments.reduce((n,s)=>n+s.end-s.start,0);
  let preview=false,previewReason='',sourceSide=0;const inputs=[];
@@ -101,7 +140,9 @@ export async function renderCut(job,folder,{id,segments,format,quality=1080,fram
   inputs.push('-ss',at.toFixed(3),'-t',(s.end-s.start+.1).toFixed(3),'-i',file);}
  if(!job.remote?.proxy)sourceSide=Math.min(Number(job.metadata?.width)||0,Number(job.metadata?.height)||0);
  if(overlay){fs.writeFileSync(text,overlay);inputs.push('-i',text);}
- fs.writeFileSync(graph,cutGraph(segments,{width,height,framing,layout,overlay:!!overlay}));
+ // Captions are laid out on the shape's 1080p canvas (PlayRes); libass scales them to the export size.
+ let caps=null;if(captions){const parts=await words(job,folder,segments,{signal});fs.writeFileSync(path.join(work,`${id}.ass`),captionsAss(parts,segments,captions,CUT_FORMATS[format]));caps={file:`cuts/${id}.ass`,fontsdir:path.relative(folder,path.join(ROOT,'web','public','fonts')).split(path.sep).join('/')};}
+ fs.writeFileSync(graph,cutGraph(segments,{width,height,framing,layout,overlay:!!overlay,captions:caps}));
  try{
   await runCommand('ffmpeg',['-hide_banner','-nostdin','-y',...inputs,...await filterScriptArgs(graph),'-map','[v]','-map','[a]','-t',total.toFixed(3),'-c:v','libx264','-preset',preset,'-crf',String(crf),'-threads','4','-c:a','aac','-b:a','160k','-ar','48000','-ac','2','-movflags','+faststart','-progress','pipe:1','-nostats',temp],{cwd:folder,signal,timeout:0,idleTimeout:10*60*1000,logFile:path.join(work,`${id}.log`),onLine:line=>{const m=line.match(/^out_time_us=(\d+)/);if(m)onProgress?.(Math.min(1,Number(m[1])/1e6/Math.max(.1,total)));}});
   const meta=await probeFile(temp,{signal});if(meta.width!==width||meta.height!==height)throw new Error('The cut came out in the wrong size');
@@ -109,5 +150,5 @@ export async function renderCut(job,folder,{id,segments,format,quality=1080,fram
   // The sharpest picture any part came from, so the app can say when 2K was made from a 1080p stream.
   return {file:path.basename(out),duration:meta.duration,bytes:fs.statSync(out).size,width,height,preview,...(previewReason?{previewReason}:{}),sourceSide};
  }catch(e){fs.rmSync(temp,{force:true});throw e;}
- finally{fs.rmSync(graph,{force:true});fs.rmSync(text,{force:true});}
+ finally{fs.rmSync(graph,{force:true});fs.rmSync(text,{force:true});fs.rmSync(path.join(work,`${id}.ass`),{force:true});}
 }

@@ -1,8 +1,9 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {Loader2,Play,Pause,Plus,Minus,Trash2,ArrowUp,ArrowDown,Download,ScissorsLineDashed,ZoomIn,ZoomOut,X,CircleAlert,RectangleVertical,RectangleHorizontal,Check,Sparkles,Film,Type,ScanFace,LayoutPanelTop,Maximize,Columns2} from 'lucide-react';
+import {Loader2,Play,Pause,Plus,Minus,Trash2,ArrowUp,ArrowDown,Download,ScissorsLineDashed,ZoomIn,ZoomOut,X,CircleAlert,RectangleVertical,RectangleHorizontal,Check,Sparkles,Film,Type,ScanFace,Captions,Upload,CalendarPlus,LayoutPanelTop,Maximize,Columns2} from 'lucide-react';
 import type {Job,Cut} from './types';import {clock,parseClock} from './logic.mjs';
 import {OUTPUT,PRESETS,defaultLayout,applyPreset,withPanel,withCamera,pixelAspect,shareRatio,coverSource,sameShapeLayout,refit} from './cutlayout.mjs';
-import {TEXT_FONTS,newText,drawTexts,loadFonts,textLayer,type TextItem} from './cutText';
+import {TEXT_FONTS,newText,drawTexts,loadFonts,textLayer,drawCaption,type TextItem,type CaptionLook} from './cutText';
+import {cleanCaption,CAPTION_PRESETS,captionGroups,captionAt,wordKey,cutFont} from './cutCaptions.mjs';
 import CutBox from './CutBox';import {askTip} from './TipJar';
 import './cutter.css';
 
@@ -17,7 +18,10 @@ type HdSection={start:number;end:number;width:number;height:number;url:string};
 type Quality=720|1080|1440;
 const QUALITIES:[Quality,string][]=[[720,'720p HD'],[1080,'1080p Full HD'],[1440,'1440p 2K']];
 const short=(s:{width:number;height:number})=>Math.min(s.width||0,s.height||0);
-type Look={format:Format;framing:Framing;layouts:Record<Format,Layout|null>;texts:TextItem[]};
+type CaptionState={on:boolean;look:CaptionLook;edits:Record<string,string>};
+type CapWord={start:number;end:number;text:string};
+type Look={format:Format;framing:Framing;layouts:Record<Format,Layout|null>;texts:TextItem[];captions:CaptionState};
+const capState=(c?:Partial<CaptionState>|null):CaptionState=>({on:!!c?.on,look:cleanCaption(c?.look||{}) as CaptionLook,edits:c?.edits&&typeof c.edits==='object'?c.edits as Record<string,string>:{}});
 const busy=(j:Job)=>['queued','running','exporting'].includes(j.status);
 const round=(t:number)=>Number(t.toFixed(2));
 const isTyping=(el:EventTarget|null)=>{const e=el as HTMLElement|null;return !!e&&(e.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(e.tagName));};
@@ -27,7 +31,7 @@ const store={get<T>(key:string,fallback:T):T{try{const v=localStorage.getItem(ke
 function loadDraft(id:string):Seg[]{const v=store.get<unknown>(`openclip-cut-${id}`,[]);return Array.isArray(v)?v.filter(s=>Number.isFinite(s?.start)&&Number.isFinite(s?.end)&&s.end>s.start):[];}
 function saveDraft(id:string,segs:Seg[]){if(segs.length)store.set(`openclip-cut-${id}`,segs);else try{localStorage.removeItem(`openclip-cut-${id}`);}catch{/* ignore */}}
 function loadLook(job:Job):Look{const v=store.get<Partial<Look>>(`openclip-cut-look-${job.id}`,{});const format:Format=v.format==='video'||v.format==='shorts'?v.format:job.options.outputFormat==='video'?'video':'shorts';
- return {format,framing:['fill','fit','split'].includes(String(v.framing))?v.framing as Framing:format==='video'?'fit':'fill',layouts:{shorts:sameShapeLayout(v.layouts?.shorts)?v.layouts!.shorts:null,video:sameShapeLayout(v.layouts?.video)?v.layouts!.video:null},texts:Array.isArray(v.texts)?v.texts.filter(t=>t&&typeof t.text==='string'):[]};}
+ return {format,framing:['fill','fit','split'].includes(String(v.framing))?v.framing as Framing:format==='video'?'fit':'fill',layouts:{shorts:sameShapeLayout(v.layouts?.shorts)?v.layouts!.shorts:null,video:sameShapeLayout(v.layouts?.video)?v.layouts!.video:null},texts:Array.isArray(v.texts)?v.texts.filter(t=>t&&typeof t.text==='string'):[],captions:capState(v.captions)};}
 const mb=(n?:number)=>n?`${(n/1e6).toFixed(n>1e8?0:1)} MB`:'';
 
 function TimeField({label,value,max,onChange}:{label:string;value:number;max:number;onChange:(v:number)=>void}){
@@ -47,15 +51,16 @@ function drawFrame(ctx:CanvasRenderingContext2D,v:HTMLVideoElement,cw:number,ch:
 }
 
 /** Cut any parts of a project's video into one MP4: suggestions from the stream timeline, drag or I/O to mark, a camera + gameplay layout and text, then export. */
-export default function VideoCutter({jobs,jobId,onPick,onChanged,onNewProject}:{jobs:Job[];jobId:string|null;onPick:(id:string)=>void;onChanged:(job:Job)=>void;onNewProject:()=>void}){
+export default function VideoCutter({jobs,jobId,onPick,onChanged,onNewProject,onOpenCalendar}:{jobs:Job[];jobId:string|null;onPick:(id:string)=>void;onChanged:(job:Job)=>void;onNewProject:()=>void;onOpenCalendar:()=>void}){
  const usable=jobs.filter(j=>j.sourceUrl&&j.metadata?.duration),job=usable.find(j=>j.id===jobId)||null;
  useEffect(()=>{if(!job&&usable[0])onPick(usable[0].id);},[job?.id,usable.length]);
  if(!usable.length)return <section className="cutter"><div className="cutter-empty"><Film size={42}/><h2>Nothing to cut yet</h2><p>Start a project with a video link or a file first. Once the video is imported, cut any parts of it here.</p><button className="primary" onClick={onNewProject}><Plus size={17}/>New project</button></div></section>;
  if(!job)return <section className="cutter"><p className="muted"><Loader2 className="spin" size={16}/> Opening the project…</p></section>;
- return <CutterFor key={job.id} job={job} jobs={usable} onPick={onPick} onChanged={onChanged}/>;
+ return <CutterFor key={job.id} job={job} jobs={usable} onPick={onPick} onChanged={onChanged} onOpenCalendar={onOpenCalendar}/>;
 }
 
-function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:string)=>void;onChanged:(job:Job)=>void}){
+function CutterFor({job,jobs,onPick,onChanged,onOpenCalendar}:{job:Job;jobs:Job[];onPick:(id:string)=>void;onChanged:(job:Job)=>void;onOpenCalendar:()=>void}){
+ const [posted,setPosted]=useState<Record<string,string>>({}),[posting,setPosting]=useState<string|null>(null);
  const duration=job.metadata?.duration||0,video=useRef<HTMLVideoElement>(null),strip=useRef<HTMLDivElement>(null),canvas=useRef<HTMLCanvasElement>(null),drag=useRef<number|null>(null),queue=useRef<{list:Seg[];i:number}|null>(null);
  const [segs,setSegsRaw]=useState<Seg[]>(()=>loadDraft(job.id)),[markIn,setMarkIn]=useState<number|null>(null),[t,setT]=useState(0),[playing,setPlaying]=useState(false);
  const [data,setData]=useState<Timeline|null>(null),[timelineNote,setTimelineNote]=useState(''),[view,setView]=useState<[number,number]|null>(null),[pick,setPick]=useState<[number,number]|null>(null);
@@ -74,11 +79,14 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
  function go(t:number,play?:boolean){const v=video.current;if(!v)return;const want=proxy?covering(t):null,now=srcRef.current,resume=play??!v.paused;
   if((want?.url||null)===(now?.url||null)){v.currentTime=Math.max(0,t-(now?.start||0));if(play)v.play().catch(()=>{});return;}
   pendingSeek.current={t,play:resume};srcRef.current=want;setSrc(want);}
- const {format,framing,texts}=look,[sw,sh]=size,out=OUTPUT[format],layout:Layout=(look.layouts[format]||defaultLayout(format,sw,sh)) as Layout,split=framing==='split';
+ const [capWords,setCapWords]=useState<{key:string;words:CapWord[][]}|null>(null),[capBusy,setCapBusy]=useState(false),[capNote,setCapNote]=useState(''),[fixing,setFixing]=useState<string|null>(null);
+ const {format,framing,texts}=look,captions=look.captions||capState(null),[sw,sh]=size,out=OUTPUT[format],layout:Layout=(look.layouts[format]||defaultLayout(format,sw,sh)) as Layout,split=framing==='split';
  const setSegs=(next:Seg[])=>{setSegsRaw(next);saveDraft(job.id,next);};
  const setLook=(patch:Partial<Look>)=>setLookRaw(old=>{const next={...old,...patch};store.set(`openclip-cut-look-${job.id}`,next);return next;});
  const setLayout=(next:Layout)=>setLook({layouts:{...look.layouts,[format]:next}});
  const setTexts=(next:TextItem[])=>setLook({texts:next});
+ const setCaptions=(patch:Partial<CaptionState>)=>setLook({captions:{...captions,...patch}});
+ const setCapLook=(patch:Partial<CaptionLook>)=>setCaptions({look:{...captions.look,...patch}});
  useEffect(()=>{let live=true;call<Timeline>(`/api/jobs/${job.id}/timeline`).then(d=>{if(live)setData(d);}).catch(e=>{if(live)setTimelineNote(/not ready/i.test((e as Error).message)?'Suggestions appear once the project has found its moments.':(e as Error).message);});return()=>{live=false;};},[job.id,job.status]);
  useEffect(()=>{call<{sections:HdSection[];sourceHeight:number|null}>(`/api/jobs/${job.id}/hd`).then(d=>{setHd(d.sections);setSourceSide(d.sourceHeight);}).catch(()=>{});},[job.id]);
  // Long streams: fetch full quality for every part (one at a time), so the preview is sharp where it matters.
@@ -91,6 +99,13 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
  function maybeSharpen(){if(!proxy)return;window.clearTimeout(autoTimer.current);{const v=video.current;if(v&&v.paused&&!srcRef.current&&!pendingSeek.current&&covering(cur())){go(cur());return;}}autoTimer.current=window.setTimeout(()=>{const v=video.current;if(!v||!v.paused||hdBusyRef.current||pendingSeek.current)return;const at=cur();if(covering(at)){if(!srcRef.current)go(at);return;}if(asked.current.some(a=>Math.abs(a-at)<25))return;asked.current.push(at);sharpenHere();},1200);}
  useEffect(()=>()=>window.clearTimeout(autoTimer.current),[]);
  async function sharpenHere(){const t=cur();setHdBusy('Getting full quality around the playhead…');setHdNote('');try{const r=await call<{sections:HdSection[]}>(`/api/jobs/${job.id}/hd`,{method:'POST',body:JSON.stringify({start:Math.max(0,t-5),end:Math.min(duration,t+40)})});setHd(r.sections);go(t);}catch(e){setHdNote((e as Error).message);}finally{setHdBusy('');}}
+ // Auto captions: the words of every part (the server transcribes parts that aren't yet), refreshed when the parts change.
+ useEffect(()=>{if(!captions.on||!segs.length||busy(job))return;if(capWords?.key===partsKey)return;let stop=false;const timer=window.setTimeout(async()=>{setCapBusy(true);setCapNote('');
+  try{const r=await call<{words:CapWord[][]}>(`/api/jobs/${job.id}/cut-words`,{method:'POST',body:JSON.stringify({segments:segs})});if(!stop)setCapWords({key:partsKey,words:r.words});}
+  catch(e){if(!stop)setCapNote((e as Error).message);}finally{if(!stop)setCapBusy(false);}},600);return()=>{stop=true;window.clearTimeout(timer);};},[captions.on,partsKey,job.status]);
+ const capGroups=useMemo(()=>capWords&&capWords.key===partsKey?segs.flatMap((_,i)=>captionGroups(capWords.words[i]||[],{per:captions.look.words,edits:captions.edits,upper:captions.look.upper})):[],[capWords,partsKey,captions.look.words,captions.look.upper,captions.edits]);
+ const wordCount=capWords?.key===partsKey?capWords.words.reduce((n,w)=>n+w.length,0):0;
+ useEffect(()=>{if(captions.on){const f=cutFont(captions.look.font);document.fonts.load(`${f.weight} 48px "${f.family}"`).catch(()=>{});}},[captions.on,captions.look.font]);
  // Sharp preview canvas: as many pixels as the screen shows (up to the export size).
  useEffect(()=>{const c=canvas.current;if(!c)return;const ro=new ResizeObserver(()=>{const w=Math.min(OUTPUT[format].width,Math.round(c.clientWidth*(window.devicePixelRatio||1)));if(w>40)setCs(w);});ro.observe(c);return()=>ro.disconnect();},[format]);
  // Cuts render in the background: keep the project fresh until they finish (the live connection also pushes updates).
@@ -102,9 +117,11 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
   else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();go(Math.max(0,Math.min(duration,cur()+(e.key==='ArrowLeft'?-1:1)*(e.shiftKey?5:1))));}};
   window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
  // Live preview: redraw every animation frame from the source video, with the text on top.
- const latest=useRef({framing,layout,texts,format});latest.current={framing,layout,texts,format};
+ const latest=useRef({framing,layout,texts,format,captions,capGroups});latest.current={framing,layout,texts,format,captions,capGroups};
  useEffect(()=>{let frame=0,lastBounds='';const draw=()=>{frame=requestAnimationFrame(draw);const c=canvas.current,v=video.current;if(!c||!v)return;const ctx=c.getContext('2d');if(!ctx)return;ctx.imageSmoothingQuality='high';const s=latest.current;
-  drawFrame(ctx,v,c.width,c.height,s.framing,s.framing==='split'?s.layout:null);const b=drawTexts(ctx,s.texts,c.width,c.height),key=JSON.stringify(b);if(key!==lastBounds){lastBounds=key;setBounds(b as Record<string,Box>);}};
+  drawFrame(ctx,v,c.width,c.height,s.framing,s.framing==='split'?s.layout:null);
+  const cb=s.captions.on?drawCaption(ctx,s.captions.look,captionAt(s.capGroups,cur()),c.width,c.height,{sample:true}):null;
+  const b={...drawTexts(ctx,s.texts,c.width,c.height),...(cb?{__caption:cb}:{})},key=JSON.stringify(b);if(key!==lastBounds){lastBounds=key;setBounds(b as Record<string,Box>);}};
   frame=requestAnimationFrame(draw);return()=>cancelAnimationFrame(frame);},[]);
  useEffect(()=>{loadFonts(texts).then(()=>setBounds(b=>({...b})));},[texts.map(t=>t.font).join()]);
  const [v0,v1]=view||[0,Math.max(1,duration)],span=Math.max(1,v1-v0),pct=(x:number)=>`${((x-v0)/span*100).toFixed(3)}%`,width=(a:number,b:number)=>`${(Math.max(0,Math.min(b,v1)-Math.max(a,v0))/span*100).toFixed(3)}%`;
@@ -142,11 +159,15 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
  function addText(){const t=newText(texts.length);setTexts([...texts,t]);setSelected(t.id);}
  // Export.
  async function exportCut(){askTip();setSending(true);setError('');try{const overlay=await textLayer(texts,exportSize.width,exportSize.height);
-  await call<Cut>(`/api/jobs/${job.id}/cuts`,{method:'POST',body:JSON.stringify({segments:segs,format,quality,framing,title,layout:split?layout:undefined,overlay:overlay||undefined,texts})});onChanged(await call<Job>(`/api/jobs/${job.id}`));}
+  await call<Cut>(`/api/jobs/${job.id}/cuts`,{method:'POST',body:JSON.stringify({segments:segs,format,quality,framing,title,layout:split?layout:undefined,overlay:overlay||undefined,texts,captions:captions.on?{...captions.look,edits:captions.edits}:undefined})});onChanged(await call<Job>(`/api/jobs/${job.id}`));}
   catch(e){setError((e as Error).message);}finally{setSending(false);}}
+ // Post: the cut goes to the Posting calendar as a private draft (title, schedule and upload are set there).
+ async function postCut(c:Cut){setPosting(c.id);try{const r=await call<{existing?:string}>('/api/posting/export',{method:'POST',body:JSON.stringify({jobId:job.id,clipId:`cut:${c.id}`,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,settings:{privacy:'private',madeForKids:false}})});
+  setPosted(p=>({...p,[c.id]:r.existing==='posted'?'This cut is already posted.':r.existing?'This cut is already in your Posting calendar.':'Added to your Posting calendar as a private draft. Set the title and time there, then upload.'}));}
+  catch(e){setPosted(p=>({...p,[c.id]:`Couldn’t add it: ${(e as Error).message}`}));}finally{setPosting(null);}}
  async function cancelCut(c:Cut){try{await call(`/api/jobs/${job.id}/cuts/${c.id}/cancel`,{method:'POST'});}catch(e){setError((e as Error).message);}}
  async function removeCut(c:Cut){try{onChanged(await call<Job>(`/api/jobs/${job.id}/cuts/${c.id}`,{method:'DELETE'}));}catch(e){setError((e as Error).message);}}
- function loadCut(c:Cut){setSegs(c.segments);setTitle(c.title);if(c.quality===720||c.quality===1080||c.quality===1440)setQuality(c.quality);const f=c.format==='video'?'video':'shorts';setLook({format:f,framing:c.framing,texts:Array.isArray(c.texts)?c.texts as TextItem[]:[],layouts:{...look.layouts,...(c.layout&&sameShapeLayout(c.layout)?{[f]:c.layout}:{})}});}
+ function loadCut(c:Cut){setSegs(c.segments);setTitle(c.title);if(c.quality===720||c.quality===1080||c.quality===1440)setQuality(c.quality);const f=c.format==='video'?'video':'shorts';setLook({format:f,framing:c.framing,texts:Array.isArray(c.texts)?c.texts as TextItem[]:[],captions:c.captions?{on:true,look:cleanCaption(c.captions) as CaptionLook,edits:(c.captions as {edits?:Record<string,string>}).edits||{}}:capState(null),layouts:{...look.layouts,...(c.layout&&sameShapeLayout(c.layout)?{[f]:c.layout}:{})}});}
  const locked=busy(job),aspect=sw/sh,k=quality/1080,exportSize={width:Math.round(out.width*k/2)*2,height:Math.round(out.height*k/2)*2},upscaled=!!sourceSide&&quality>sourceSide+8;
  const framings:[Framing,string,string,React.ReactNode][]=format==='video'?[['fit','Whole picture','The full frame, over a blurred copy if it doesn’t fit',<Maximize size={17}/>],['split','Camera + gameplay','Box the camera and the gameplay, place each one',<LayoutPanelTop size={17}/>]]:[['fill','Fill','Crops the sides so the picture fills the phone',<Maximize size={17}/>],['fit','Whole picture','Keeps everything, over a blurred copy',<Columns2 size={17}/>],['split','Camera + gameplay','Box the camera and the gameplay, place each one',<LayoutPanelTop size={17}/>]];
 
@@ -204,6 +225,7 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
       <div className="cut-box-layer" onPointerDown={()=>setSelected(null)}>
        {split&&<CutBox box={layout.gameOut} tone="game" label="Gameplay panel" lines={[0,.5,1,...(layout.camHidden?[]:[layout.camOut[1],layout.camOut[1]+layout.camOut[3],layout.camOut[0],layout.camOut[0]+layout.camOut[2]])]} selected={selected==='gameOut'} onSelect={()=>setSelected('gameOut')} onChange={b=>setLayout(withPanel(layout,'game',b,format,sw,sh) as Layout)}/>}
        {split&&!layout.camHidden&&<CutBox box={layout.camOut} tone="cam" label="Camera panel" lines={[0,.5,1,layout.gameOut[1],layout.gameOut[1]+layout.gameOut[3],layout.gameOut[0],layout.gameOut[0]+layout.gameOut[2]]} selected={selected==='camOut'} onSelect={()=>setSelected('camOut')} onChange={b=>setLayout(withPanel(layout,'cam',b,format,sw,sh) as Layout)}/>}
+       {captions.on&&bounds.__caption&&<CutBox box={bounds.__caption} tone="text" label="Captions" resizable={false} lines={[.5]} selected={selected==='__caption'} onSelect={()=>setSelected('__caption')} onChange={nb=>setCapLook({x:+(nb[0]+nb[2]/2).toFixed(4),y:+(nb[1]+nb[3]/2).toFixed(4)})}/>}
        {texts.filter(x=>bounds[x.id]).map(x=>{const b=bounds[x.id];return <CutBox key={x.id} box={b} tone="text" label={`Text: ${x.text.slice(0,24)}`} resizable={false} lines={[.5]} selected={selected===x.id} onSelect={()=>setSelected(x.id)} onChange={nb=>editText(x.id,{x:+(nb[0]+nb[2]/2).toFixed(4),y:+(nb[1]+nb[3]/2).toFixed(4)})}/>;})}
       </div>
      </div>
@@ -216,6 +238,23 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
        <label className="check-option"><input type="checkbox" checked={layout.camOnTop} disabled={layout.camHidden} onChange={e=>setLayout({...layout,camOnTop:e.target.checked})}/>Camera in front</label></div>
       {camNote&&<p className="cutter-note" role="status">{camNote}</p>}
      </div>}
+     <div className="cut-texts cut-captions"><div className="cutter-panel-head"><h3><Captions size={17}/>Captions</h3>{captions.on?<button type="button" className="text-button danger-text" onClick={()=>setCaptions({on:false})}><Trash2 size={14}/>Remove captions</button>:<button type="button" className="secondary" disabled={!segs.length} title={segs.length?'Transcribes your parts and shows the words in sync':'Add a part first'} onClick={()=>setCaptions({on:true})}><Plus size={15}/>Add auto captions</button>}</div>
+      {!captions.on?<p className="muted">{segs.length?'Transcribes your parts and puts the spoken words on screen, in sync. Style them like text.':'Add a part, then add auto captions.'}</p>:<>
+       <p className="cutter-hint" role="status">{capBusy?<><Loader2 className="spin" size={14}/> Transcribing your parts… (a minute of video takes about 10–30 seconds)</>:capNote?<span className="trim-warning">{capNote}</span>:busy(job)?'Captions load when the project finishes processing.':wordCount?`${wordCount} words · drag the captions on the preview to move them`:segs.length?'No speech found in these parts.':'Add a part to get captions.'}</p>
+       <div className="cut-presets" role="group" aria-label="Caption presets">{CAPTION_PRESETS.map(p=><button type="button" key={p.id} className="chip" onClick={()=>setCapLook(p.look as Partial<CaptionLook>)}>{p.name}</button>)}</div>
+       <div className="cut-text-grid">
+        <label><span className="field-label">Font</span><select aria-label="Caption font for auto captions" value={captions.look.font} onChange={e=>setCapLook({font:e.target.value})} style={{fontFamily:`"${cutFont(captions.look.font).family}"`}}>{TEXT_FONTS.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+        <label><span className="field-label">Style</span><select aria-label="Auto caption style" value={captions.look.style} onChange={e=>setCapLook({style:e.target.value as CaptionLook['style']})}><option value="outline">Black outline</option><option value="box">Box behind</option><option value="shadow">Hard shadow</option></select></label>
+        <label><span className="field-label">Size · {Math.round(captions.look.size*100)}</span><input aria-label="Auto caption size" type="range" min="3" max="18" step=".5" value={captions.look.size*100} onChange={e=>setCapLook({size:e.target.valueAsNumber/100})}/></label>
+        <label><span className="field-label">Words at a time</span><select aria-label="Words at a time" value={captions.look.words} onChange={e=>setCapLook({words:Number(e.target.value)})}>{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}</select></label>
+        <label className="color-field"><span className="field-label">Color</span><input aria-label="Auto caption color" type="color" value={captions.look.color} onChange={e=>setCapLook({color:e.target.value})}/></label>
+        <label className="color-field"><span className="field-label">Spoken word</span><input aria-label="Spoken word highlight color" type="color" value={captions.look.highlight} onChange={e=>setCapLook({highlight:e.target.value})}/></label>
+        {captions.look.style==='box'&&<label className="color-field"><span className="field-label">Box</span><input aria-label="Auto caption box color" type="color" value={captions.look.boxColor} onChange={e=>setCapLook({boxColor:e.target.value})}/></label>}
+       </div>
+       <div className="cut-layout-row"><label className="check-option"><input type="checkbox" checked={captions.look.upper} onChange={e=>setCapLook({upper:e.target.checked})}/>ALL CAPS</label><button type="button" className="text-button" onClick={()=>setCapLook({x:.5})}>Center</button></div>
+       {wordCount>0&&<details className="cut-fix-words"><summary>Fix a word</summary><p className="cutter-hint">Click a word to correct it. The sound stays the same.</p><div className="cut-word-chips">{capWords!.words.flatMap((list,i)=>list.map(w=>({w,i}))).map(({w,i})=>{const k=wordKey(w),fixed=captions.edits[k];return fixing===k?<input key={i+k} className="cut-word-input" autoFocus aria-label={`Correct "${w.text}"`} maxLength={60} defaultValue={fixed??w.text} onBlur={e=>{const v=e.currentTarget.value.trim(),next={...captions.edits};if(!v||v===w.text)delete next[k];else next[k]=v;setCaptions({edits:next});setFixing(null);}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();if(e.key==='Escape')setFixing(null);}}/>:<button type="button" key={i+k} className={`cut-word ${fixed!==undefined?'fixed':''}`} title={`${clock(w.start)} · click to correct`} onClick={()=>{setFixing(k);seek(w.start);}}>{fixed??w.text}</button>;})}</div></details>}
+      </>}
+     </div>
      <div className="cut-texts"><div className="cutter-panel-head"><h3><Type size={17}/>Text</h3><button type="button" className="secondary" disabled={texts.length>=8} onClick={addText}><Plus size={15}/>Add text</button></div>
       {!texts.length?<p className="muted">Add a caption, title or @handle. It stays on screen for the whole video.</p>:<div className="cut-text-chips">{texts.map((x,i)=><button type="button" key={x.id} className={`chip ${selected===x.id?'selected':''}`} onClick={()=>setSelected(x.id)}>{x.text.trim().slice(0,18)||`Text ${i+1}`}</button>)}</div>}
       {chosen&&<div className="cut-text-edit">
@@ -238,7 +277,7 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
      <label><span className="field-label">Name (optional)</span><input aria-label="Cut name" maxLength={80} value={title} placeholder={`Cut of ${job.title||'this video'}`.slice(0,80)} onChange={e=>setTitle(e.target.value)}/></label>
      {format==='shorts'&&total>60&&<p className="cutter-note">This runs over a minute. YouTube allows Shorts up to 3 minutes, but blocks any Short over 1 minute that gets a copyright claim.</p>}
      {error&&<p className="trim-warning" role="alert"><CircleAlert size={15}/>{error}</p>}
-     <button type="button" className="primary cut-export" disabled={!segs.length||sending||locked||rendering} onClick={exportCut}>{sending?<Loader2 className="spin" size={17}/>:<ScissorsLineDashed size={17}/>}{rendering?'A cut is rendering…':!segs.length?'Add a part to export':`Export ${segs.length} part${segs.length===1?'':'s'} · ${clock(total)}`}</button>
+     <button type="button" className="primary cut-export" disabled={!segs.length||sending||locked||rendering||(captions.on&&capBusy)} onClick={exportCut}>{sending?<Loader2 className="spin" size={17}/>:<ScissorsLineDashed size={17}/>}{rendering?'A cut is rendering…':!segs.length?'Add a part to export':`Export ${segs.length} part${segs.length===1?'':'s'} · ${clock(total)}`}</button>
     </section>
    </aside>
   </div>
@@ -249,11 +288,12 @@ function CutterFor({job,jobs,onPick,onChanged}:{job:Job;jobs:Job[];onPick:(id:st
   </section>
   {!!job.cuts?.length&&<section className="cutter-panel" aria-labelledby="cuts-title"><h2 id="cuts-title">Your cuts</h2><ul className="cut-list">{job.cuts.map(c=><li key={c.id} className={`cut-item ${c.status}`}>
    {c.status==='done'?<video controls preload="none" src={`/api/jobs/${job.id}/cuts/${c.id}?v=${encodeURIComponent(c.finishedAt||'')}`} className={c.format==='video'?'wide':'tall'}/>:<div className={`cut-thumb ${c.format==='video'?'wide':'tall'}`}>{c.status==='rendering'?<Loader2 className="spin" size={26}/>:<CircleAlert size={26}/>}</div>}
-   <div className="cut-info"><strong>{c.title}</strong><small>{c.quality||1080}p · {c.format==='video'?'Landscape 16:9':'Portrait 9:16'} · {c.framing==='split'?'camera + gameplay':c.framing==='fit'?'whole picture':'fill'}{c.texts?.length?` · ${c.texts.length} text${c.texts.length===1?'':'s'}`:''} · {c.segments.length} part{c.segments.length===1?'':'s'} · {clock(c.duration||c.length)}{c.bytes?` · ${mb(c.bytes)}`:''}</small>
+   <div className="cut-info"><strong>{c.title}</strong><small>{c.quality||1080}p · {c.format==='video'?'Landscape 16:9':'Portrait 9:16'} · {c.framing==='split'?'camera + gameplay':c.framing==='fit'?'whole picture':'fill'}{c.captions?' · captions':''}{c.texts?.length?` · ${c.texts.length} text${c.texts.length===1?'':'s'}`:''} · {c.segments.length} part{c.segments.length===1?'':'s'} · {clock(c.duration||c.length)}{c.bytes?` · ${mb(c.bytes)}`:''}</small>
     {c.status==='rendering'&&<><div className="progress-track"><i style={{width:`${Math.max(2,c.progress*100)}%`}}/></div><button type="button" className="text-button" onClick={()=>cancelCut(c)}>Cancel</button></>}
     {c.status==='failed'&&<p className="trim-warning">{c.error||'The cut failed.'}</p>}
     {c.status==='done'&&!!c.sourceSide&&(c.quality||1080)>c.sourceSide+8&&<p className="cutter-note">Scaled up: this part of the stream was only {c.sourceSide}p.</p>}
     {c.preview&&<p className="cutter-note">Some parts came from the light copy (lower quality) because the full-quality download failed{c.previewReason?`: ${c.previewReason}`:''}. Export again to retry.</p>}
-    <span className="cut-item-actions">{c.status==='done'&&<a className="secondary" href={`/api/jobs/${job.id}/cuts/${c.id}?download=1`}><Download size={15}/>Download</a>}{c.status!=='rendering'&&<><button type="button" className="text-button" onClick={()=>loadCut(c)}>Edit again</button><button type="button" className="text-button danger-text" onClick={()=>removeCut(c)}><Trash2 size={14}/>Delete</button></>}</span></div></li>)}</ul></section>}
+    {posted[c.id]&&<p className="cutter-note" role="status">{posted[c.id]} <button type="button" className="text-button" onClick={onOpenCalendar}><CalendarPlus size={14}/>Open Posting calendar</button></p>}
+    <span className="cut-item-actions">{c.status==='done'&&<button type="button" className="primary" disabled={posting===c.id||locked} title="Add this video to your Posting calendar to schedule it or upload it to YouTube" onClick={()=>postCut(c)}>{posting===c.id?<Loader2 className="spin" size={15}/>:<Upload size={15}/>}Post</button>}{c.status==='done'&&<a className="secondary" href={`/api/jobs/${job.id}/cuts/${c.id}?download=1`}><Download size={15}/>Download</a>}{c.status!=='rendering'&&<><button type="button" className="text-button" onClick={()=>loadCut(c)}>Edit again</button><button type="button" className="text-button danger-text" onClick={()=>removeCut(c)}><Trash2 size={14}/>Delete</button></>}</span></div></li>)}</ul></section>}
  </section>;
 }

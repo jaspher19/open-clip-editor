@@ -103,14 +103,16 @@ export function clampToCoverage(items,coverage){
 }
 /** Parts of [start,end] the transcript does not cover yet (none for a full transcript). */
 export function uncovered(transcript,start,end){
- if(!Array.isArray(transcript.coverage))return [];let gaps=[{start,end}];
- for(const [a,b] of transcript.coverage)gaps=gaps.flatMap(g=>b<=g.start||a>=g.end?[g]:[{start:g.start,end:a},{start:b,end:g.end}]).filter(g=>g.end-g.start>=.5);
+ // Raw projects (no transcription at import) start with nothing covered; a full transcript has no coverage list.
+ const coverage=Array.isArray(transcript.coverage)?transcript.coverage:transcript.raw?[]:null;
+ if(!coverage)return [];let gaps=[{start,end}];
+ for(const [a,b] of coverage)gaps=gaps.flatMap(g=>b<=g.start||a>=g.end?[g]:[{start:g.start,end:a},{start:b,end:g.end}]).filter(g=>g.end-g.start>=.5);
  return gaps;
 }
 export function mergeTranscript(base,extra){
  const inside=w=>extra.coverage.some(([a,b])=>w.start>=a&&w.end<=b),byStart=(a,b)=>a.start-b.start;
- const coverage=mergeRanges([...base.coverage,...extra.coverage].map(([a,b])=>({start:a,end:b})),{gap:0}).map(r=>[r.start,r.end]),own=(list,c)=>clampToCoverage(list,c);
- return {...base,words:[...own(base.words,base.coverage).filter(w=>!inside(w)),...own(extra.words,extra.coverage)].sort(byStart),segments:[...own(base.segments||[],base.coverage).filter(s=>!inside(s)),...own(extra.segments||[],extra.coverage)].sort(byStart),coverage};
+ const baseCoverage=base.coverage||[],coverage=mergeRanges([...baseCoverage,...extra.coverage].map(([a,b])=>({start:a,end:b})),{gap:0}).map(r=>[r.start,r.end]),own=(list,c)=>clampToCoverage(list,c);
+ return {...base,words:[...own(base.words,baseCoverage).filter(w=>!inside(w)),...own(extra.words,extra.coverage)].sort(byStart),segments:[...own(base.segments||[],baseCoverage).filter(s=>!inside(s)),...own(extra.segments||[],extra.coverage)].sort(byStart),coverage};
 }
 const chains=new Map();
 /** Make sure the transcript covers [start,end] (with some context), transcribing the missing parts now. Returns true if it changed. */

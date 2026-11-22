@@ -26,7 +26,7 @@ export function audioEnergy(file){
 }
 
 /** A transcript with no words, so every tool that reads transcript.json (timeline, editor, exports) still works. */
-export function rawTranscript(audio,duration){return {language:'',duration,words:[],segments:[],energy:audioEnergy(audio),model:'none',raw:true};}
+export function rawTranscript(audio,duration){return {language:'',duration,words:[],segments:[],energy:audioEnergy(audio),model:'none',raw:true,coverage:[]};}
 
 /**
  * Score per second: loudness against the stream's median (over 3 s, so one bump doesn't count much), plus sustained
