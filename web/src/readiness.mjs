@@ -46,7 +46,7 @@ export function readiness(clip,job,exportInfo){
  else add('captions',s.captionsEnabled===false?'Captions are off':'Captions on',s.captionsEnabled===false?'warn':'pass','Most viewers watch muted; turn captions on');
  // 5. Exported with the latest edits.
  if(!exportInfo)add('export','Not exported yet','fail','Export the clip');
- else if(clip.dirty)add('export','Edits not exported yet','fail','Re-export to apply your edits');
+ else if(clip.dirty)add('export','Edits not in the video yet','fail','Press Update video on the clip');
  else if(clip.exportError)add('export','Last export failed','fail',clip.exportError);
  else add('export','Exported with your edits','pass');
  // 6. A strong first line or a cold open (soft check).

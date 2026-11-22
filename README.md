@@ -189,7 +189,7 @@ OpenClip downloads (or uploads), transcribes, finds the moments and edits every 
 - Change the template, font, caption position, colours, motion and hook text in **Templates & style**.
 - Add effects on the timeline: zoom, shake, flash, freeze, replay, sound, pop text and *ACTION* labels.
 - Swap a clip for the next-best moment, or pick a range yourself on the stream timeline.
-- Export again after any change, then download the MP4 (with SRT captions and a title file), or all clips as a ZIP.
+- Press **Save** and the new video is made in the background (**Save without updating the video** keeps a draft). Then download the MP4 (with SRT captions and a title file), or all clips as a ZIP.
 
 ## Templates
 
