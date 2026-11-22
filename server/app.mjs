@@ -8,7 +8,7 @@ import {ReferenceLibrary} from './references.mjs';
 import {validateClipEdits} from './clip-edits.mjs';import {clipTraits,refreshLessons,loadLessons} from './learning.mjs';import {autoPostJob,loadAutopost,saveAutopost} from './autopost.mjs';import {playedLength} from './edl.mjs';import {PLAY_MAX,SPAN_MAX,momentShape} from './selection.mjs';import {jobTimeline,bestUnused} from './timeline.mjs';import {MusicLibrary} from './music.mjs';import {titleClips} from './titles.mjs';import {cueSums,loudness,categoryScores} from './moments.mjs';
 // Sound and publishing routes live in their own modules.
 import {registerSoundRoutes} from './sounds.mjs';import {registerPublishRoutes} from './publish-routes.mjs';
-import {YouTubeClient,uploadBody} from './youtube.mjs';import {AutomationStore,AutomationEngine,validateRecipe} from './automation.mjs';import {enrichClip,publicationMetadata,normalizeTemplateMeta} from './context.mjs';import {renderCompilation} from './compilation.mjs';import {rawClip} from './raw.mjs';import {validateCut,renderCut} from './cut.mjs';import {ensureSection,readSections} from './remote.mjs';
+import {YouTubeClient,uploadBody} from './youtube.mjs';import {AutomationStore,AutomationEngine,validateRecipe} from './automation.mjs';import {enrichClip,publicationMetadata,normalizeTemplateMeta} from './context.mjs';import {renderCompilation} from './compilation.mjs';import {rawClip} from './raw.mjs';import {checkUpdates} from './updates.mjs';import {validateCut,renderCut} from './cut.mjs';import {ensureSection,readSections} from './remote.mjs';
 const busyStatuses=['queued','running','exporting'];
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 function providerReady(options){if(options.picker==='openai'&&!process.env.OPENAI_API_KEY)throw fail('Add OPENAI_API_KEY to .env or use the free heuristic picker');if(options.picker==='anthropic'&&!process.env.ANTHROPIC_API_KEY)throw fail('Add ANTHROPIC_API_KEY to .env or use the free heuristic picker');}
@@ -47,6 +47,7 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),automa
  app.post('/api/templates/:id/reference/load',(req,res)=>{if(!references.info(req.params.id))throw fail('Original reference not found',404);res.status(202).json(references.start(req.params.id));});
  app.get('/api/templates/:id/reference/timeline',(req,res)=>res.json(references.timeline(req.params.id)));
  app.get('/api/templates/:id/reference/:kind',(req,res)=>{if(!['video','poster'].includes(req.params.kind))throw fail('Invalid reference file kind');const info=references.info(req.params.id);if(!info?.available)throw fail('Load this original reference first',404);res.set('Cache-Control','private, max-age=3600');res.sendFile(references.file(req.params.id,req.params.kind),{dotfiles:'allow'});});
+ app.get('/api/update',async(req,res)=>res.json(await checkUpdates()));
  app.get('/api/youtube/status',(req,res)=>res.json(youtube.status()));
  app.get('/api/autopost',(req,res)=>res.json({...loadAutopost(store.root),connected:client.status().connected}));
  app.put('/api/autopost',(req,res)=>{let s;try{s=saveAutopost(store.root,req.body||{});}catch(e){throw fail(e.message);}if(s.enabled&&!client.status().connected)return res.status(409).json({...s,error:'Saved. Connect YouTube in Automation so the clips can upload.'});res.json(s);});

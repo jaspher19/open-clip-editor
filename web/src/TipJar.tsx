@@ -4,7 +4,7 @@ import qr from './assets/tip-qr.png';
 
 // "Spare me some change": the author's InstaPay QR. It opens when a project starts and whenever something is
 // generated (exports, countdowns, summaries, cuts), and from the Tip me button. It never blocks the work itself.
-export const AUTHOR='Jaspher Tampos';
+export const AUTHOR='Jaspher Tampos',AUTHOR_URL='https://www.facebook.com/JaspherTampos';
 const EVENT='openclip:tip';
 /** Show the tip popup (the action that triggered it carries on in the background). */
 export function askTip(){window.dispatchEvent(new Event(EVENT));}
@@ -24,6 +24,6 @@ export default function TipJar(){
   <img src={qr} alt="InstaPay QR code for Open Clip (BPI), to send a tip" width={376} height={407}/>
   <p className="tip-small">Scan with any InstaPay bank or e-wallet: GCash, Maya, BPI, BDO and more.</p>
   <div className="tip-actions"><button type="button" className="primary" onClick={()=>setOpen(false)}>Maybe later</button></div>
-  <p className="tip-by">OpenClip · by {AUTHOR}</p>
+  <p className="tip-by">OpenClip · by <a href={AUTHOR_URL} target="_blank" rel="noopener noreferrer">{AUTHOR}</a></p>
  </dialog>;
 }
