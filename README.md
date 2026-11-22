@@ -26,6 +26,17 @@ All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* 
 
 **Posting calendar:** edit titles and descriptions, schedule, and upload privately to YouTube.
 
+### New: Video cutter, raw clips and portrait or landscape
+
+![Video cutter: pick parts on the timeline, box the camera (pink) and the gameplay (green), and see the result live](docs/media/video-cutter.jpg)
+
+**Video cutter:** pick parts on the loudness timeline, box the camera and the gameplay on the video, and see the finished Short live, with your caption on it.
+
+| | |
+| :---: | :---: |
+| ![Preview, layout presets, text and export quality up to 2K](docs/media/cutter-preview-text.jpg) | ![New project: choose portrait or landscape, then meme, standard or raw clips](docs/media/new-project-shape.jpg) |
+| **Layout, text and quality:** presets, Find the camera, captions in 8 fonts, export in 720p, 1080p or 2K | **New project:** choose 9:16 or 16:9 first, then a meme edit, standard clips or raw clips (no transcription, no edits) |
+
 ## What it does
 
 - **Runs locally.** Transcription (Whisper), editing and rendering (FFmpeg) all happen on your machine. No account and no API key are required.
