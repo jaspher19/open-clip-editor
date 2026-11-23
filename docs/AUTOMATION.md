@@ -13,6 +13,15 @@ The app uses a loopback callback, PKCE, a one-time state token, and offline refr
 
 No Google credentials are included. 
 
+## Connect TikTok for inbox uploads
+
+1. Register a Desktop app in [TikTok for Developers](https://developers.tiktok.com/apps/). Add [Desktop Login Kit](https://developers.tiktok.com/docs/en/login-kit-desktop) and the [Content Posting API](https://developers.tiktok.com/docs/en/content-posting-api-get-started-upload-content). Request `user.info.basic` and `video.upload`; TikTok must approve video upload access for the app.
+2. In **Automation → TikTok setup**, copy the redirect URI displayed for your local OpenClip address. Register that exact URI in Desktop Login Kit. Save your TikTok Client key and Client secret in the dialog, then choose **Connect TikTok** and authorize the account.
+3. In **Posting calendar**, select **TikTok** on a portrait export you’re authorized to share. Review the video and edit the separate TikTok caption and hashtags. Use **Save caption** to keep your edits and **Copy caption** to paste them into TikTok.
+4. Confirm the upload and choose **Send to TikTok Inbox**. Use **Check TikTok status** to check delivery, then open the Inbox notification to paste the caption and publish in TikTok. YouTube scheduling works independently.
+
+TikTok credentials are stored in the local `.cache/tiktok/` folder. Captions and inbox delivery state live under `work/tiktok/`. TikTok's [inbox upload endpoint](https://developers.tiktok.com/docs/en/content-posting-api-reference-upload-video) transfers the video file. The creator finishes the post and adds the caption inside TikTok.
+
 **Public posting from a new Google Cloud project.** YouTube has locked uploads from unaudited API projects (those created after 28 July 2020) as private, and Google's current pages disagree on whether that still applies. After every upload the app compares the privacy YouTube actually applied with the one you asked for. If a **Publish publicly automatically** or **Upload unlisted** clip comes back private, the run is marked *kept private by YouTube* instead of *published*. To lift the lock, request a [YouTube API compliance audit](https://support.google.com/youtube/contact/yt_api_form), or make the video public in YouTube Studio. Consent screens left in Testing also expire refresh tokens after about seven days, so reconnect weekly or publish the consent screen.
 
 ## What runs automatically

@@ -8,6 +8,7 @@ import {ReferenceLibrary} from './references.mjs';
 import {validateClipEdits} from './clip-edits.mjs';import {clipTraits,refreshLessons,loadLessons} from './learning.mjs';import {autoPostJob,loadAutopost,saveAutopost} from './autopost.mjs';import {playedLength} from './edl.mjs';import {PLAY_MAX,SPAN_MAX,momentShape} from './selection.mjs';import {jobTimeline,bestUnused} from './timeline.mjs';import {MusicLibrary} from './music.mjs';import {titleClips} from './titles.mjs';import {cueSums,loudness,categoryScores} from './moments.mjs';
 // Sound and publishing routes live in their own modules.
 import {registerSoundRoutes} from './sounds.mjs';import {registerPublishRoutes} from './publish-routes.mjs';
+import {TikTokClient,TikTokDrafts,registerTikTokRoutes} from './tiktok.mjs';
 import {YouTubeClient,uploadBody} from './youtube.mjs';import {AutomationStore,AutomationEngine,validateRecipe} from './automation.mjs';import {enrichClip,publicationMetadata,normalizeTemplateMeta} from './context.mjs';import {renderCompilation} from './compilation.mjs';import {rawClip} from './raw.mjs';import {checkUpdates} from './updates.mjs';import {loadEnv,envStatus} from './env.mjs';import {validateCut,renderCut,cutWords,CAPTION_MAX_SECONDS} from './cut.mjs';import {ensureSection,readSections} from './remote.mjs';
 const busyStatuses=['queued','running','exporting'];
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
@@ -25,7 +26,7 @@ export function linkOldPosts(store,posting){
  for(const p of orphans){const bySize=outs.filter(o=>o.stat.size===p.media?.size),byTitle=outs.filter(o=>o.title&&o.title===p.label),hit=bySize.length===1?bySize[0]:byTitle.length===1?byTitle[0]:null;
   if(hit)posting.link(p.id,{jobId:hit.job.id,clipId:hit.clipId,videoMtime:bySize.length===1?hit.stat.mtimeMs:0});}
 }
-export function createApp({store,queue,youtube:client=new YouTubeClient(),automations,references=new ReferenceLibrary(),writeMetadata=writeMetadataAI}={}){
+export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok=new TikTokClient(),automations,references=new ReferenceLibrary(),writeMetadata=writeMetadataAI}={}){
  const uploadLog=new UploadLog(path.join(store.root,'posting','upload-log.json')),youtube=guardUploads(client,uploadLog,source=>clipRange(store,source));
  const engine=automations||new AutomationEngine({store:new AutomationStore(path.join(store.root,'automations')),jobs:store,queue,youtube,compile:(job,ids,options)=>renderCompilation(job,ids,{...options,folder:store.folder(job.id)})});
  const posting=new PostingQueue({root:path.join(store.root,'posting'),youtube});linkOldPosts(store,posting);backfillUploadLog(uploadLog,store,posting,engine);if(process.env.POSTING_AUTO!=='0')posting.startAuto();const app=express();app.locals.posting=posting;app.locals.automation=engine;app.locals.youtube=youtube;app.locals.references=references;
@@ -41,6 +42,7 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),automa
  // A key added to .env applies on the next request, no restart needed (one file stat per request).
  app.use((req,res,next)=>{try{loadEnv();}catch{}next();});
  app.use(express.json({limit:'8mb'}));
+ registerTikTokRoutes(app,{client:tiktok,drafts:new TikTokDrafts({root:path.join(store.root,'tiktok'),client:tiktok}),posting});
  // The app may live under a dot-folder (for example ~/.projects); Express refuses those paths unless told otherwise.
  const FILES={dotfiles:'allow'};const externalBusyJobs=new Set();const get=(req)=>store.get(req.params.id);
  const editable=job=>{if(externalBusyJobs.has(job.id)||[...engine.active.values()].some(a=>a.jobId===job.id))throw fail('Stop this job’s automation before editing or exporting it',409);if(queue.isBusy(job.id)||busyStatuses.includes(job.status))throw fail('Wait for this job to finish or cancel it before editing',409);};

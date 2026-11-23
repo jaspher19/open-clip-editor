@@ -38,6 +38,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .youtube-setup-dialog textarea{display:block;width:100%;margin:6px 0 10px;padding:10px;resize:vertical;font:13px/1.5 ui-monospace,monospace}
 .youtube-client-file:focus-within{outline:3px solid var(--blue-deep);outline-offset:3px}
 .youtube-setup-dialog footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}
+.tiktok-setup-dialog ol{padding-inline-start:22px;line-height:1.5;font-size:14px}
+.tiktok-setup-dialog li+li{margin-top:6px}
+.tiktok-setup-dialog label{display:grid;gap:5px;margin:10px 0}
+.tiktok-setup-dialog input{width:100%}
+.tiktok-redirect{display:block;margin-bottom:12px;overflow-wrap:anywhere}
+.tiktok-post-dialog footer{flex-wrap:wrap}
+.tiktok-post-dialog .tiktok-consent{display:flex;align-items:center;gap:8px}
+.tiktok-post-dialog .tiktok-consent input{width:auto}
+.tiktok-post-dialog .tiktok-copy{justify-self:start}
+.tiktok-post-dialog textarea{font:inherit;padding:10px;resize:vertical}
+@media(max-width:900px){
+ .tiktok-post-dialog .post-editor-media video{display:block;width:min(100%,200px);max-height:180px;margin:auto}
+ .tiktok-post-dialog .post-editor-body{gap:12px;padding:12px}
+}
 
 /* Re-ink every base rule that assumed light text on a dark panel (generated from style.css). */
 .breadcrumb,.breadcrumb strong,.section-kicker,.home-heading>p,.import-heading,.import-heading>span,.import-panel form>label,.url-row>svg,.upload-separator,.dropzone,.dropzone strong,.dropzone small,.field-label,.text-button,.text-button:hover,.advanced-settings>p,.how-it-works svg,.how-it-works p,.setup-warning,.error-banner,.error-banner>button,.upload-progress>button,.source-kind,.project-heading p,.processing-title,.processing-title>span,.stage-rail>span.current,.job-failure,.clip-toolbar p,.score,.keep-toggle,.clip-source,.download-link,.dirty-note,.empty-clips h3,.preview-pending,.editor-dialog,.editor-header span,.icon-button,.preview-caption,.trim-duration,.trim-warning,.transcript-heading>div,.transcript-heading>span,.word-tools button,.word-tools button.chosen,.transcript-help,.word,.word.selected,.word:hover,.editor-tip,.editor-tip p,.loading-words,.music-controls small,.sidecar-links a,.sidecar-links button,.template-caption,.template-name,.template-card>small,.template-description p,.hook-field textarea,.hook-field small,.template-badge,.editor-tabs button,.editor-tabs button[aria-selected=true],.automation-page p,.youtube-setup,.youtube-setup summary,.youtube-setup a,.automation-form label,.metadata-panel label,.automation-form textarea,.metadata-panel textarea,.script-editor textarea,.automation-form small,.script-editor>span,.run-status,.run-status.running,.run-summary,.publication summary span,.publication a,.publication small,.run-log,.run-log time,.automation-message,.clip-context,.source-context-review,.metadata-panel p,.metadata-panel small,.template-section .reference-link,.template-description>details,.template-preview,.sample-mode button,.sample-mode button[aria-pressed=true],.frame-controls output,.template-preview .sample-fidelity,.template-description .template-preview .sample-fidelity,.sample-layer-note,.sample-timing>summary,.active-layers,.reference-cue,.reference-cue>span:first-child,.reference-cue strong,.reference-cue em,.timing-accuracy,.timing-download,.posting-form label,.posting-form input,.posting-form select,.posting-form textarea,.posting-page .muted,.post-card p,.post-state,.posting-empty{color:var(--ink-soft)}
