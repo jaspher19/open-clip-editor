@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="How OpenClip handles local editing, account connections, and optional services.">
+  <title>Privacy Policy | OpenClip</title>
+  <link rel="stylesheet" href="../site.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-nav container">
+      <a class="brand" href="../"><span class="brand-mark" aria-hidden="true">✂</span>OpenClip</a>
+      <nav class="site-links" aria-label="Site"><a href="../terms.html/">Terms of Service</a><a href="https://github.com/jaspher19/open-clip-editor">Source code</a></nav>
+    </div>
+  </header>
+  <main class="legal-page container"><article class="legal-copy panel">
+    <h1>Privacy Policy</h1>
+    <p>OpenClip is an open-source desktop video editor maintained by Jaspher Tampos and contributors. It runs on your computer and opens its editor in your browser. This policy explains how the editor and project website handle data.</p>
+
+    <h2>Editing on your computer</h2>
+    <p>OpenClip stores imported videos, transcripts, edit settings, previews, exports, and posting records in your installation folder. Local transcription and clip selection process media on your computer. If you provide a public video URL, OpenClip contacts the source service to download it. Setup can also contact package and model providers, and the update check contacts GitHub.</p>
+
+    <h2>Connecting TikTok</h2>
+    <p>When you choose to connect TikTok, TikTok handles sign-in and permission approval. OpenClip uses <code>user.info.basic</code> to read your display name and the account identifier for this app. It displays the name so you can confirm which account will receive your video. OpenClip stores that information and its access and refresh tokens in the local <code>.cache/tiktok/</code> folder with the developer app credentials you supply.</p>
+    <p>With <code>video.upload</code>, OpenClip sends a selected video to TikTok only after you confirm the upload. It stores the upload identifier and status locally to check delivery and resume transfers. Your editable TikTok caption and hashtags stay in OpenClip until you copy them into TikTok. TikTok manages the video after transfer, including its Inbox notification, review, and publishing. <a href="https://www.tiktok.com/legal/page/row/privacy-policy/en">TikTok Privacy Policy</a></p>
+
+    <h2>Connecting YouTube</h2>
+    <p>If you connect YouTube, Google handles sign-in and permissions. OpenClip stores the channel information and authorization tokens locally. OpenClip can send your selected video, title, description, tags, thumbnail, and visibility settings to YouTube when you upload or enable an upload workflow. A connected channel can also provide view counts for the clips OpenClip uploaded, which the editor uses to inform later suggestions. <a href="https://policies.google.com/privacy">Google Privacy Policy</a></p>
+
+    <h2>Optional AI tools</h2>
+    <p>If you configure an AI provider and use an AI feature, OpenClip sends the information needed for that feature, such as transcript text, clip context, or existing metadata, to the configured provider. Those providers handle that information under their own policies. API keys are read from your local settings.</p>
+
+    <h2>Retention, deletion, and access</h2>
+    <p>Project files and posting records can remain in your installation until you remove them. You can delete projects in OpenClip and remove remaining exports and posting records from the installation folder. Disconnect TikTok in Automation to revoke the connection and remove the saved tokens. You can also revoke access in TikTok’s connected-app settings. For YouTube, disconnect in OpenClip and manage authorization in your Google Account. Manage any copies already sent to a platform in that platform’s own account tools.</p>
+
+    <h2>Project website</h2>
+    <p>The project site provides documentation and downloads. Its hosting provider may process standard request data such as IP addresses and browser information. Links to third-party sites are covered by those sites’ policies.</p>
+
+    <h2>Contact</h2>
+    <p>Contact the OpenClip maintainer through the <a href="https://github.com/jaspher19/open-clip-editor/issues">project’s issue tracker</a>. For a privacy request, ask for a private reply and keep personal information, media, and credentials out of the public issue.</p>
+  </article></main>
+  <footer class="site-footer"><div class="container site-links"><a href="../">Project website</a><a href="../terms.html/">Terms of Service</a></div></footer>
+</body>
+</html>
