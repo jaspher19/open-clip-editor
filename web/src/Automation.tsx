@@ -1,6 +1,7 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {Play,Square,Download,ExternalLink,Loader2,Link2,Settings2,Upload,Check} from 'lucide-react';
 import TemplatePreview from './TemplatePreview';import type {EditTemplate} from './types';
+import YouTubeSetupGuide from './YouTubeSetupGuide';
 type Connection={configured:boolean;connected:boolean;channelTitle:string};
 type Recipe={name:string;url:string;template:string;sourceMode:string;segmentSeconds:number;maxSegments:number;maxPending:number;minScore:number;maxUploadsPerRun:number;maxDailyUploads:number;posting:string;publishingEnabled:boolean;madeForKids:boolean;intervalMinutes:number;startAt:string;autoResume:boolean;outputMode:string;contextText:string;metadata:{titleTemplate?:string;descriptionTemplate?:string;tags?:string[]};options:{outputFormat?:string;model:string;language:string;picker:string;count:number}};
 type Script={id:string;recipe:Recipe;enabled:boolean;status:string;message:string;jobs:{id:string;key:string}[];publications:{key:string;jobId:string;state:string;videoId?:string;url?:string;error?:string;visibility?:string;metadata:{title:string;description:string;tags:string[]}}[];log:{time:string;message:string}[]};
@@ -8,17 +9,66 @@ async function request<T>(url:string,method='GET',body?:unknown):Promise<T>{cons
 export default function Automation({templates,cachedModels,onOpenJob}:{templates:EditTemplate[];cachedModels:string[];onOpenJob:(id:string)=>void}){
  const initial:Recipe={name:'YouTube clip workflow',url:'',template:'context-hit',sourceMode:'auto',segmentSeconds:300,maxSegments:12,maxPending:3,minScore:55,maxUploadsPerRun:6,maxDailyUploads:5,posting:'private',publishingEnabled:true,madeForKids:false,intervalMinutes:180,startAt:'',autoResume:true,outputMode:'clips',contextText:'',metadata:{titleTemplate:'{title}',descriptionTemplate:'{context}\n\n{transcript}\n\nSource: {sourceTitle}\n{sourceUrl}\n\n#Shorts',tags:[]},options:{outputFormat:'shorts',model:cachedModels.includes('small.en')?'small.en':'small',language:'auto',picker:'heuristic',count:3}};
  const [recipe,setRecipe]=useState<Recipe>(initial),[connection,setConnection]=useState<Connection>({configured:false,connected:false,channelTitle:''}),[scripts,setScripts]=useState<Script[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(''),[jsonMode,setJsonMode]=useState(false),[json,setJson]=useState(''),[editId,setEditId]=useState<string|null>(null),[message,setMessage]=useState('');
+ const setupDialog=useRef<HTMLDialogElement>(null);
+ const [clientJson,setClientJson]=useState(''),[setupError,setSetupError]=useState(''),[readingClient,setReadingClient]=useState(false);
+ const setupBusy=readingClient||busy==='configure';
  const selected=templates.find(t=>t.id===recipe.template);
  async function refresh(){const [s,c]=await Promise.all([request<Script[]>('/api/automations'),request<Connection>('/api/youtube/status')]);setScripts(s);setConnection(c);}
  useEffect(()=>{refresh().catch(e=>setError(e.message));const timer=setInterval(()=>refresh().catch(()=>{}),3000);return()=>clearInterval(timer);},[]);
  function update(patch:Partial<Recipe>){setRecipe(old=>({...old,...patch}));}
- async function configure(file?:File){if(!file)return;setBusy('configure');setError('');try{const parsed=JSON.parse(await file.text());setConnection(await request<Connection>('/api/youtube/configure','POST',parsed));setMessage('Client configured. Connect your channel next.');}catch(e){setError((e as Error).message);}finally{setBusy('');}}
+ async function readClientFile(file:File){
+  setReadingClient(true);setSetupError('');
+  try{setClientJson(await file.text());}
+  catch{setSetupError('Could not read that file. Choose it again or paste its contents.');}
+  finally{setReadingClient(false);}
+ }
+ async function configure(){
+  if(setupBusy||connection.connected||!clientJson.trim())return;
+  let parsed:unknown;
+  try{parsed=JSON.parse(clientJson.trim());}
+  catch{setSetupError('Paste the entire JSON file from your Google Desktop app client.');return;}
+  setBusy('configure');setSetupError('');
+  try{
+   setConnection(await request<Connection>('/api/youtube/configure','POST',parsed));
+   setMessage('Credentials saved. Connect your channel next.');
+   setupDialog.current?.close();
+  }catch(e){setSetupError((e as Error).message);}
+  finally{setBusy('');}
+ }
  async function connect(){const win=window.open('','openclip-youtube','width=620,height=760');setBusy('connect');setError('');try{const data=await request<{url:string}>('/api/youtube/connect','POST',{});if(win)win.location.href=data.url;else window.location.href=data.url;}catch(e){win?.close();setError((e as Error).message);}finally{setBusy('');}}
  async function save(run:boolean){setBusy('save');setError('');setMessage('');try{const body=jsonMode?JSON.parse(json):recipe;const script=await request<Script>(editId?`/api/automations/${editId}`:'/api/automations',editId?'PUT':'POST',body);if(run)await request(`/api/automations/${script.id}/start`,'POST',{});setEditId(null);setMessage(run?'Workflow started. You can follow each stage below.':'Script saved. Start it when ready.');await refresh();}catch(e){setError((e as Error).message);}finally{setBusy('');}}
  async function action(id:string,action:string,body={}){setBusy(id);setError('');try{await request(`/api/automations/${id}/${action}`,'POST',body);await refresh();}catch(e){setError((e as Error).message);}finally{setBusy('');}}
  return <section className="automation-page"><div className="project-heading"><div><div className="source-kind"><Settings2 size={16}/>Automation studio</div><h1>A link. A repeatable workflow.</h1><p>Capture → clip → edit → prepare metadata → upload privately.</p></div></div>
  {error&&<div role="alert" className="error-banner">{error}<button aria-label="Dismiss automation error" onClick={()=>setError('')}>×</button></div>}{message&&<p role="status" className="automation-message"><Check size={16}/>{message}</p>}
- <section className="youtube-connection"><div><h2>YouTube channel</h2><p>{connection.connected?`Connected to ${connection.channelTitle}`:connection.configured?'OAuth client configured. Connect the channel you want to upload to.':'One-time setup: connect your own YouTube channel.'}</p></div><div className="connection-actions">{!connection.connected&&<><label className="secondary file-button"><Upload size={15}/>Load OAuth client JSON<input type="file" accept=".json,application/json" aria-label="YouTube OAuth client JSON" onChange={e=>configure(e.target.files?.[0])}/></label><button className="primary" disabled={!connection.configured||!!busy} onClick={connect}>Connect YouTube<ExternalLink size={15}/></button></>}{connection.connected&&<button className="secondary" onClick={async()=>{await request('/api/youtube/disconnect','POST',{});await refresh();}}>Disconnect</button>}</div><details className="youtube-setup"><summary>How to set up YouTube access</summary><ol><li>In <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noreferrer">Google Cloud</a>, create a project and enable YouTube Data API v3.</li><li>Configure the OAuth consent screen. While testing, add your Google account as a test user.</li><li>Create an OAuth client of type <strong>Desktop app</strong>, download its JSON, then load it here.</li><li>Click Connect YouTube and authorize your channel. Tokens remain in this project’s local cache.</li></ol><p>Google may require app verification for broader use. External apps in Testing can have short-lived authorizations. You can prepare and edit clips without connecting.</p></details></section>
+ <section className="youtube-connection">
+  <div><h2>YouTube channel</h2><p>{connection.connected?`Connected to ${connection.channelTitle}`:connection.configured?'OAuth client configured. Connect the channel you want to upload to.':'One-time setup: connect your own YouTube channel.'}</p></div>
+  <div className="connection-actions">
+   <button type="button" className="secondary" aria-haspopup="dialog" disabled={!!busy&&busy!=='configure'} onClick={()=>setupDialog.current?.showModal()}><Settings2 size={15}/>YouTube setup</button>
+   {connection.connected?<button className="secondary" onClick={async()=>{await request('/api/youtube/disconnect','POST',{});await refresh();}}>Disconnect</button>:<button className="primary" disabled={!connection.configured||!!busy} onClick={connect}>Connect YouTube<ExternalLink size={15}/></button>}
+  </div>
+ </section>
+ <dialog ref={setupDialog} className="youtube-setup-dialog" aria-labelledby="youtube-setup-title"
+  onCancel={e=>{if(setupBusy)e.preventDefault();}}
+  onClose={()=>{setClientJson('');setSetupError('');}}>
+  <h2 id="youtube-setup-title"><Settings2 size={20}/>Set up YouTube access</h2>
+  <YouTubeSetupGuide connected={connection.connected}/>
+  {connection.connected?<><p>To change credentials, disconnect your channel first.</p><footer><button type="button" className="secondary" onClick={()=>setupDialog.current?.close()}>Close</button></footer></>:
+   <form onSubmit={e=>{e.preventDefault();void configure();}}>
+    <label htmlFor="youtube-client-json">OAuth client JSON</label>
+    <textarea id="youtube-client-json" aria-describedby="youtube-setup-hint" rows={5} spellCheck={false} autoComplete="off" disabled={setupBusy} value={clientJson} placeholder="Paste the contents of your JSON file" onChange={e=>{setClientJson(e.target.value);setSetupError('');}}/>
+    <label className="secondary file-button youtube-client-file"><Upload size={15}/>Choose JSON file<input type="file" accept=".json,application/json" aria-label="Choose YouTube OAuth client JSON file" disabled={setupBusy} onChange={e=>{
+     const file=e.currentTarget.files?.[0];
+     e.currentTarget.value='';
+     if(file)void readClientFile(file);
+    }}/></label>
+    <p id="youtube-setup-hint">OpenClip saves your credentials locally. After saving, choose Connect YouTube to authorize your channel.</p>
+    {setupError&&<p className="trim-warning" role="alert">{setupError}</p>}
+    <footer>
+     <button type="button" className="secondary" disabled={setupBusy} onClick={()=>setupDialog.current?.close()}>Cancel</button>
+     <button type="submit" className="primary" disabled={setupBusy||!clientJson.trim()}>{busy==='configure'&&<Loader2 size={16} className="spin"/>}Save credentials</button>
+    </footer>
+   </form>}
+ </dialog>
  <section className="automation-builder"><div className="builder-heading"><h2>{editId?'Edit saved script':'Create a workflow'}</h2><label className="check-option"><input type="checkbox" checked={jsonMode} onChange={e=>{setJsonMode(e.target.checked);if(e.target.checked)setJson(JSON.stringify(recipe,null,2));}}/>Edit script JSON</label></div>
  {jsonMode?<label className="script-editor"><span>Declarative script · no shell commands or API keys</span><textarea aria-label="Automation script JSON" rows={24} value={json} onChange={e=>setJson(e.target.value)}/></label>:<div className="automation-form"><div className="automation-source"><label>Workflow name<input aria-label="Workflow name" value={recipe.name} maxLength={80} onChange={e=>update({name:e.target.value})}/></label><label>YouTube video or stream link<div className="url-row"><Link2 size={17}/><input aria-label="Automation source URL" type="url" value={recipe.url} placeholder="https://www.youtube.com/watch?v=…" onChange={e=>update({url:e.target.value})}/></div></label><label>What is happening? · optional, used on clips<textarea aria-label="Automation source context" maxLength={140} rows={2} value={recipe.contextText} placeholder="Who is speaking, what the challenge is, or what the audience needs to know." onChange={e=>update({contextText:e.target.value})}/></label><div className="settings-grid"><label>Source<select aria-label="Automation source mode" value={recipe.sourceMode} onChange={e=>update({sourceMode:e.target.value})}><option value="auto">Detect video or live stream</option><option value="vod">Recorded video</option><option value="live">Wait for this stream to go live</option></select></label><label>Speech model<select aria-label="Automation speech model" value={recipe.options.model} onChange={e=>update({options:{...recipe.options,model:e.target.value}})}><option value="small.en">Small · English</option><option value="small">Small · multilingual</option><option value="medium">Medium · multilingual</option></select></label><label>Live segment · seconds<input aria-label="Live segment seconds" type="number" min={60} max={900} step={60} value={recipe.segmentSeconds} onChange={e=>update({segmentSeconds:e.target.valueAsNumber})}/></label><label>Max segments<input aria-label="Maximum segments" type="number" min={1} max={288} value={recipe.maxSegments} onChange={e=>update({maxSegments:e.target.valueAsNumber})}/></label></div><small>Live capture starts at the current live edge. Finished segments are processed while recording continues. If the CPU backlog fills, capture pauses; resuming can leave gaps.</small></div>
  <div className="automation-edit"><label>Export format<select aria-label="Automation export format" value={recipe.options.outputFormat||'shorts'} onChange={e=>setRecipe({...recipe,options:{...recipe.options,outputFormat:e.target.value},metadata:{...recipe.metadata,descriptionTemplate:e.target.value==='video'?(recipe.metadata.descriptionTemplate||'').replace(/#Shorts\b/gi,''):recipe.metadata.descriptionTemplate}})}><option value="shorts">Shorts · 1080 × 1920</option><option value="video">Video · 1920 × 1080</option></select></label><label>Edit template<select aria-label="Automation edit template" value={recipe.template} onChange={e=>update({template:e.target.value,outputMode:e.target.value==='ranked-moments'?'compilation':'clips'})}>{templates.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label>{selected&&<><TemplatePreview key={selected.id} template={selected} compact/><small>{selected.description}</small></>}<div className="settings-grid"><label>Suggestions per source<select aria-label="Automation clip count" value={recipe.options.count} onChange={e=>update({options:{...recipe.options,count:Number(e.target.value)}})}>{[3,4,5,6,7,8].map(n=><option key={n} value={n}>Up to {n}</option>)}</select></label><label>Minimum selection score<input aria-label="Minimum selection score" type="number" min={0} max={100} value={recipe.minScore} onChange={e=>update({minScore:e.target.valueAsNumber})}/></label></div>{recipe.outputMode==='compilation'&&<p className="setup-warning">Ranked Moments builds a real 2–5 clip countdown. It needs at least two eligible moments.</p>}</div>

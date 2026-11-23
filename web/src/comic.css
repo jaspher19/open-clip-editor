@@ -13,6 +13,32 @@ body{background:var(--dots),repeating-conic-gradient(from 3deg at 62% 18%,#ffd23
 ::selection{background:var(--yellow);color:var(--ink)}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--blue-deep);outline-offset:3px}
 
+.youtube-setup-dialog {
+ width:min(480px,calc(100% - 32px));
+ max-height:calc(100dvh - 32px);
+ overflow:auto;
+ padding:clamp(16px,4vw,24px);
+ background:var(--dots),var(--paper);
+ border:4px solid var(--ink);
+ border-radius:8px;
+ box-shadow:var(--pop-lg);
+ color:var(--ink);
+}
+.youtube-setup-dialog::backdrop{background:#16121f8c}
+.automation-page .youtube-setup-dialog h2{display:flex;align-items:center;gap:8px;margin:0;font:28px/1 var(--display);letter-spacing:.5px}
+.youtube-guide{margin:16px 0}
+.youtube-guide-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.youtube-guide-steps button{padding:6px;min-height:40px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;line-height:1.15;cursor:pointer}
+.youtube-guide-steps button:hover,.youtube-guide-steps button[aria-pressed=true]{background:var(--yellow)}
+.youtube-guide-steps button[aria-pressed=true]{box-shadow:0 2px 0 var(--ink)}
+.youtube-guide-panel img{display:block;width:100%;height:auto;border:2px solid var(--ink);border-radius:8px}
+.automation-page .youtube-guide-panel p{margin:8px 0;font-size:14px;line-height:1.45}
+.youtube-setup-dialog a{color:var(--blue-deep);text-decoration:underline;text-underline-offset:3px}
+.youtube-setup-dialog form{border-top:1px solid var(--ink);padding-top:14px}
+.youtube-setup-dialog textarea{display:block;width:100%;margin:6px 0 10px;padding:10px;resize:vertical;font:13px/1.5 ui-monospace,monospace}
+.youtube-client-file:focus-within{outline:3px solid var(--blue-deep);outline-offset:3px}
+.youtube-setup-dialog footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}
+
 /* Re-ink every base rule that assumed light text on a dark panel (generated from style.css). */
 .breadcrumb,.breadcrumb strong,.section-kicker,.home-heading>p,.import-heading,.import-heading>span,.import-panel form>label,.url-row>svg,.upload-separator,.dropzone,.dropzone strong,.dropzone small,.field-label,.text-button,.text-button:hover,.advanced-settings>p,.how-it-works svg,.how-it-works p,.setup-warning,.error-banner,.error-banner>button,.upload-progress>button,.source-kind,.project-heading p,.processing-title,.processing-title>span,.stage-rail>span.current,.job-failure,.clip-toolbar p,.score,.keep-toggle,.clip-source,.download-link,.dirty-note,.empty-clips h3,.preview-pending,.editor-dialog,.editor-header span,.icon-button,.preview-caption,.trim-duration,.trim-warning,.transcript-heading>div,.transcript-heading>span,.word-tools button,.word-tools button.chosen,.transcript-help,.word,.word.selected,.word:hover,.editor-tip,.editor-tip p,.loading-words,.music-controls small,.sidecar-links a,.sidecar-links button,.template-caption,.template-name,.template-card>small,.template-description p,.hook-field textarea,.hook-field small,.template-badge,.editor-tabs button,.editor-tabs button[aria-selected=true],.automation-page p,.youtube-setup,.youtube-setup summary,.youtube-setup a,.automation-form label,.metadata-panel label,.automation-form textarea,.metadata-panel textarea,.script-editor textarea,.automation-form small,.script-editor>span,.run-status,.run-status.running,.run-summary,.publication summary span,.publication a,.publication small,.run-log,.run-log time,.automation-message,.clip-context,.source-context-review,.metadata-panel p,.metadata-panel small,.template-section .reference-link,.template-description>details,.template-preview,.sample-mode button,.sample-mode button[aria-pressed=true],.frame-controls output,.template-preview .sample-fidelity,.template-description .template-preview .sample-fidelity,.sample-layer-note,.sample-timing>summary,.active-layers,.reference-cue,.reference-cue>span:first-child,.reference-cue strong,.reference-cue em,.timing-accuracy,.timing-download,.posting-form label,.posting-form input,.posting-form select,.posting-form textarea,.posting-page .muted,.post-card p,.post-state,.posting-empty{color:var(--ink-soft)}
 

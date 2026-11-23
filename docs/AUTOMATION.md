@@ -6,8 +6,8 @@ Open **Automation** in the sidebar. Choose a source, template, context and metad
 
 1. Create a [Google Cloud project](https://console.cloud.google.com/) and enable YouTube Data API v3.
 2. Configure its OAuth consent screen. Add your Google account as a test user while the application is in Testing.
-3. Create an OAuth client with application type **Desktop app** and download the JSON into this project’s ignored `.cache/` folder.
-4. In Automation, load that JSON and click **Connect YouTube**. Authorize the channel shown by Google.
+3. Create an OAuth client with application type **Desktop app** and download its JSON file.
+4. Open **Automation → YouTube setup**, paste the JSON or choose the file, then click **Save credentials**. Click **Connect YouTube** and authorize the channel shown by Google.
 
 The app uses a loopback callback, PKCE, a one-time state token, and offline refresh credentials. The browser receives only connection status and the channel name. OAuth files remain under `.cache/youtube/`; upload-session URLs remain under `work/automations/`. These locations are ignored by Git and excluded from source packages. Treat a copy of this working folder as containing account credentials. Disconnect stops enabled workflows and removes the saved token. Google consent-screen Testing and app-verification requirements can affect how long authorization lasts; see [installed-app OAuth](https://developers.google.com/identity/protocols/oauth2/native-app).
 

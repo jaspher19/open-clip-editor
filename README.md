@@ -258,8 +258,8 @@ Restart the app after editing `.env`. AI features send transcript text to the pr
 
 1. In [Google Cloud Console](https://console.cloud.google.com/), create a project and enable **YouTube Data API v3**.
 2. Set up the OAuth consent screen and add your Google account as a **test user**.
-3. Create an **OAuth client ID** of type **Desktop app** and save its JSON inside this project's `.cache/` folder (it is ignored by Git).
-4. In OpenClip, open **Automation**, load that JSON and click **Connect YouTube** (the browser asks for your consent once).
+3. Create an **OAuth client ID** of type **Desktop app** and download its JSON file.
+4. In **Automation → YouTube setup**, paste the JSON or choose the downloaded file, then click **Save credentials**. Click **Connect YouTube** and authorize your channel.
 5. Open **Posting calendar**, add edited clips (or any finished MP4), edit the title, description and tags, and save drafts.
 6. Select drafts and press **Upload selected**. Uploads are **private by default**. A scheduled post uploads now and YouTube publishes it at the time you set. New Google Cloud projects may be limited to private uploads until Google audits them.
 7. Optional: in **Posting calendar → Auto-post**, turn on auto-posting. When a project finishes, its best clean clips (kept, exported, no warnings) upload as public right away (2 by default) and up to 9 more are scheduled at your daily release times, using titles built from the on-screen hook with an emoji and hashtags. Each project auto-posts once, and nothing already uploaded is uploaded again. YouTube allows about 6 uploads a day by default, so keep the numbers near that.
