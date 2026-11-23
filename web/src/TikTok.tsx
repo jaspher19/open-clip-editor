@@ -123,7 +123,7 @@ export function TikTokPost({post,onClose,onConnect}:{post:CalendarPost;onClose:(
  return <dialog ref={dialog} className="post-editor tiktok-post-dialog" aria-labelledby="tiktok-post-title" onClose={onClose} onCancel={e=>{if(busy)e.preventDefault();}}>
   <header><div><h2 id="tiktok-post-title">Send to TikTok</h2><p className="muted">{post.metadata.title}</p></div><button type="button" className="icon-button" aria-label="Close" disabled={!!busy} onClick={()=>dialog.current?.close()}><X size={20}/></button></header>
   <div className="post-editor-body">
-   <div className="post-editor-media"><video controls preload="metadata" src={`/api/posting/${post.id}/video`}/></div>
+   <div className="post-editor-media"><video controls preload="metadata" src={`${endpoint}/video`}/></div>
    <div className="post-editor-fields">
     {connection?.connected?<p>Send to <strong>{connection.displayName}</strong> for review.</p>:connection&&<p>TikTok is not connected. <button type="button" className="text-button" onClick={()=>{dialog.current?.close();onConnect();}}>Connect in Automation</button></p>}
     {draft&&<>

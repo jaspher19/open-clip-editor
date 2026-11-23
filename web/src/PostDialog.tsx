@@ -1,8 +1,9 @@
 import {useEffect,useRef,useState} from 'react';
 import {Upload,X,Loader2,ExternalLink,CalendarClock,MonitorPlay,Smartphone,RefreshCw,Sparkles} from 'lucide-react';
 import type {Job,Clip,UploadMetadata} from './types';import {TitleOptions} from './ThumbnailPicker';
+import {TikTokExport} from './TikTokExport';
 
-type Publication={metadata:UploadMetadata;exported:boolean;format:'shorts'|'video';connected:boolean;channelTitle:string;ai:boolean};
+type Publication={metadata:UploadMetadata;exported:boolean;format:'shorts'|'video';media?:{width:number;height:number};connected:boolean;channelTitle:string;ai:boolean};
 type AiDraft={metadata:UploadMetadata;hashtags:string[];rationale:string;trendingUsed:number};
 type Post={id:string;state:string;error?:string;url?:string};
 const CATEGORIES:[string,string][]=[['20','Gaming'],['24','Entertainment'],['22','People & Blogs'],['23','Comedy'],['17','Sports'],['10','Music'],['27','Education'],['28','Science & Technology'],['26','How-to & Style'],['19','Travel & Events']];
@@ -14,12 +15,12 @@ async function api<T>(url:string,init?:RequestInit):Promise<T>{const r=await fet
  const d=await r.json();if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);return d;}
 const localInput=(d:Date)=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
 
-/** Review a finished clip's YouTube details, then upload it in one step. */
-export default function PostDialog({job,clip,onClose,onReexport}:{job:Job;clip:Pick<Clip,'id'|'title'>&{titleOptions?:string[]};onClose:()=>void;onReexport?:(format:'video'|'shorts')=>void}){
+export default function PostDialog({job,clip,onClose,onReexport,onConnect}:{job:Job;clip:Pick<Clip,'id'|'title'>&{titleOptions?:string[]};onClose:()=>void;onReexport?:(format:'video'|'shorts')=>void;onConnect:()=>void}){
  const dialog=useRef<HTMLDialogElement>(null);
  const [pub,setPub]=useState<Publication|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[post,setPost]=useState<Post|null>(null),[postAs,setPostAs]=useState<'video'|'shorts'>('shorts'),[writing,setWriting]=useState(false),[ai,setAi]=useState<AiDraft|null>(null);
  const [title,setTitle]=useState(''),[description,setDescription]=useState(''),[tags,setTags]=useState(''),[categoryId,setCategoryId]=useState('22');
  const [privacy,setPrivacy]=useState('private'),[kids,setKids]=useState<''|'no'|'yes'>(''),[publishAt,setPublishAt]=useState(localInput(new Date(Date.now()+3600000)));
+ const [destination,setDestination]=useState<'youtube'|'tiktok'>('youtube'),[preparingTikTok,setPreparingTikTok]=useState(false);
  useEffect(()=>{dialog.current?.showModal();api<Publication>(`/api/jobs/${job.id}/clips/${clip.id}/publication`).then(p=>{setPub(p);setPostAs(p.format);setTitle(p.metadata.title.slice(0,100));setDescription(p.metadata.description||'');setTags((p.metadata.tags||[]).join(', '));setCategoryId(p.metadata.categoryId||'22');}).catch(e=>setError(e.message));},[job.id,clip.id]);
  // Follow the upload until YouTube reports a final state.
  useEffect(()=>{if(!post||DONE.test(post.state))return;const timer=setInterval(()=>api<{posts:Post[]}>('/api/posting').then(r=>{const next=r.posts.find(p=>p.id===post.id);if(next)setPost(next);}).catch(()=>{}),2000);return ()=>clearInterval(timer);},[post]);
@@ -33,11 +34,21 @@ export default function PostDialog({job,clip,onClose,onReexport}:{job:Job;clip:P
  }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  const close=()=>{dialog.current?.close();onClose();};
  const finished=post&&DONE.test(post.state),uploading=post&&post.state==='uploading';
- return <dialog ref={dialog} className="editor-dialog post-dialog" aria-labelledby="post-title" onCancel={e=>{e.preventDefault();close();}}>
-  <header className="editor-header"><div><span>Post to YouTube{pub?.channelTitle?` · ${pub.channelTitle}`:''}</span><h2 id="post-title">Ready to post?</h2></div><button className="icon-button" aria-label="Close" onClick={close}><X size={18}/></button></header>
+ const portrait=!!pub&&(pub.media?pub.media.width<pub.media.height:pub.format==='shorts');
+ return <dialog ref={dialog} className="editor-dialog post-dialog" aria-labelledby="post-title" onCancel={e=>{if(e.target!==e.currentTarget)return;e.preventDefault();if(!preparingTikTok)close();}}>
+  <header className="editor-header"><div><span>{destination==='youtube'?`Post to YouTube${pub?.channelTitle?` · ${pub.channelTitle}`:''}`:'Send to TikTok Inbox'}</span><h2 id="post-title">Ready to post?</h2></div><button className="icon-button" disabled={preparingTikTok} aria-label="Close" onClick={close}><X size={18}/></button></header>
   <div className="post-body">
+   {!post&&<div className="post-destinations" role="group" aria-label="Posting destination">
+    <button type="button" aria-pressed={destination==='youtube'} disabled={busy||preparingTikTok} onClick={()=>{setDestination('youtube');if(pub)setError('');}}><MonitorPlay size={17}/>YouTube</button>
+    <button type="button" aria-pressed={destination==='tiktok'} disabled={busy||preparingTikTok} onClick={()=>{setDestination('tiktok');if(pub)setError('');}}><Smartphone size={17}/>TikTok</button>
+   </div>}
    {!pub&&!error&&<p className="loading-words"><Loader2 className="spin" size={16}/>Writing the title and description…</p>}
-   {pub&&!post&&<form id="post-form" onSubmit={e=>{e.preventDefault();submit(true);}}>
+   {pub&&destination==='tiktok'&&<div className="post-destination-details">
+    <p>TikTok receives the finished portrait video in your Inbox, where you can review and publish it.</p>
+    {!pub.exported?<p className="trim-warning">Export the finished clip first.</p>:!portrait?<p className="trim-warning">TikTok needs a portrait export.</p>:null}
+    {pub.exported&&!portrait&&onReexport&&<button type="button" className="secondary" onClick={()=>{onReexport('shorts');close();}}><RefreshCw size={15}/>Re-export vertically</button>}
+   </div>}
+   {pub&&!post&&destination==='youtube'&&<form id="post-form" onSubmit={e=>{e.preventDefault();submit(true);}}>
     <div className="format-choice" role="radiogroup" aria-label="Post as"><button type="button" role="radio" aria-checked={postAs==='video'} className={postAs==='video'?'chosen':''} onClick={()=>setPostAs('video')}><MonitorPlay size={20}/><strong>Main video</strong><small>16:9 on your channel's Videos tab</small></button><button type="button" role="radio" aria-checked={postAs==='shorts'} className={postAs==='shorts'?'chosen':''} onClick={()=>setPostAs('shorts')}><Smartphone size={20}/><strong>Shorts</strong><small>Vertical, up to 3 minutes</small></button></div>
     {mismatch&&onReexport&&<button type="button" className="secondary" onClick={()=>{onReexport(postAs);close();}}><RefreshCw size={15}/>Re-export as {postAs==='video'?'a main video (1920 × 1080)':'a Short (1080 × 1920)'}</button>}
     {!pub.connected&&<p className="setup-warning">YouTube isn't connected. Save a draft now and upload it from the Posting calendar later, or connect in Automation.</p>}
@@ -63,6 +74,9 @@ export default function PostDialog({job,clip,onClose,onReexport}:{job:Job;clip:P
    </div>}
    {error&&<p className="trim-warning" role="alert">{error}</p>}
   </div>
-  <footer className="editor-footer"><button className="text-button" onClick={close}>{post?'Close':'Cancel'}</button>{pub&&!post&&<div><button className="secondary" type="button" disabled={busy||!!problem} onClick={()=>submit(false)}>Save draft</button><button className="primary" type="submit" form="post-form" disabled={busy||!!problem||!pub.connected}>{busy?<Loader2 className="spin" size={16}/>:<Upload size={16}/>}{privacy==='schedule'?'Schedule upload':'Upload to YouTube'}</button></div>}</footer>
+  <footer className="editor-footer"><button className="text-button" disabled={preparingTikTok} onClick={close}>{post?'Close':'Cancel'}</button>
+   {pub&&!post&&(destination==='youtube'?<div><button className="secondary" type="button" disabled={busy||!!problem} onClick={()=>submit(false)}>Save draft</button><button className="primary" type="submit" form="post-form" disabled={busy||!!problem||!pub.connected}>{busy?<Loader2 className="spin" size={16}/>:<Upload size={16}/>}{privacy==='schedule'?'Schedule upload':'Upload to YouTube'}</button></div>:
+    <div><TikTokExport jobId={job.id} clipId={clip.id} onConnect={onConnect} disabled={!pub.exported||!portrait} onPreparing={setPreparingTikTok}/></div>)}
+  </footer>
  </dialog>;
 }

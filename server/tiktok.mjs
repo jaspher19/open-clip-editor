@@ -267,9 +267,9 @@ export class TikTokDrafts {
  }
 }
 
-export function registerTikTokRoutes(app,{client,drafts,posting}){
+export function registerTikTokRoutes(app,{client,drafts,posting,tiktokExports}){
  const redirect=req=>`${req.headers.origin||`http://localhost:${req.socket.localPort}`}/api/tiktok/callback`;
- const calendarPost=req=>posting.get(req.params.id);
+ const getPost=req=>{const id=req.params.id;if(tiktokExports&&fs.existsSync(path.join(tiktokExports.folder(id),'post.json')))return tiktokExports.get(id);return posting.get(id);};
  app.get('/api/tiktok/status',(req,res)=>res.json(client.status()));
  app.post('/api/tiktok/configure',(req,res)=>res.json(client.configure(req.body||{})));
  app.post('/api/tiktok/connect',(req,res)=>res.json({url:client.authorizeUrl(redirect(req))}));
@@ -279,10 +279,11 @@ export function registerTikTokRoutes(app,{client,drafts,posting}){
  });
  app.post('/api/tiktok/disconnect',async(req,res)=>res.json(await client.disconnect()));
  app.get('/api/posting/:id/tiktok',(req,res)=>{
-  const post=calendarPost(req);
+  const post=getPost(req);
   res.json({...drafts.view(drafts.get(post)),videoError:tiktokVideoError(post.media)});
  });
- app.put('/api/posting/:id/tiktok',(req,res)=>res.json(drafts.edit(calendarPost(req),req.body?.caption)));
- app.post('/api/posting/:id/tiktok',async(req,res)=>res.json(await drafts.send(calendarPost(req),req.body?.consent,req.body?.accountId)));
- app.post('/api/posting/:id/tiktok/check',async(req,res)=>res.json(await drafts.check(calendarPost(req))));
+ app.get('/api/posting/:id/tiktok/video',(req,res)=>res.sendFile(getPost(req).file,{dotfiles:'allow'}));
+ app.put('/api/posting/:id/tiktok',(req,res)=>res.json(drafts.edit(getPost(req),req.body?.caption)));
+ app.post('/api/posting/:id/tiktok',async(req,res)=>res.json(await drafts.send(getPost(req),req.body?.consent,req.body?.accountId)));
+ app.post('/api/posting/:id/tiktok/check',async(req,res)=>res.json(await drafts.check(getPost(req))));
 }

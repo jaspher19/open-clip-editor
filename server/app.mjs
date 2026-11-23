@@ -8,7 +8,7 @@ import {ReferenceLibrary} from './references.mjs';
 import {validateClipEdits} from './clip-edits.mjs';import {clipTraits,refreshLessons,loadLessons} from './learning.mjs';import {autoPostJob,loadAutopost,saveAutopost} from './autopost.mjs';import {playedLength} from './edl.mjs';import {PLAY_MAX,SPAN_MAX,momentShape} from './selection.mjs';import {jobTimeline,bestUnused} from './timeline.mjs';import {MusicLibrary} from './music.mjs';import {titleClips} from './titles.mjs';import {cueSums,loudness,categoryScores} from './moments.mjs';
 // Sound and publishing routes live in their own modules.
 import {registerSoundRoutes} from './sounds.mjs';import {registerPublishRoutes} from './publish-routes.mjs';
-import {TikTokClient,TikTokDrafts,registerTikTokRoutes} from './tiktok.mjs';
+import {TikTokClient,TikTokDrafts,registerTikTokRoutes,tiktokVideoError} from './tiktok.mjs';
 import {YouTubeClient,uploadBody} from './youtube.mjs';import {AutomationStore,AutomationEngine,validateRecipe} from './automation.mjs';import {enrichClip,publicationMetadata,normalizeTemplateMeta} from './context.mjs';import {renderCompilation} from './compilation.mjs';import {rawClip} from './raw.mjs';import {checkUpdates} from './updates.mjs';import {loadEnv,envStatus} from './env.mjs';import {validateCut,renderCut,cutWords,CAPTION_MAX_SECONDS} from './cut.mjs';import {ensureSection,readSections} from './remote.mjs';
 const busyStatuses=['queued','running','exporting'];
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
@@ -42,7 +42,8 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
  // A key added to .env applies on the next request, no restart needed (one file stat per request).
  app.use((req,res,next)=>{try{loadEnv();}catch{}next();});
  app.use(express.json({limit:'8mb'}));
- registerTikTokRoutes(app,{client:tiktok,drafts:new TikTokDrafts({root:path.join(store.root,'tiktok'),client:tiktok}),posting});
+ const tiktokExports=new PostingQueue({root:path.join(store.root,'tiktok-exports'),youtube});
+ registerTikTokRoutes(app,{client:tiktok,drafts:new TikTokDrafts({root:path.join(store.root,'tiktok'),client:tiktok}),posting,tiktokExports});
  // The app may live under a dot-folder (for example ~/.projects); Express refuses those paths unless told otherwise.
  const FILES={dotfiles:'allow'};const externalBusyJobs=new Set();const get=(req)=>store.get(req.params.id);
  const editable=job=>{if(externalBusyJobs.has(job.id)||[...engine.active.values()].some(a=>a.jobId===job.id))throw fail('Stop this job’s automation before editing or exporting it',409);if(queue.isBusy(job.id)||busyStatuses.includes(job.status))throw fail('Wait for this job to finish or cancel it before editing',409);};
@@ -89,10 +90,27 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
   const draft=await writeMetadata({kind:summary?'summary':'clip',format,sourceTitle:job.title,contextText:clip?.settings?.contextText||job.options.contextText||clip?.contextText||'',transcript:summary?inside(summary.moments.map(m=>[m.start,m.end])):inside(clipRanges),moments:summary?.moments||[],chapters:summary?.chapters||[],trending,sourceUrl:job.source?.url||'',people:clipPeople(streamPeople(job,{folder}),summary?'':inside(clipRanges.map(([a,b])=>[a-30,b+15]))),fallbackTitle:clip?.title||''}).catch(e=>{throw fail(e.message,502);});
   res.json({metadata:{title:draft.title,description:draft.description,tags:draft.tags,categoryId},hashtags:draft.hashtags,rationale:draft.rationale,trendingUsed:trending.length,model:draft.model});});
  const inCalendar=async(res,jobId,clipId,file)=>{const mine=posting.list().filter(p=>p.source?.jobId===jobId&&p.source?.clipId===clipId),posted=mine.find(p=>p.videoId||posting.public(p).locked);if(posted){res.json({...posting.public(posted),existing:'posted'});return true;}const draft=mine[0];if(!draft)return false;let mtime=0;try{mtime=fs.statSync(file).mtimeMs;}catch{}const fresh=mtime>(draft.source.videoMtime||0)+1?posting.replaceVideo(draft.id,file,await probe(file)):draft;res.json({...posting.public(fresh),existing:fresh===draft?'same':'updated'});return true;};
+ const cutPostMetadata=(cut,job)=>{const title=String(cut.title||job.title||'Video').slice(0,100);return {title,description:[title,job.title&&`From: ${job.title}`,job.source?.url||''].filter(Boolean).join('\n'),tags:[],categoryId:'20'};};
  app.post('/api/posting/export',async(req,res)=>{const job=store.get(req.body.jobId);editable(job);
+  if(req.body.destination==='tiktok'){
+   const clipId=req.body.clipId,source={jobId:job.id,clipId},exported=sourceFile({source});
+   if(!exported||exported.clip.dirty||!fs.existsSync(exported.file))throw fail('Export the finished clip before sending it to TikTok');
+   const videoMtime=fs.statSync(exported.file).mtimeMs;
+   // Keep TikTok uploads tied to the version reviewed, independently of the YouTube calendar.
+   const existing=()=>tiktokExports.list().find(p=>p.source?.jobId===job.id&&p.source?.clipId===clipId&&p.source.videoMtime===videoMtime&&fs.existsSync(p.file));
+   const current=existing(),media=current?.media||await probe(exported.file),problem=tiktokVideoError(media);
+   if(problem)throw fail(problem);
+   if(fs.statSync(exported.file).mtimeMs!==videoMtime)throw fail('The export changed while opening TikTok. Try again.',409);
+   const saved=current||existing();
+   if(saved)return res.json({...tiktokExports.public(saved),existing:'same'});
+   const cut=String(clipId).startsWith('cut:')&&job.cuts?.find(c=>`cut:${c.id}`===clipId);
+   const metadata=cut?cutPostMetadata(cut,job):clipId==='stream-summary'?job.summary.metadata:exported.clip.metadata||publicationMetadata(exported.clip,job);
+   const post=tiktokExports.create(exported.file,media,{source,format:'auto',metadata});
+   return res.status(201).json(tiktokExports.public(post));
+  }
   // A Video cutter export: posted like any finished MP4, with plain starting details the owner edits in the calendar.
   if(String(req.body.clipId||'').startsWith('cut:')){const cut=(job.cuts||[]).find(c=>`cut:${c.id}`===req.body.clipId);if(!cut||cut.status!=='done')throw fail('Wait for this cut to finish rendering');const file=path.join(store.folder(job.id),'exports',cut.file);if(await inCalendar(res,job.id,req.body.clipId,file))return;
-   const media=await probe(file),title=String(cut.title||job.title||'Video').slice(0,100),metadata=req.body.metadata||{title,description:[title,job.title&&`From: ${job.title}`,job.source?.url||''].filter(Boolean).join(String.fromCharCode(10)),tags:[],categoryId:'20'};
+   const media=await probe(file),metadata=req.body.metadata||cutPostMetadata(cut,job),title=String(cut.title||job.title||'Video').slice(0,100);
    const post=posting.create(file,media,{...req.body,format:cut.format==='video'?'video':'shorts',metadata,label:`Cut · ${title}`,source:{jobId:job.id,clipId:req.body.clipId}});res.status(201).json(posting.public(post));return;}if(req.body.clipId==='stream-summary'){if(!job.summary)throw fail('Build the stream summary first');const file=path.join(store.folder(job.id),'exports',job.summary.filename);if(await inCalendar(res,job.id,'stream-summary',file))return;const media=await probe(file);const post=posting.create(file,media,{...req.body,metadata:req.body.metadata||job.summary.metadata,label:`Stream summary · ${job.title||'stream'}`,source:{jobId:job.id,clipId:'stream-summary'}});res.status(201).json(posting.public(post));
   // A summary is a regular video too: its thumbnail comes from its best moment, with words from the summary's title.
   const best=[...job.clips].filter(c=>c.kept!==false).sort((x,y)=>(y.score||0)-(x.score||0))[0];if(best&&req.body.autoThumbnail!==false)thumbnailFor(post,job,best,summaryText(post.metadata?.title||job.title,job)||undefined);return;}const clip=job.clips.find(c=>c.id===req.body.clipId),output=job.exports.find(e=>e.clipId===req.body.clipId);if(!clip||!output||clip.dirty)throw fail('Export the saved clip edits before scheduling');const file=path.join(store.folder(job.id),'exports',output.filename);if(await inCalendar(res,job.id,clip.id,file))return;const media=await probe(file);const metadata=req.body.metadata||clip.metadata||publicationMetadata(clip,job);const post=posting.create(file,media,{...req.body,metadata,label:clip.title,source:{jobId:job.id,clipId:clip.id}});res.status(201).json(posting.public(post));

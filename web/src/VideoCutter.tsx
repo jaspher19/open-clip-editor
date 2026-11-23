@@ -5,6 +5,7 @@ import {OUTPUT,PRESETS,defaultLayout,applyPreset,withPanel,withCamera,pixelAspec
 import {TEXT_FONTS,newText,drawTexts,loadFonts,textLayer,drawCaption,type TextItem,type CaptionLook} from './cutText';
 import {cleanCaption,CAPTION_PRESETS,captionGroups,captionAt,wordKey,cutFont} from './cutCaptions.mjs';
 import CutBox from './CutBox';import {askTip} from './TipJar';
+import {TikTokExport} from './TikTokExport';
 import './cutter.css';
 
 type Seg={start:number;end:number};
@@ -51,16 +52,19 @@ function drawFrame(ctx:CanvasRenderingContext2D,v:HTMLVideoElement,cw:number,ch:
 }
 
 /** Cut any parts of a project's video into one MP4: suggestions from the stream timeline, drag or I/O to mark, a camera + gameplay layout and text, then export. */
-export default function VideoCutter({jobs,jobId,onPick,onChanged,onNewProject,onOpenCalendar}:{jobs:Job[];jobId:string|null;onPick:(id:string)=>void;onChanged:(job:Job)=>void;onNewProject:()=>void;onOpenCalendar:()=>void}){
+export default function VideoCutter({jobs,jobId,onPick,onChanged,onNewProject,onOpenCalendar,onConnectPosting}:{jobs:Job[];jobId:string|null;onPick:(id:string)=>void;onChanged:(job:Job)=>void;onNewProject:()=>void;onOpenCalendar:()=>void;onConnectPosting:()=>void}){
  const usable=jobs.filter(j=>j.sourceUrl&&j.metadata?.duration),job=usable.find(j=>j.id===jobId)||null;
  useEffect(()=>{if(!job&&usable[0])onPick(usable[0].id);},[job?.id,usable.length]);
  if(!usable.length)return <section className="cutter"><div className="cutter-empty"><Film size={42}/><h2>Nothing to cut yet</h2><p>Start a project with a video link or a file first. Once the video is imported, cut any parts of it here.</p><button className="primary" onClick={onNewProject}><Plus size={17}/>New project</button></div></section>;
  if(!job)return <section className="cutter"><p className="muted"><Loader2 className="spin" size={16}/> Opening the project…</p></section>;
- return <CutterFor key={job.id} job={job} jobs={usable} onPick={onPick} onChanged={onChanged} onOpenCalendar={onOpenCalendar}/>;
+ return <CutterFor key={job.id} job={job} jobs={usable} onPick={onPick} onChanged={onChanged} onOpenCalendar={onOpenCalendar} onConnectPosting={onConnectPosting}/>;
 }
 
-function CutterFor({job,jobs,onPick,onChanged,onOpenCalendar}:{job:Job;jobs:Job[];onPick:(id:string)=>void;onChanged:(job:Job)=>void;onOpenCalendar:()=>void}){
+function CutterFor({job,jobs,onPick,onChanged,onOpenCalendar,onConnectPosting}:{job:Job;jobs:Job[];onPick:(id:string)=>void;onChanged:(job:Job)=>void;onOpenCalendar:()=>void;onConnectPosting:()=>void}){
  const [posted,setPosted]=useState<Record<string,string>>({}),[posting,setPosting]=useState<string|null>(null);
+ const postPicker=useRef<HTMLDialogElement>(null);
+ const [postChoice,setPostChoice]=useState<Cut|null>(null),[preparingTikTok,setPreparingTikTok]=useState(false);
+ useEffect(()=>{if(postChoice&&!postPicker.current?.open)postPicker.current?.showModal();},[postChoice]);
  const duration=job.metadata?.duration||0,video=useRef<HTMLVideoElement>(null),strip=useRef<HTMLDivElement>(null),canvas=useRef<HTMLCanvasElement>(null),drag=useRef<number|null>(null),queue=useRef<{list:Seg[];i:number}|null>(null);
  const [segs,setSegsRaw]=useState<Seg[]>(()=>loadDraft(job.id)),[markIn,setMarkIn]=useState<number|null>(null),[t,setT]=useState(0),[playing,setPlaying]=useState(false);
  const [data,setData]=useState<Timeline|null>(null),[timelineNote,setTimelineNote]=useState(''),[view,setView]=useState<[number,number]|null>(null),[pick,setPick]=useState<[number,number]|null>(null);
@@ -294,6 +298,16 @@ function CutterFor({job,jobs,onPick,onChanged,onOpenCalendar}:{job:Job;jobs:Job[
     {c.status==='done'&&!!c.sourceSide&&(c.quality||1080)>c.sourceSide+8&&<p className="cutter-note">Scaled up: this part of the stream was only {c.sourceSide}p.</p>}
     {c.preview&&<p className="cutter-note">Some parts came from the light copy (lower quality) because the full-quality download failed{c.previewReason?`: ${c.previewReason}`:''}. Export again to retry.</p>}
     {posted[c.id]&&<p className="cutter-note" role="status">{posted[c.id]} <button type="button" className="text-button" onClick={onOpenCalendar}><CalendarPlus size={14}/>Open Posting calendar</button></p>}
-    <span className="cut-item-actions">{c.status==='done'&&<button type="button" className="primary" disabled={posting===c.id||locked} title="Add this video to your Posting calendar to schedule it or upload it to YouTube" onClick={()=>postCut(c)}>{posting===c.id?<Loader2 className="spin" size={15}/>:<Upload size={15}/>}Post</button>}{c.status==='done'&&<a className="secondary" href={`/api/jobs/${job.id}/cuts/${c.id}?download=1`}><Download size={15}/>Download</a>}{c.status!=='rendering'&&<><button type="button" className="text-button" onClick={()=>loadCut(c)}>Edit again</button><button type="button" className="text-button danger-text" onClick={()=>removeCut(c)}><Trash2 size={14}/>Delete</button></>}</span></div></li>)}</ul></section>}
+    <span className="cut-item-actions">{c.status==='done'&&<button type="button" className="primary" disabled={posting===c.id||locked} aria-haspopup="dialog" onClick={()=>setPostChoice(c)}>{posting===c.id?<Loader2 className="spin" size={15}/>:<Upload size={15}/>}Post</button>}{c.status==='done'&&<a className="secondary" href={`/api/jobs/${job.id}/cuts/${c.id}?download=1`}><Download size={15}/>Download</a>}{c.status!=='rendering'&&<><button type="button" className="text-button" onClick={()=>loadCut(c)}>Edit again</button><button type="button" className="text-button danger-text" onClick={()=>removeCut(c)}><Trash2 size={14}/>Delete</button></>}</span></div></li>)}</ul></section>}
+ {postChoice&&<dialog ref={postPicker} className="editor-dialog post-dialog cut-post-dialog" aria-labelledby="cut-post-title"
+  onClose={e=>{if(e.target===e.currentTarget)setPostChoice(null);}} onCancel={e=>{if(e.target===e.currentTarget&&preparingTikTok)e.preventDefault();}}>
+  <header className="editor-header"><div><span>{postChoice.title}</span><h2 id="cut-post-title">Post this cut</h2></div><button type="button" className="icon-button" aria-label="Close" disabled={preparingTikTok} onClick={()=>postPicker.current?.close()}><X size={18}/></button></header>
+  <div className="post-body post-destination-details">
+   <div><p>Save a YouTube draft to the Posting calendar to edit its details or schedule it.</p>
+    <button type="button" className="secondary" disabled={preparingTikTok} onClick={()=>{postPicker.current?.close();void postCut(postChoice);}}><CalendarPlus size={16}/>Save YouTube draft</button></div>
+   <div><p>{postChoice.format==='shorts'?'Send this portrait cut to TikTok Inbox for review.':'Export a portrait cut to send it to TikTok.'}</p>
+    <TikTokExport jobId={job.id} clipId={`cut:${postChoice.id}`} onConnect={onConnectPosting} disabled={postChoice.format!=='shorts'} onPreparing={setPreparingTikTok}/></div>
+  </div>
+ </dialog>}
  </section>;
 }
