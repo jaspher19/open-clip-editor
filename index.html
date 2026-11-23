@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A local open-source editor for captioned vertical clips from YouTube videos and local recordings.">
+  <title>OpenClip — Make the moment yours</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-nav container">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">✂</span>OpenClip</a>
+      <nav class="site-links" aria-label="Site">
+        <a href="#editing-guide">Editing guide</a>
+        <a href="#posting-guide">Posting guide</a>
+        <a href="terms.html">Terms of Service</a>
+        <a href="privacy.html">Privacy Policy</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container home">
+    <section class="hero panel">
+      <div>
+        <h1>Find the moment.<br><em>Make it yours.</em></h1>
+        <p class="intro">Paste a public YouTube link or drop a recording. Get editable short clips with timed captions, tighter pauses and creator motion.</p>
+        <div class="actions">
+          <a class="button primary" href="downloads/open-clip-editor-source.zip" download>Download source</a>
+          <a class="button secondary" href="#install">Install locally</a>
+        </div>
+        <p class="note">Free local picks. Optional AI picks use your own key.<br>Windows first · CPU compatible · No cloud account required</p>
+      </div>
+      <figure class="preview">
+        <video controls muted playsinline loop preload="metadata" poster="media/poster.jpg" aria-label="OpenClip caption rendering demo">
+          <source src="media/demo.mp4" type="video/mp4">
+        </video>
+        <figcaption>Original renderer demo with synthetic audio and manually timed words. Not a sample of automatic transcription.</figcaption>
+      </figure>
+    </section>
+
+    <section class="features" aria-label="Features">
+      <article class="panel"><h2>Start with your video</h2><p>YouTube links and local uploads, word-level transcription, and up to eight moment suggestions.</p></article>
+      <article class="panel"><h2>Review every word</h2><p>Trim on the transcript. Fix captions. Choose face follow or preserve the complete frame.</p></article>
+      <article class="panel"><h2>Give it movement</h2><p>Caption pops, punch-ins, a progress bar, and your own music with automatic ducking.</p></article>
+    </section>
+
+    <section class="install panel" id="install">
+      <h2>Your computer. Your workspace.</h2>
+      <p>Install Node 24 LTS, Python 3.12 (or uv), and FFmpeg with libass. Extract the source on a drive with enough space, then open PowerShell there:</p>
+      <pre><code>npm ci --cache .cache/npm
+npm run setup
+npm run setup:faces
+npm run build
+npm start</code></pre>
+      <p>Open <a href="http://localhost:5173">localhost:5173</a>. Face setup is optional. First transcription downloads a model; CPU processing can take several minutes. Jobs and exports stay in the project folder.</p>
+      <p class="note">Automatic picks need review. This app provides reproducible editing presets; it does not discover live trends or predict views. YouTube availability can change. This download contains source code, not a bundled Windows executable.</p>
+    </section>
+
+    <section class="site-guide panel" id="editing-guide" aria-labelledby="editing-title">
+      <h2 id="editing-title">Editing guide</h2>
+      <ol>
+        <li>Start a project with a local recording or a supported public video link. Choose portrait for clips or landscape for longer edits.</li>
+        <li>Review the suggested clips or open Video cutter to choose a section yourself. Edit the transcript, check the framing, and preview the finished clip.</li>
+        <li>Export the MP4 or add it to the Posting Calendar. Your projects, transcript, and exports are saved in the OpenClip installation folder.</li>
+      </ol>
+    </section>
+
+    <section class="site-guide panel" id="posting-guide" aria-labelledby="posting-title">
+      <h2 id="posting-title">Posting guide</h2>
+      <p>Use Automation to connect an account. In the Posting Calendar, preview the finished video and review its caption before sending it. YouTube supports scheduling through its connection.</p>
+      <p>With a TikTok developer app that has video upload access, OpenClip sends your selected portrait video to TikTok Inbox after you confirm. Copy your TikTok caption and hashtags from OpenClip and finish the post in TikTok.</p>
+      <p><a href="https://github.com/jaspher19/open-clip-editor">Source and installation help</a> · <a href="https://github.com/jaspher19/open-clip-editor/issues">Project support</a></p>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="site-links"><a href="terms.html">Terms of Service</a><a href="privacy.html">Privacy Policy</a></div>
+      <p>OpenClip · MIT project code · Third-party dependencies keep their own licenses. This static page does not upload or process footage.</p>
+    </div>
+  </footer>
+</body>
+</html>
