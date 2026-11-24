@@ -281,12 +281,27 @@ copy .env.example .env      # macOS/Linux: cp .env.example .env
 | --- | --- | --- |
 | `GEMINI_API_KEY` | AI titles, descriptions and tags, plus AI moment picking | Free tier: <https://aistudio.google.com/app/apikey> |
 | `GROQ_API_KEY` | Same features, used as a backup if Gemini is busy | Free tier: <https://console.groq.com/keys> |
+| `OLLAMA_MODEL` | Same features with **Ollama on your own computer**: install [Ollama](https://ollama.com/download), run `ollama pull llama3.1`, then set `OLLAMA_MODEL=llama3.1`. Private, no key | Free (uses your computer) |
+| `OLLAMA_API_KEY` | Same features with **Ollama Cloud** (key from <https://ollama.com/settings/keys>; the model defaults to `gpt-oss:120b`) | Free tier |
 | `ANTHROPIC_API_KEY` | Same features with Claude, plus the optional Claude clip picker | Paid |
 | `OPENAI_API_KEY` | Optional OpenAI clip picker | Paid |
-| `METADATA_AI` | Leave blank to use the first key that's set, or force `gemini`, `groq` or `claude` | |
+| `METADATA_AI` | Leave blank to use the first one set up (Gemini, Groq, Ollama, then Claude), or force `gemini`, `groq`, `ollama` or `claude` | |
 | `YOUTUBE_REGION` | Two-letter country for the trending chart used as title-style context | |
 
 OpenClip picks up changes to `.env` by itself, no restart needed, and the home page shows which keys it found (or what is wrong with the file). AI features send transcript text to the provider you chose. Your keys stay in `.env` on your computer, and `.env` is never committed. Always review AI titles for names and facts before posting.
+
+## Optional: campaign requirements (Whop and similar)
+
+Clipping for a paid campaign? With AI set up (any of the keys above, or Ollama), **New project** shows a **Campaign requirements** box. Paste the campaign's brief, for example from a Whop campaign page: what to clip, how long, vertical or horizontal, required hashtags or tags, and what not to post.
+
+OpenClip has the AI read the brief once into rules, then:
+
+- **picks moments that follow them**: the AI scores each candidate against the rules and drops the ones that don't fit;
+- **uses the campaign's length and shape** (for example 20–40 s, vertical), always within a minute for Shorts;
+- **writes titles by its rules** (for example "Title must start with MrBeast");
+- **adds its required hashtags and @mentions** to every clip's upload details.
+
+The project page shows the rules it used. The brief is pasted text (Whop pages need a login, so OpenClip doesn't read them), and the AI treats it only as clip requirements. Always check each clip against the campaign before you submit it.
 
 ## Optional: posting to YouTube
 

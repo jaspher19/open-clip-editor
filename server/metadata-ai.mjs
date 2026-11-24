@@ -53,15 +53,22 @@ export function metadataPrompt({kind,format,sourceTitle,contextText,transcript,m
 const OPEN_PROVIDERS={
  // Gemini's free tier often answers "high demand" for its newest model, so a lighter model is tried next.
  gemini:{label:'Gemini',key:'GEMINI_API_KEY',url:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',model:env=>env.GEMINI_MODEL||'gemini-3.8-flash',fallbacks:env=>String(env.GEMINI_FALLBACK_MODELS??'gemini-3.5-flash-lite').split(',').map(s=>s.trim()).filter(Boolean)},
- groq:{label:'Groq',key:'GROQ_API_KEY',url:'https://api.groq.com/openai/v1/chat/completions',model:env=>env.GROQ_MODEL||'openai/gpt-oss-120b',fallbacks:()=>[]}
+ groq:{label:'Groq',key:'GROQ_API_KEY',url:'https://api.groq.com/openai/v1/chat/completions',model:env=>env.GROQ_MODEL||'openai/gpt-oss-120b',fallbacks:()=>[]},
+ // Ollama: the app on this computer (no key; set OLLAMA_MODEL to a model you pulled) or Ollama's cloud with OLLAMA_API_KEY.
+ // Both speak the OpenAI chat API at <host>/v1 (docs.ollama.com/api/openai-compatibility).
+ ollama:{label:'Ollama',key:'OLLAMA_API_KEY',ready:env=>!!(env.OLLAMA_API_KEY||env.OLLAMA_MODEL||env.OLLAMA_HOST),url:env=>`${ollamaBase(env)}/v1/chat/completions`,
+  model:env=>env.OLLAMA_MODEL||'gpt-oss:120b',fallbacks:()=>[],offline:env=>env.OLLAMA_API_KEY&&!env.OLLAMA_HOST?'Could not reach Ollama Cloud. Check your internet connection.':`Could not reach Ollama at ${ollamaBase(env)}. Is the Ollama app running?`}
 };
+/** Ollama's address: OLLAMA_HOST ("localhost:11434" or a full URL), else Ollama Cloud with a key, else this computer. */
+export function ollamaBase(env=process.env){const host=String(env.OLLAMA_HOST||'').trim().replace(/\/+$/,'').replace(/\/v1$/,'');if(host)return /^https?:\/\//.test(host)?host:`http://${host.replace(/^0\.0\.0\.0/,'localhost')}`;return env.OLLAMA_API_KEY?'https://ollama.com':'http://localhost:11434';}
+const providerReady=(p,env)=>p.ready?p.ready(env):!!env[p.key];
 const modelsOf=(p,env)=>[...new Set([p.model(env),...p.fallbacks(env)])];
 const hasClaude=env=>!!(env.ANTHROPIC_API_KEY||env.ANTHROPIC_AUTH_TOKEN);
 /** Providers to try in order; a busy or rate-limited one hands over to the next. */
 export function metadataProviders(env=process.env){
  const pick=String(env.METADATA_AI||'').toLowerCase();
- if(pick==='claude')return hasClaude(env)?['claude']:[];if(OPEN_PROVIDERS[pick])return env[OPEN_PROVIDERS[pick].key]?[pick]:[];
- return [...Object.keys(OPEN_PROVIDERS).filter(id=>env[OPEN_PROVIDERS[id].key]),...(hasClaude(env)?['claude']:[])];
+ if(pick==='claude')return hasClaude(env)?['claude']:[];if(OPEN_PROVIDERS[pick])return providerReady(OPEN_PROVIDERS[pick],env)?[pick]:[];
+ return [...Object.keys(OPEN_PROVIDERS).filter(id=>providerReady(OPEN_PROVIDERS[id],env)),...(hasClaude(env)?['claude']:[])];
 }
 export const metadataProvider=env=>metadataProviders(env)[0]||null;
 const busy=message=>Object.assign(new Error(message),{busy:true});
@@ -69,8 +76,9 @@ const busy=message=>Object.assign(new Error(message),{busy:true});
 async function askOpenProvider(id,{schema,system,user,env,fetchImpl,retryDelays,timeout,model}){
  const p=OPEN_PROVIDERS[id],shape=JSON.stringify(z.toJSONSchema(schema));let response,temperature=.8,jsonRetry=false;model||=p.model(env);
  for(let attempt=0;;attempt++){
-  try{response=await fetchImpl(p.url,{method:'POST',signal:AbortSignal.timeout(timeout),headers:{Authorization:`Bearer ${env[p.key]}`,'Content-Type':'application/json'},body:JSON.stringify({model,temperature,response_format:{type:'json_object'},messages:[{role:'system',content:`${system}\n\nReply with ONLY a JSON object matching this schema:\n${shape}`},{role:'user',content:user}]})});}
-  catch{throw busy(`Could not reach ${p.label}. Check your internet connection.`);}
+  const url=typeof p.url==='function'?p.url(env):p.url,key=env[p.key];
+  try{response=await fetchImpl(url,{method:'POST',signal:AbortSignal.timeout(timeout),headers:{...(key?{Authorization:`Bearer ${key}`}:{}),'Content-Type':'application/json'},body:JSON.stringify({model,temperature,response_format:{type:'json_object'},messages:[{role:'system',content:`${system}\n\nReply with ONLY a JSON object matching this schema:\n${shape}`},{role:'user',content:user}]})});}
+  catch{throw busy(p.offline?.(env)||`Could not reach ${p.label}. Check your internet connection.`);}
   // Free tiers: wait out a short rate-limit hint once; retry overloaded (5xx) replies with backoff.
   const hint=response.status!==429?0:Number(response.headers?.get?.('retry-after'))||Number((typeof response.clone==='function'?await response.clone().text().catch(()=>''):'').match(/try again in ([\d.]+)s/i)?.[1])||0;
   if(response.status===429&&hint>0&&hint<=20&&attempt<1){await new Promise(r=>setTimeout(r,hint*1000+250));continue;}
@@ -93,7 +101,7 @@ async function askOpenProvider(id,{schema,system,user,env,fetchImpl,retryDelays,
 /** One structured request through the configured providers: free ones first, falling over when busy, then Claude. */
 export async function askAI({schema,system,user,maxTokens=16000,timeout=90000},{client,env=process.env,fetchImpl=fetch,retryDelays=[1000,3000],skip}={}){
  const providers=client?['claude']:metadataProviders(env);
- if(!providers.length)throw new Error('No AI key is set. Add a free GEMINI_API_KEY (or GROQ_API_KEY) to .env and restart the app.');
+ if(!providers.length)throw new Error('No AI is set up. Add a free GEMINI_API_KEY or GROQ_API_KEY to .env, or OLLAMA_MODEL to use Ollama on this computer.');
  let lastError;
  // `skip` lets a multi-request batch stop retrying a provider that already proved busy.
  for(const provider of providers.filter(p=>p!=='claude'&&!skip?.has(p))){

@@ -1,7 +1,7 @@
 import {fitPlayed} from './edl.mjs';
 import fs from 'node:fs';import path from 'node:path';import {run,probe} from './process.mjs';import {PYTHON,ROOT} from './config.mjs';import {importYouTube} from './ingest.mjs';import {pickClips,clipCount,momentShape} from './selection.mjs';import {titleClips} from './titles.mjs';import {streamPeople} from './people.mjs';import {renderClip} from './render.mjs';
 import {pickWithProvider} from './providers.mjs';import {ensureSignals} from './signals.mjs';import {followLiveChat,jobChat} from './twitch-chat.mjs';import {loadLessons} from './learning.mjs';import {judgeMoments,judgeReady} from './meme-judge.mjs';
-import {enrichClip} from './context.mjs';import {importSource,prefetchSections} from './remote.mjs';import {isRemote,PLATFORMS} from './sources.mjs';import {sourceClip} from './source-clip.mjs';import {collectCrowd,loadCrowd} from './twitch-clips.mjs';import {scanMode,fastScan} from './scan.mjs';import {prepareAudio} from './audio.mjs';import {rawTranscript,rawMoments,rawClip} from './raw.mjs';
+import {enrichClip,publicationMetadata} from './context.mjs';import {campaignReady,readCampaign,campaignBrief,campaignOptions,campaignPlayMax,applyCampaignMeta} from './campaign.mjs';import {importSource,prefetchSections} from './remote.mjs';import {isRemote,PLATFORMS} from './sources.mjs';import {sourceClip} from './source-clip.mjs';import {collectCrowd,loadCrowd} from './twitch-clips.mjs';import {scanMode,fastScan} from './scan.mjs';import {prepareAudio} from './audio.mjs';import {rawTranscript,rawMoments,rawClip} from './raw.mjs';
 export async function runPipeline(store,id,{signal,render=true}={}){
  const folder=store.folder(id);let job=store.get(id);
  const update=(stage,progress,message,patch={})=>{job=store.update(id,{status:'running',stage,progress,message,...patch});};
@@ -33,7 +33,13 @@ export async function runPipeline(store,id,{signal,render=true}={}){
    await run(PYTHON,[path.join(ROOT,'workers/transcribe.py'),audio,transcriptFile,'--model',job.options.model,'--language',job.options.language,...(job.source?.kind==='clip'?['--min-words','0']:[])],{signal,timeout:0,idleTimeout:15*60*1000,logFile:path.join(folder,'transcribe.log'),onLine:line=>{let e;try{e=JSON.parse(line);}catch{return;}if(e.stage==='transcribe'){const progress=Number.isFinite(e.progress)?Math.max(0,Math.min(1,e.progress)):0;const patch=Number.isFinite(e.processedSeconds)?{transcription:{processedSeconds:e.processedSeconds,totalSeconds:e.totalSeconds,wordCount:e.wordCount,checkpointSeconds:e.checkpointSeconds,resumedFromSeconds:e.resumedFromSeconds||0,lastProgressAt:new Date().toISOString()}}:{};update('transcribe',.2+.35*progress,e.message,patch);}}});
   }
   const transcript=JSON.parse(fs.readFileSync(transcriptFile,'utf8'));transcript.words||=[];const linkClip=job.source?.kind==='clip',raw=!!transcript.raw;if(!linkClip&&!raw&&!transcript.words.length)throw new Error('No usable speech transcript was found');
-  const reused=!!job.clips?.length,count=clipCount(job.options.count,metadata.duration),picking={...job.options,count};
+  const reused=!!job.clips?.length,count=clipCount(job.options.count,metadata.duration),basePicking={...job.options,count};
+  // Campaign requirements (AI only): read the brief once into rules that steer picking, lengths, shape and upload details.
+  if(!reused&&!linkClip&&!raw&&String(job.options.campaign||'').trim()){let campaign=job.campaign||null;
+   if(!campaignReady())campaign={status:'skipped',error:'Set up an AI provider in .env (Gemini, Groq, Ollama or Claude) to use campaign requirements.'};
+   else if(campaign?.text!==job.options.campaign||!campaign?.rules){update('select',.555,'Reading the campaign requirements');try{const r=await readCampaign(job.options.campaign);campaign={status:'done',text:job.options.campaign,rules:r.rules,provider:r.provider,model:r.model};}catch(e){campaign={status:'failed',error:String(e.message||e).slice(0,200)};}}
+   if(campaign?.rules){const {options,applied}=campaignOptions(job.options,campaign.rules);job=store.update(id,{options,campaign:{...campaign,applied}});}else job=store.update(id,{campaign});}
+  const rules=job.campaign?.rules||null,picking={...basePicking,...job.options,count,...(rules?{campaignBrief:campaignBrief(rules),aiJudge:true}:{})};
   // Game signals: on-screen action, so a chase or fight the streamer watches in silence still counts.
   const signals=!reused&&!linkClip?await ensureSignals(job,folder,{audio,signal,onProgress:(p,message)=>update('select',.555+.005*p,message||'Measuring game action')}):null;
   update('select',.56,raw?'Finding the loudest and busiest moments':momentShape(job.options)?`Finding ${momentShape(job.options).label.toLowerCase()}s`:'Finding the best moments');
@@ -44,12 +50,14 @@ export async function runPipeline(store,id,{signal,render=true}={}){
   else if(!reused&&judgeReady(picking)){update('select',.565,`AI is choosing the best ${(momentShape(picking)?.label||'moment').toLowerCase()}s`);const judged=await judgeMoments({...transcript,duration:metadata.duration},picking,{people:streamPeople(job,{folder}),crowd:loadCrowd(folder),signals,chat:jobChat(job),lessons:loadLessons(store.root)});clips=judged.clips;job=store.update(id,{aiMoments:judged.status});}
   else clips=reused?job.clips:job.options.picker==='heuristic'?pickClips({...transcript,duration:metadata.duration},picking,{people:streamPeople(job,{folder}),crowd:loadCrowd(folder),signals,chat:jobChat(job),lessons:loadLessons(store.root)}):await pickWithProvider(transcript,picking,{signal});if(!clips.length)throw new Error('Not enough speech for a 20–60 second clip. Try a longer speech-based video.');
   // Whichever picker chose them, finished clips play for at most a minute.
-  if(!reused&&!linkClip&&!raw)clips=clips.map(c=>fitPlayed(transcript.words,c,job.options));
+  if(!reused&&!linkClip&&!raw)clips=clips.map(c=>fitPlayed(transcript.words,c,job.options,rules?campaignPlayMax(rules,job.options.outputFormat!=='video'):60));
   // Hooks and titles: one batched AI call (free providers first) or local who-did-what titles; a retry keeps finished ones.
   let aiTitles=job.aiTitles;
   // Clip links with real speech get written titles like any moment; near-silent ones keep the platform title or streamer and game.
-  if(raw||(linkClip&&transcript.words.length<8))aiTitles=aiTitles||{status:'skipped'};else if(!reused||aiTitles?.status!=='done'){update('titles',.57,'Writing hooks and titles');({clips,aiTitles}=await titleClips(job,clips,transcript,{folder}));}
+  if(raw||(linkClip&&transcript.words.length<8))aiTitles=aiTitles||{status:'skipped'};else if(!reused||aiTitles?.status!=='done'){update('titles',.57,'Writing hooks and titles');({clips,aiTitles}=await titleClips(rules?{...job,options:{...job.options,contextText:[job.options.contextText,campaignBrief(rules)].filter(Boolean).join('\n')}}:job,clips,transcript,{folder}));}
   clips=clips.map(c=>enrichClip(c,transcript,job));
+  // The campaign's required hashtags and mentions go into every clip's upload details, whatever the titles say.
+  if(rules)clips=clips.map(c=>({...c,metadata:applyCampaignMeta(c.metadata||publicationMetadata(c,job),rules)}));
   fs.writeFileSync(path.join(folder,'clips.json'),JSON.stringify(clips,null,2));
   const quiet=await run('ffmpeg',['-hide_banner','-nostats','-i',audio,'-af','silencedetect=noise=-35dB:d=0.3','-f','null','-'],{signal});let silenceStart=0;const silences=[];for(const line of quiet.stderr.split('\n')){let m=line.match(/silence_start: ([\d.]+)/);if(m)silenceStart=Number(m[1]);m=line.match(/silence_end: ([\d.]+)/);if(m)silences.push({start:silenceStart,end:Number(m[1])});}
   const host=streamPeople(job,{folder}).host;

@@ -27,7 +27,7 @@ export function candidateBlock(c,k,words,{pad=3}={}){const from=c.start-pad,to=c
  const game=[/chat went wild/.test(c.reasons?.[0]||'')&&'live chat spiked',/on-screen action/.test(c.reasons?.[0]||'')&&'on-screen action at the peak'].filter(Boolean);
  return [`#${k} window ${from.toFixed(1)}-${to.toFixed(1)} · local pick ${c.start.toFixed(1)}-${c.end.toFixed(1)}, peak ${(c.start+c.peakAt).toFixed(1)}${laughs?` · ${laughs} laughs`:''}${hype?` · ${hype} hype words`:''}${game.map(g=>` · ${g}`).join('')}`,...rows.map(r=>`${line(r[0]).split(' ')[0]} ${r.map(w=>w.text).join(' ')}`)].join('\n');}
 // The prompt stays under about 5k tokens and the reply lists only the best few, so free tiers (Groq: 8k tokens a minute) accept it.
-export function judgePrompt(template,candidates,words,wanted){return `Format: ${FORMATS[template]||FORMATS.default}\n\nRead the ${candidates.length} candidates below and return the best ${Math.min(candidates.length,Math.max(wanted+4,8))}, best first. For each, give the start, payoff and end that make the best version of it in this format, inside its window, and a reason of at most 15 words. The channel will post the best ${wanted}.\n\n${candidates.map((c,k)=>candidateBlock(c,k+1,words)).join('\n\n')}`;}
+export function judgePrompt(template,candidates,words,wanted,campaign=''){return `Format: ${FORMATS[template]||FORMATS.default}\n\n${campaign?`This is for a paid clipping campaign; only clips that follow it get paid. Score a moment under 30 when it does not fit these rules, and say why in the reason:\n${campaign}\n\n`:''}Read the ${candidates.length} candidates below and return the best ${Math.min(candidates.length,Math.max(wanted+4,8))}, best first. For each, give the start, payoff and end that make the best version of it in this format, inside its window, and a reason of at most 15 words. The channel will post the best ${wanted}.\n\n${candidates.map((c,k)=>candidateBlock(c,k+1,words)).join('\n\n')}`;}
 /**
  * Snap an AI pick to real words and the template's shape; null when it cannot be made to fit (the local times are used then).
  * Skull endings end within `after` s of the payoff, and every pick must play for the template's length once pauses are trimmed.
@@ -63,7 +63,7 @@ export async function judgeMoments(transcript,options,{people,crowd=[],signals=n
  if(!pool.length)return {clips:[],status:{status:'skipped',pool:0}};
  let data,provider,model,lastError;
  // One retry with the strongest half of the pool (a smaller request) before falling back to the local ranking.
- for(const size of [pool.length,Math.ceil(pool.length/2)]){try{({data,provider,model}=await ask({schema:Scores,system:SYSTEM,user:judgePrompt(options.editTemplate,pool.slice(0,size),words,wanted),maxTokens:8000,timeout:120000},env?{env}:{}));break;}catch(error){lastError=error;}}
+ for(const size of [pool.length,Math.ceil(pool.length/2)]){try{({data,provider,model}=await ask({schema:Scores,system:SYSTEM,user:judgePrompt(options.editTemplate,pool.slice(0,size),words,wanted,options.campaignBrief||''),maxTokens:8000,timeout:120000},env?{env}:{}));break;}catch(error){lastError=error;}}
  if(!data)return {clips:pool.slice(0,wanted),status:{status:'failed',pool:pool.length,error:String(lastError?.message||lastError).slice(0,200)}};
  const shape=judgeShape(options),seen=new Set(),scored=[];
  for(const p of data.picks||[]){const c=pool[p.id-1];if(!c||seen.has(p.id)||!Number.isFinite(p.score))continue;seen.add(p.id);

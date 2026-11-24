@@ -6,7 +6,7 @@ const textIn=(words,a,b)=>words.filter(w=>w.end>a&&w.start<b).map(w=>w.text).joi
 export function registerPublishRoutes(app,{store,posting,env=process.env,fetchImpl,client}={}){
  app.post('/api/jobs/:id/clips/:clipId/hook/ai',async(req,res)=>{
   const job=store.get(req.params.id),clip=job.clips.find(c=>c.id===req.params.clipId);if(!clip)throw fail('Clip not found',404);
-  if(!metadataProviders(env).length&&!client)throw fail('Add a free Gemini or Groq key in .env to write hooks with AI');
+  if(!metadataProviders(env).length&&!client)throw fail('Set up AI in .env (a free Gemini or Groq key, or Ollama) to write hooks with AI');
   const folder=store.folder(job.id),file=path.join(folder,'transcript.json'),words=(fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')).words||[]:[]).map((w,i)=>({...w,text:clip.wordEdits?.[i]??w.text}));
   const people=clipPeople(streamPeople(job,{folder}),textIn(words,clip.start-30,clip.end+15)),transcript=textIn(words,clip.start,clip.end),peak=Number.isFinite(clip.peakAt)?clip.start+clip.peakAt:(clip.start+clip.end)/2;
   let result;try{result=await writeClipBatchAI({format:clip.settings?.outputFormat||job.options?.outputFormat||'shorts',sourceTitle:job.title,contextText:clip.settings?.contextText||job.options?.contextText||'',sourceUrl:job.source?.url||'',clips:[{index:0,category:clip.category,duration:clip.end-clip.start,people,peakLine:textIn(words,peak-4,peak+3),transcript}]},{env,...(fetchImpl?{fetchImpl}:{}),...(client?{client}:{})});}
@@ -17,7 +17,7 @@ export function registerPublishRoutes(app,{store,posting,env=process.env,fetchIm
  // Meme-edit action labels for one clip, written from its own transcript; returns the effects list with old automatic labels replaced.
  app.post('/api/jobs/:id/clips/:clipId/labels/ai',async(req,res)=>{
   const job=store.get(req.params.id),clip=job.clips.find(c=>c.id===req.params.clipId);if(!clip)throw fail('Clip not found',404);
-  if(!metadataProviders(env).length&&!client)throw fail('Add a free Gemini or Groq key in .env to write action labels with AI');
+  if(!metadataProviders(env).length&&!client)throw fail('Set up AI in .env (a free Gemini or Groq key, or Ollama) to write action labels with AI');
   const range={...clip,start:Number.isFinite(req.body?.start)?req.body.start:clip.start,end:Number.isFinite(req.body?.end)?req.body.end:clip.end};
   const folder=store.folder(job.id),file=path.join(folder,'transcript.json'),words=(fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')).words||[]:[]).map((w,i)=>({...w,text:clip.wordEdits?.[i]??w.text}));
   let result;try{result=await writeClipBatchAI({format:clip.settings?.outputFormat||job.options?.outputFormat||'shorts',sourceTitle:job.title,contextText:'',clips:[{index:0,category:clip.category,duration:range.end-range.start,people:clipPeople(streamPeople(job,{folder}),textIn(words,range.start,range.end)),transcript:textIn(words,range.start,range.end),labels:true}]},{env,...(fetchImpl?{fetchImpl}:{}),...(client?{client}:{})});}

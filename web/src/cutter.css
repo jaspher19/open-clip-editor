@@ -183,3 +183,16 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .settings-notice{display:flex;align-items:flex-start;gap:10px;margin:16px 0 0;padding:12px 14px;background:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);font:600 14px/1.4 'Comic Neue',sans-serif;color:var(--ink)}
 .settings-notice>div{flex:1}.settings-notice ul{margin:6px 0;padding-left:18px}.settings-notice small{color:var(--ink-soft)}
 .settings-notice code{background:var(--paper-2,#ffeeb8);padding:1px 4px;border-radius:4px}
+
+/* Campaign requirements (Campaign.tsx and the New project field). */
+.campaign-field textarea{width:100%;resize:vertical;min-height:90px}
+.campaign-locked{margin:10px 0 0;font:600 13px/1.4 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.campaign-card{display:flex;gap:12px;align-items:flex-start;margin:0 0 18px;padding:14px 16px;background:#fff;border:3px solid var(--ink);border-radius:16px;box-shadow:0 5px 0 var(--ink);color:var(--ink)}
+.campaign-card.warn{background:#fff0ec}
+.campaign-card>div{flex:1;min-width:0}.campaign-card h2{font:24px/1 var(--display);letter-spacing:1px;margin:0 0 6px}
+.campaign-card p{margin:0 0 8px;font:600 14px/1.4 'Comic Neue',sans-serif}.campaign-card small{color:var(--ink-soft);font-weight:600}
+.campaign-rules{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:5px}
+.campaign-rules li{font:600 14px/1.35 'Comic Neue',sans-serif;overflow-wrap:anywhere}.campaign-rules b{display:inline-block;min-width:150px;margin-right:6px;font-weight:800}
+.campaign-applied{background:var(--yellow);border:2px solid var(--ink);border-radius:10px;padding:6px 10px}
+@media(max-width:600px){.campaign-rules b{display:block;min-width:0}}
+.campaign-field textarea{font:inherit;font-size:15px;line-height:1.4}
