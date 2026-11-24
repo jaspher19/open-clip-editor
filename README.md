@@ -306,10 +306,12 @@ The project page shows the rules it used. The brief is pasted text (Whop pages n
 
 ## Optional: posting to YouTube
 
-1. Sign in to [Google Cloud Console](https://console.cloud.google.com/projectcreate) with **the Google account that owns your YouTube channel** and create a project (no billing needed). Enable [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) in it.
-2. Open the [Google Auth Platform](https://console.cloud.google.com/auth/overview) and click **Get started**: an app name, your email, and under **Audience** choose **Personal**. Personal means only you can sign in, with no test users, no "unverified app" warning and no weekly re-sign-in. If Personal isn't offered, choose **External** and add your email under **Audience → Test users** (Google then asks you to sign in again every 7 days).
-3. In [Clients](https://console.cloud.google.com/auth/clients), **Create client** → **Desktop app** → **Create**, and click **Download JSON** before closing the window: Google shows the secret only once.
-4. In **Automation → YouTube setup** (the in-app guide walks through these steps), choose the JSON file, click **Save credentials**, then **Connect YouTube** and sign in with the same account. With an External app, click **Advanced → Go to OpenClip** on Google's "hasn't verified this app" screen.
+**📘 Step-by-step guide with fixes for every common error: [docs/YOUTUBE-SETUP.md](docs/YOUTUBE-SETUP.md).** The same guide is inside OpenClip under **Automation → YouTube setup**. The short version:
+
+1. Do everything with **the Google account that owns your YouTube channel**. If you have several accounts, use a private/incognito window.
+2. Open [Google's Personal setup page](https://console.cloud.google.com/auth/overview/personal). Keep the suggested project, choose Application type **Desktop app**, agree, click **Continue**, then click **Download JSON** before closing the window (Google shows the secret only once).
+3. In the same project, enable [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com).
+4. In **Automation → YouTube setup**, choose the JSON file and click **Save credentials**. Then click **Connect YouTube**, sign in with the same account and tick every box.
 5. Open **Posting calendar**, add edited clips (or any finished MP4), edit the title, description and tags, and save drafts.
 6. Select drafts and press **Upload selected**. Uploads are **private by default**. A scheduled post uploads now and YouTube publishes it at the time you set. New Google Cloud projects may be limited to private uploads until Google audits them.
 7. Optional: in **Posting calendar → Auto-post**, turn on auto-posting. When a project finishes, its best clean clips (kept, exported, no warnings) upload as public right away (2 by default) and up to 9 more are scheduled at your daily release times, using titles built from the on-screen hook with an emoji and hashtags. Each project auto-posts once, and nothing already uploaded is uploaded again. YouTube allows about 6 uploads a day by default, so keep the numbers near that.

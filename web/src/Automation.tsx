@@ -52,7 +52,7 @@ export default function Automation({templates,cachedModels,onOpenJob}:{templates
   onCancel={e=>{if(setupBusy)e.preventDefault();}}
   onClose={()=>{setClientJson('');setSetupError('');}}>
   <h2 id="youtube-setup-title"><Settings2 size={20}/>Set up YouTube access</h2>
-  <YouTubeSetupGuide connected={connection.connected}/>
+  <YouTubeSetupGuide connected={connection.connected} configured={connection.configured}/>
   {connection.connected?<><p>To change credentials, disconnect your channel first.</p><footer><button type="button" className="secondary" onClick={()=>setupDialog.current?.close()}>Close</button></footer></>:
    <form onSubmit={e=>{e.preventDefault();void configure();}}>
     <label htmlFor="youtube-client-json">OAuth client JSON</label>

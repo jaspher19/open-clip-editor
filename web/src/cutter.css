@@ -229,3 +229,22 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 @media (prefers-reduced-motion:reduce){.lang-menu{animation:none}}
 .lang-dot{width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--ink);display:inline-block}
 .lang-finish{background:var(--lime)}
+
+/* YouTube setup guide (YouTubeSetupGuide). */
+.yt-num{display:inline-grid;place-items:center;width:22px;height:22px;border:2px solid var(--ink);border-radius:50%;background:#fff;font-size:12px}
+.youtube-guide-steps button.done .yt-num{background:var(--lime)}
+.youtube-guide-panel{border:2px solid var(--ink);border-radius:10px;background:#fff;padding:12px 16px}
+.youtube-guide-panel h3{margin:0 0 6px;font:800 16px/1.2 'Comic Neue',sans-serif}
+.youtube-guide-panel ol,.yt-more ol{margin:6px 0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45}
+.youtube-guide-panel code{font-size:12.5px;background:var(--paper);border:1px solid #16121f33;border-radius:4px;padding:0 4px}
+.yt-tip{font-size:13px!important;background:#fff4c2;border:1.5px dashed #16121f55;padding:6px 10px;border-radius:8px}
+.yt-ok{display:flex;gap:6px;align-items:center;font-weight:700}
+.yt-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 12px;border:2px solid var(--ink);border-radius:999px;background:var(--yellow);color:var(--ink)!important;text-decoration:none!important;font-weight:800;box-shadow:2px 2px 0 var(--ink)}
+.yt-link:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.yt-more{margin-top:8px;font-size:14px}.yt-more summary,.yt-problems summary{cursor:pointer;font-weight:800}
+.yt-problems{margin-top:12px;border:2px solid var(--ink);border-radius:10px;background:var(--paper);padding:10px 14px}
+.yt-problems summary{display:flex;align-items:center;gap:6px}
+.yt-problems dl{margin:8px 0 0;display:flex;flex-direction:column;gap:8px}
+.yt-problems dt{font-weight:800;font-size:13.5px}.yt-problems dd{margin:2px 0 0;font-size:13.5px;line-height:1.45}
+.yt-problems p{font-size:13px}
+@media(max-width:560px){.youtube-guide-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}

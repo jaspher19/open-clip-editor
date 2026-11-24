@@ -14,7 +14,7 @@ body{background:var(--dots),repeating-conic-gradient(from 3deg at 62% 18%,#ffd23
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--blue-deep);outline-offset:3px}
 
 .youtube-setup-dialog {
- width:min(480px,calc(100% - 32px));
+ width:min(640px,calc(100% - 32px));
  max-height:calc(100dvh - 32px);
  overflow:auto;
  padding:clamp(16px,4vw,24px);
@@ -27,10 +27,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .youtube-setup-dialog::backdrop{background:#16121f8c}
 .automation-page .youtube-setup-dialog h2{display:flex;align-items:center;gap:8px;margin:0;font:28px/1 var(--display);letter-spacing:.5px}
 .youtube-guide{margin:16px 0}
-.youtube-guide-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.youtube-guide-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:0 0 10px;padding:0;list-style:none}
 .youtube-guide-steps button{padding:6px;min-height:40px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;line-height:1.15;cursor:pointer}
-.youtube-guide-steps button:hover,.youtube-guide-steps button[aria-pressed=true]{background:var(--yellow)}
-.youtube-guide-steps button[aria-pressed=true]{box-shadow:0 2px 0 var(--ink)}
+.youtube-guide-steps button{width:100%;display:flex;flex-direction:column;align-items:center;gap:4px}.youtube-guide-steps button:hover,.youtube-guide-steps button[aria-current=step]{background:var(--yellow)}
+.youtube-guide-steps button[aria-current=step]{box-shadow:0 2px 0 var(--ink)}
 .youtube-guide-panel img{display:block;width:100%;height:auto;border:2px solid var(--ink);border-radius:8px}
 .automation-page .youtube-guide-panel p{margin:8px 0;font-size:14px;line-height:1.45}
 .youtube-setup-dialog a{color:var(--blue-deep);text-decoration:underline;text-underline-offset:3px}
