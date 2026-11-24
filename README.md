@@ -98,13 +98,43 @@ Without winget, use the installers instead:
 
 ### macOS
 
-Install [Homebrew](https://brew.sh/) if you don't have it, then run:
+Use this walkthrough to install, start and test OpenClip from Terminal. Plan for about 10 GB of free disk space. Homebrew's primary supported setup is Apple Silicon with macOS 15 or newer. Intel Macs and older macOS versions are best-effort. [Homebrew system requirements](https://docs.brew.sh/Installation#macos-requirements)
+
+**1. Install the prerequisites.** If you don't have Apple's Command Line Tools, run `xcode-select --install` in Terminal and finish the installer. Install Homebrew and follow the **Next steps** it prints so `brew` works in Terminal. [Apple Command Line Tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools) · [Homebrew](https://brew.sh/)
 
 ```bash
-brew install node ffmpeg git uv
+brew install git node@24 uv ffmpeg-full
+export PATH="$(brew --prefix node@24)/bin:$(brew --prefix ffmpeg-full)/bin:$PATH"
+
+node --version
+ffmpeg -hide_banner -filters 2>/dev/null | grep ' ass '
 ```
 
-Homebrew's own Python can be newer than the transcriber supports. With `uv` installed, `npm run setup` downloads Python 3.12 into the project instead.
+You should see Node `v24.x` and a line containing `ass`. The `ffmpeg-full` package provides the `libass` filter OpenClip uses to render captions. If the check fails, run the `export PATH=...` line again in the current Terminal window. [Homebrew Node 24](https://formulae.brew.sh/formula/node@24) · [Homebrew FFmpeg Full](https://formulae.brew.sh/formula/ffmpeg-full)
+
+**2. Download and start OpenClip.** Run these commands in the same Terminal window.
+
+```bash
+cd ~
+git clone https://github.com/jaspher19/open-clip-editor.git
+cd open-clip-editor
+npm ci --cache .cache/npm
+npm run setup
+npm run build
+npm start
+```
+
+Setup uses `uv` to create the project's Python 3.12 environment and install the transcription and video download tools. Open <http://localhost:5173> in your browser once the server starts. Keep Terminal open while you use the app and press `Control+C` to stop it.
+
+**3. Test an export.** Import a short MP4 with clear speech, make a portrait clip and download the result. The first transcription downloads a Whisper model. To add face-follow framing, run `npm run setup:faces` from the project folder. You can make and export clips without an account or API key. To connect YouTube or TikTok for posting, open **Automation**. [Posting and account setup](docs/AUTOMATION.md)
+
+**Open it again later.** In a new Terminal window, run:
+
+```bash
+export PATH="$(brew --prefix node@24)/bin:$(brew --prefix ffmpeg-full)/bin:$PATH"
+cd ~/open-clip-editor
+npm start
+```
 
 ### Linux (Ubuntu or Debian)
 
