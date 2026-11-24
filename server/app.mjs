@@ -1,7 +1,7 @@
 import express from 'express';import multer from 'multer';import archiver from 'archiver';import fs from 'node:fs';import path from 'node:path';
 import {autoThumbnail,summaryText} from './autothumb.mjs';
 import {clipFacecam} from './stack.mjs';
-import {ROOT,PYTHON} from './config.mjs';import {publicJob} from './jobs.mjs';import {parseSourceUrl,jobSource} from './sources.mjs';import {ensureTranscribed} from './scan.mjs';import {validateOptions} from './options.mjs';
+import {ROOT,PYTHON,WORK} from './config.mjs';import {publicJob} from './jobs.mjs';import {parseSourceUrl,jobSource} from './sources.mjs';import {ensureTranscribed} from './scan.mjs';import {validateOptions} from './options.mjs';
 import {EDIT_TEMPLATES,CAPTION_FONTS,applyTemplate} from './templates.mjs';import {CAPTION_STYLES} from './captions.mjs';import {run} from './process.mjs';import {randomUUID} from 'node:crypto';
 import {PostingQueue} from './posting.mjs';import {UploadLog,guardUploads} from './upload-log.mjs';import {SUMMARY_FORMATS} from './summary.mjs';import {writeMetadataAI,metadataProvider} from './metadata-ai.mjs';import {streamPeople,clipPeople} from './people.mjs';import {probe} from './process.mjs';
 import {ReferenceLibrary} from './references.mjs';
@@ -30,6 +30,9 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
  const uploadLog=new UploadLog(path.join(store.root,'posting','upload-log.json')),youtube=guardUploads(client,uploadLog,source=>clipRange(store,source));
  const engine=automations||new AutomationEngine({store:new AutomationStore(path.join(store.root,'automations')),jobs:store,queue,youtube,compile:(job,ids,options)=>renderCompilation(job,ids,{...options,folder:store.folder(job.id)})});
  const posting=new PostingQueue({root:path.join(store.root,'posting'),youtube});linkOldPosts(store,posting);backfillUploadLog(uploadLog,store,posting,engine);if(process.env.POSTING_AUTO!=='0')posting.startAuto();const app=express();app.locals.posting=posting;app.locals.automation=engine;app.locals.youtube=youtube;app.locals.references=references;
+ // Automation routes can start/stop jobs and trigger uploads: require a per-run secret only the local user can read, so no other process or page can drive them.
+ const automationToken=randomUUID();fs.writeFileSync(path.join(WORK,'automation.token'),automationToken,{mode:0o600});
+ app.use('/api/automations',(req,res,next)=>{if(req.headers['x-automation-token']!==automationToken)return res.status(401).json({error:'Missing or invalid automation token'});next();});
  // Channel lessons: view counts of uploaded Shorts, refreshed a minute after start and every 12 h while connected.
  const learn=async()=>{if(!client.status().connected)return null;try{return await refreshLessons({youtube:client,log:uploadLog,store,root:store.root});}catch(e){console.warn(`Channel lessons: ${e.message}`);return null;}};
  if(process.env.LESSONS_AUTO!=='0'){const first=setTimeout(learn,60e3),every=setInterval(learn,12*3600e3);first.unref?.();every.unref?.();}
