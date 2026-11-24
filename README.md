@@ -49,11 +49,11 @@ All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* 
 - **Finds moments for you.** Laughs, hype words, "clip that", loud reactions, busy on-screen action and (for Twitch) live chat going wild rank every part of the stream. Each pick gets the setup it needs before the payoff, and silent action like a chase is kept instead of trimmed as a pause.
 - **18 edit templates**, including facecam layouts for streams (Cam Split, Glow Card), two meme edits (Meme Reveal and Skull Ending) built from frame-by-frame measurements of viral Shorts, and **Raw Clip**: no transcription and no edits, just the loudest and busiest moments cut as they happened.
 - **Portrait or landscape.** Choose 9:16 (Shorts, TikTok, Reels) or 16:9 (YouTube videos) before you start. Every template follows the shape you chose.
-- **Video cutter.** Cut any parts of a video into one MP4: drag across the loudness timeline or mark with I and O, add suggested moments, reorder, box the camera and the gameplay and place them, add text in any of 8 fonts, and export in 9:16 or 16:9 exactly as the live preview shows.
+- **Video cutter.** Cut any parts of a video into one MP4: drag across the loudness timeline or mark with I and O, add suggested moments, reorder, box the camera and the gameplay and place them, add text in any of 8 fonts and auto captions, and export in 9:16 or 16:9 (up to 4K) exactly as the live preview shows. Post the result without downloading it.
 - **Optional AI.** A free Gemini or Groq key adds AI titles, descriptions and tags, and lets the AI choose the best moments from the picker's candidates.
 - **Edit everything.** Trim on words, fix captions, cut out the middle, add zooms, freezes, replays, sounds and labels.
 - **Checks every export.** Too quiet, clipping sound, black or frozen picture, or blurry footage get a warning on the clip before you post.
-- **Post it.** A posting calendar with YouTube uploads and scheduling, and optional **auto-post**: when a project finishes, the best clips upload right away and the rest are spread over the next days.
+- **Post it.** A posting calendar with YouTube uploads and scheduling, sending portrait videos to your TikTok inbox, and optional **auto-post**: when a project finishes, the best clips upload right away and the rest are spread over the next days.
 - **Learns from your channel.** Once you have a few uploads, OpenClip reads their view counts and favours the kinds of moments your channel does best with.
 
 ---
@@ -216,7 +216,7 @@ The first transcription downloads the Whisper model you picked (the `small.en` d
 OpenClip downloads (or uploads), transcribes, finds the moments and edits every one. When it's done, each clip is ready to download or post. Open any clip to change it:
 
 - Click transcript words to set the start and end, or to fix a caption.
-- Change the template, font, caption position, colours, motion and hook text in **Templates & style**.
+- Change the template, font, caption position, colours, motion and hook text in **Style & hook**, and the YouTube title, description and tags in **Upload details**.
 - Add effects on the timeline: zoom, shake, flash, freeze, replay, sound, pop text and *ACTION* labels.
 - Swap a clip for the next-best moment, or pick a range yourself on the stream timeline.
 - Press **Save** and the new video is made in the background (**Save without updating the video** keeps a draft). Then download the MP4 (with SRT captions and a title file), or all clips as a ZIP.
@@ -250,7 +250,7 @@ Templates are starting points. Every setting can be changed per clip, and **Appl
 
 ## Video cutter
 
-Open **Video cutter** in the sidebar (or **Cut video** on a project) to cut any parts of a project's video into one MP4, with no transcription, captions or effects.
+Open **Video cutter** in the sidebar (or **Cut video** on a project) to cut any parts of a project's video into one MP4 and give it your own look: framing, a camera + gameplay layout, text and auto captions.
 
 - **Add parts** by dragging across the timeline, by pressing **I** at the start and **O** at the end while the video plays, or by adding a suggested moment. Taller bars on the timeline are louder.
 - **Adjust** each part's start and end, play it, reorder the parts or sort them by time. **Watch the whole cut** plays them back to back.
@@ -259,9 +259,9 @@ Open **Video cutter** in the sidebar (or **Cut video** on a project) to cut any 
 - **Text:** add captions, titles or an @handle, choose a font (Anton, Montserrat, Barlow Condensed, Work Sans, Luckiest Guy, Bangers, Comic Neue), size, colour and outline or box, and drag it into place on the preview. The export uses the same drawing as the preview, so it matches exactly.
 - **Auto captions:** press **Add auto captions** and the spoken words appear in sync, with the word being said highlighted. OpenClip transcribes only your parts, on your computer, including raw projects and long streams it hadn't fully transcribed. Style them like text (font, size, colours, outline, box or shadow, words at a time, presets) and drag them into place. Fix any word under **Fix a word**.
 - **Post** a finished cut straight to the Posting calendar as a private draft, then schedule or upload it to YouTube there. Downloading is optional.
-- **Export** the cut with that look. Cuts render in the background; download them, delete them, or **Edit again** to bring back the parts, layout and text.
+- **Export** the cut with that look. Cuts render in the background; download them, delete them, or **Edit again** to bring back the parts, layout, text and captions.
 
-- **Quality:** export in 720p, 1080p Full HD or 1440p 2K. 2K uses 1440p footage when the platform serves it for parts of a stream (Twitch can; YouTube serves parts in 1080p, so 2K is scaled up from that, and the cut says so).
+- **Quality:** export in 720p, 1080p Full HD, 1440p 2K or 2160p 4K. For long streams, 2K and 4K fetch the sharpest footage the platform serves for each part (Twitch can serve 1440p; YouTube serves stream parts in 1080p). When the source is less sharp than the export, the cut is scaled up and says so.
 
 Long streams are imported as a light 360p copy. The cutter downloads full quality for every part you add, and for wherever you pause, and the preview switches to it (the badge on the player says which you're watching). Exports always use full quality.
 
@@ -282,7 +282,7 @@ copy .env.example .env      # macOS/Linux: cp .env.example .env
 | `METADATA_AI` | Leave blank to use the first key that's set, or force `gemini`, `groq` or `claude` | |
 | `YOUTUBE_REGION` | Two-letter country for the trending chart used as title-style context | |
 
-Restart the app after editing `.env`. AI features send transcript text to the provider you chose. Your keys stay in `.env` on your computer, and `.env` is never committed. Always review AI titles for names and facts before posting.
+OpenClip picks up changes to `.env` by itself, no restart needed, and the home page shows which keys it found (or what is wrong with the file). AI features send transcript text to the provider you chose. Your keys stay in `.env` on your computer, and `.env` is never committed. Always review AI titles for names and facts before posting.
 
 ## Optional: posting to YouTube
 
@@ -300,6 +300,23 @@ Restart the app after editing `.env`. AI features send transcript text to the pr
 
 An upload log stops the same file from being uploaded twice, unless you choose **Upload anyway**. Scheduled times currently use UTC+8. See [docs/AUTOMATION.md](docs/AUTOMATION.md) for live-stream capture, repeatable automation scripts and their limits.
 
+## Optional: posting to TikTok
+
+OpenClip can send portrait exports to your **TikTok inbox**; you then open the TikTok app, add the caption and publish. Set it up once in **Automation → TikTok setup** with your own TikTok for Developers app, then pick **TikTok** on a post in the **Posting calendar**. The full steps and limits are in [docs/AUTOMATION.md](docs/AUTOMATION.md#connect-tiktok-for-inbox-uploads).
+
+## Updating OpenClip
+
+Press **Check for updates** in the top bar. It compares your copy with GitHub, lists what's new and gives the commands to run. To update, stop OpenClip (`Ctrl+C`), then in the OpenClip folder run:
+
+```powershell
+git pull
+npm ci --cache .cache/npm
+npm run setup
+npm run build
+```
+
+Start it again with `npm start`. Your projects, settings (`.env`) and posting calendar are kept. If `git pull` complains about local changes, run `git stash` first.
+
 ## Command line
 
 ```powershell
@@ -315,6 +332,7 @@ npm run setup:references                                             # optional:
 - **My API key isn't picked up.** The home page says which keys OpenClip found and what is wrong with the settings file. The usual causes: the key line still starts with `#`; the file is really named `.env.txt` (Windows hides extensions, so turn on *View > File name extensions*); or the key is not right after the `=` (for example `GEMINI_API_KEY=AIza...`). OpenClip reads `.env` from its own folder, including files PowerShell saved as UTF-16, and picks up changes by itself. `npm run build` and `npm run setup` are not needed for a new key.
 - **Transcription crashes on Windows ("Windows error 0xC0000005", or `python.exe failed (3221225477)`).** The speech engine needs a current Microsoft Visual C++ Runtime, and an older one makes it crash as the model loads. Install the latest from <https://aka.ms/vs/17/release/vc_redist.x64.exe>, restart the computer, then press **Retry job**. `npm run setup` checks the runtime version and warns when it is too old.
 - **Setup fails installing faster-whisper.** Your Python is probably too new (3.14 or later). Install Python 3.12, or install uv, then delete the `.venv` folder and run `npm run setup` again.
+- **"Edit didn't render" with "Unrecognized option 'filter_complex_script'".** Your FFmpeg is newer than your copy of OpenClip expects. Update OpenClip (see *Updating OpenClip*), then press **Retry** on the clips.
 - **Captions don't render, or setup complains about libass.** Install a full FFmpeg build and make sure it's first on your `PATH`.
 - **A YouTube, Twitch or Kick link fails.** These sites change often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only, subscriber-only and DRM videos aren't supported. For a Kick stream, wait until it has ended.
 - **A clip has a "Blurry" warning.** For long or live streams each clip is rendered from a 1080p download of its part. If the platform only offered a low quality, or that download failed, the clip is made from the light copy and marked. Render it again later to retry; auto-post skips these clips.
@@ -322,7 +340,7 @@ npm run setup:references                                             # optional:
 - **Twitch: favour what viewers clipped.** Add your own free Twitch app's `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` to `.env` (see `.env.example`). For Twitch VODs, OpenClip then reads the clips viewers made of the broadcast and ranks those moments higher; each such clip says "Viewers clipped this" with the view count.
 - **Face follow falls back to center.** Run `npm run setup:faces`. Dark scenes, side profiles and fast motion can still fall back to center.
 - **Port 5173 is in use.** Set `PORT=5180` (or another free port) in `.env`.
-- **Disk space.** Each project lives in `work/<project id>/`. Stop the app before deleting a project folder.
+- **Disk space.** Each project lives in `work/<project id>/`. Delete old projects with the trash icon next to them in the sidebar; it removes their files too.
 - **Picks need review.** Automatic picks and Whisper text are suggestions; this isn't a views predictor. Only edit footage and music you have permission to use.
 
 ## Development
