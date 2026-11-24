@@ -1,6 +1,7 @@
 import fs from 'node:fs';import path from 'node:path';
+import {WORK} from '../server/config.mjs';
 const args=process.argv.slice(2),base=`http://localhost:${process.env.PORT||5173}`;
-async function api(url,body){const response=await fetch(base+url,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const data=await response.json();if(!response.ok)throw new Error(data.error);return data;}
+async function api(url,body){const headers={'Content-Type':'application/json'};try{headers['x-automation-token']=fs.readFileSync(path.join(WORK,'automation.token'),'utf8').trim();}catch{}const response=await fetch(base+url,{method:body===undefined?'GET':'POST',headers,body:body===undefined?undefined:JSON.stringify(body)});const data=await response.json();if(!response.ok)throw new Error(data.error);return data;}
 try{if(!args.length)throw new Error('Usage: npm run automate -- recipe.json [--watch] | --resume ID | --stop ID');let script;
  if(args[0]==='--stop'){const result=await api(`/api/automations/${args[1]}/stop`,{});console.log(result.id,result.status);process.exit(0);}
  if(args[0]==='--resume')script={id:args[1]};else{const recipe=JSON.parse(fs.readFileSync(path.resolve(args[0]),'utf8'));script=await api('/api/automations',recipe);}
