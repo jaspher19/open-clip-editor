@@ -204,3 +204,28 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .live-caption-handle:hover,.live-caption-handle:focus-visible,.live-caption-handle:active{border-color:#ffd23f;background:rgba(255,210,63,.12);outline:none}
 .live-caption-handle:hover span,.live-caption-handle:focus-visible span,.live-caption-handle:active span{opacity:1}
 .live-caption-handle.custom{border-color:rgba(255,210,63,.55)}
+
+/* Top-bar language menu (LanguagePicker). */
+.lang-picker{position:relative;display:inline-flex}
+.lang-button.active{background:var(--yellow)}
+.lang-button span{max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.lang-menu{position:absolute;right:0;top:calc(100% + 10px);z-index:80;width:300px;max-width:calc(100vw - 32px);display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink);animation:lang-pop .14s ease-out}
+@keyframes lang-pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.lang-revert{display:flex;align-items:center;justify-content:center;gap:7px;border:2px solid var(--ink);border-radius:999px;background:var(--yellow);color:var(--ink);font:800 14px/1 'Comic Neue',sans-serif;padding:8px 12px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.lang-revert:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.lang-search{display:flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:10px;background:#fff;padding:0 9px}
+.lang-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:700 14px 'Comic Neue',sans-serif;padding:7px 0;outline:none}
+.lang-menu ul{list-style:none;margin:0;padding:0;max-height:min(360px,55vh);overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.lang-menu li button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:2px solid transparent;border-radius:9px;background:transparent;color:var(--ink);padding:6px 9px;cursor:pointer}
+.lang-menu li button span{display:flex;flex-direction:column;gap:1px;min-width:0}
+.lang-menu li button strong{font:800 15px/1.2 'Comic Neue',system-ui,sans-serif}
+.lang-menu li button small{font:700 12px/1.2 'Comic Neue',sans-serif;color:#5b5368}
+.lang-menu li button:hover:not(:disabled),.lang-menu li button:focus-visible{background:#fff;border-color:var(--ink);outline:none}
+.lang-menu li button.on{background:var(--yellow);border-color:var(--ink)}
+.lang-menu li button:disabled{opacity:.45;cursor:not-allowed}
+.lang-empty{padding:10px;font:700 13px 'Comic Neue',sans-serif;color:#5b5368}
+.lang-note{margin:0;display:flex;align-items:flex-start;gap:6px;font:700 12px/1.35 'Comic Neue',sans-serif;color:#5b5368;border-top:2px dashed #16121f33;padding-top:8px}
+.lang-note svg{flex:none;margin-top:1px}
+@media (prefers-reduced-motion:reduce){.lang-menu{animation:none}}
+.lang-dot{width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--ink);display:inline-block}
+.lang-finish{background:var(--lime)}

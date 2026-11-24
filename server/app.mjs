@@ -1,4 +1,4 @@
-import express from 'express';import multer from 'multer';import archiver from 'archiver';import fs from 'node:fs';import path from 'node:path';
+import express from 'express';import {getLanguage,setLanguage,readStrings,saveStrings,validLanguage,aiTranslate,aiTranslateReady} from './ui-language.mjs';import multer from 'multer';import archiver from 'archiver';import fs from 'node:fs';import path from 'node:path';
 import {autoThumbnail,summaryText} from './autothumb.mjs';
 import {clipFacecam} from './stack.mjs';
 import {ROOT,PYTHON} from './config.mjs';import {publicJob} from './jobs.mjs';import {parseSourceUrl,jobSource} from './sources.mjs';import {ensureTranscribed} from './scan.mjs';import {validateOptions} from './options.mjs';
@@ -47,6 +47,13 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
  // The app may live under a dot-folder (for example ~/.projects); Express refuses those paths unless told otherwise.
  const FILES={dotfiles:'allow'};const externalBusyJobs=new Set();const get=(req)=>store.get(req.params.id);
  const editable=job=>{if(externalBusyJobs.has(job.id)||[...engine.active.values()].some(a=>a.jobId===job.id))throw fail('Stop this job’s automation before editing or exporting it',409);if(queue.isBusy(job.id)||busyStatuses.includes(job.status))throw fail('Wait for this job to finish or cancel it before editing',409);};
+ // Display language: saved in work/ui-language/ so it survives restarts (server/ui-language.mjs).
+ const uiRoot=path.join(store.root,'ui-language');
+ app.get('/api/ui-language',(req,res)=>res.json({language:getLanguage(uiRoot),ai:aiTranslateReady()}));
+ app.put('/api/ui-language',(req,res)=>{try{res.json({language:setLanguage(req.body?.language,uiRoot)});}catch(e){throw fail(e.message);}});
+ app.get('/api/ui-language/:lang/strings',(req,res)=>{if(!validLanguage(req.params.lang))throw fail('Unknown language');res.json(readStrings(req.params.lang,uiRoot));});
+ app.post('/api/ui-language/:lang/strings',(req,res)=>{try{res.json({saved:saveStrings(req.params.lang,req.body?.entries,uiRoot)});}catch(e){throw fail(e.message);}});
+ app.post('/api/ui-language/:lang/translate',async(req,res)=>{if(!validLanguage(req.params.lang)||req.params.lang==='en')throw fail('Unknown language');if(!aiTranslateReady())throw fail('Add an AI key to .env (or use Chrome or Edge) to translate OpenClip',409);const out=await aiTranslate(req.params.lang,req.body?.texts);saveStrings(req.params.lang,out,uiRoot);res.json(out);});
  app.get('/api/settings-check',(req,res)=>res.json(envStatus()));
  app.get('/api/health',(req,res)=>{const modelRoot=path.join(ROOT,'.cache/models');res.json({name:'Open Clip Editor',local:true,campaigns:campaignReady(),pythonReady:fs.existsSync(PYTHON),providers:{heuristic:true,openai:!!process.env.OPENAI_API_KEY,anthropic:!!process.env.ANTHROPIC_API_KEY,judge:metadataProvider()},cachedModels:fs.existsSync(modelRoot)?fs.readdirSync(modelRoot).filter(f=>fs.existsSync(path.join(modelRoot,f,'model.bin'))):[],styles:Object.keys(CAPTION_STYLES),templates:EDIT_TEMPLATES.map(t=>({...t,reference:references.info(t.id)})),fonts:CAPTION_FONTS,features:{faceTrack:fs.existsSync(path.join(modelRoot,'face/blaze_face_short_range.tflite')),music:true,creatorStyles:true},version:'0.3.0',youtube:youtube.status()});});
  app.get('/api/templates/:id/reference',(req,res)=>{const info=references.info(req.params.id);if(!info)throw fail('Original reference not found',404);res.json(info);});
