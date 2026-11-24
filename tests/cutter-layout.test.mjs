@@ -36,7 +36,8 @@ test('cutter boxes: moves snap to edges and centre, resizes keep the shape and s
 test('video cutter: a camera + gameplay cut builds both panels and lays the text over the joined video',()=>{
  const layout=validateLayout(defaultLayout('shorts',1920,1080)),graph=cutGraph([{start:0,end:4},{start:10,end:12}],{width:1080,height:1920,framing:'split',layout,overlay:true});
  assert.match(graph,/color=c=black:s=1080x1920:r=30:d=4\.000\[f0bg\]/);
- assert.match(graph,/\[f0sg\]crop=w=iw\*[\d.]+:h=ih\*[\d.]+:x=iw\*[\d.]+:y=ih\*[\d.]+,scale=1080:1268:force_original_aspect_ratio=increase,crop=1080:1268/);
+ assert.match(graph,/\[f0sg\]crop=w=iw\*[\d.]+:h=ih\*[\d.]+:x=iw\*[\d.]+:y=ih\*[\d.]+,scale=1080:1268:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1268/);
+ assert.match(graph,/\[f0sc\]crop=.*scale=1080:652:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:652/);
  assert.match(graph,/\[f0bg\]\[f0g\]overlay=0:652:eof_action=pass\[f0l\];\n\[f0l\]\[f0c\]overlay=0:0/,'gameplay first, camera in front');
  assert.match(graph,/concat=n=2:v=1:a=1\[vc\]\[a\];\n\[2:v\]format=rgba\[txt\];\n\[vc\]\[txt\]overlay=0:0/);
  const behind=cutGraph([{start:0,end:4}],{width:1080,height:1920,framing:'split',layout:{...layout,camOnTop:false}});assert.match(behind,/\[f0bg\]\[f0c\]overlay/);
@@ -68,4 +69,27 @@ test('video cutter: export quality sets the size (2K is 1440 × 2560 / 2560 × 1
  const out=await renderCut({remote:{proxy:true},sourcePath:'light.mp4',metadata:{width:640,height:360}},folder,{id:'t',segments:[{start:10,end:15}],format:'video',quality:1440,framing:'fit'},{section:async(j,f,a,b,o)=>{asked.push(o.height);return {file:'hd.mp4',start:5,width:2560,height:1440};},runCommand:async(cmd,a)=>{args.push(...a);fs.writeFileSync(a.at(-1),'x');},probeFile:async()=>({width:2560,height:1440,duration:5})});
  fs.rmSync(folder,{recursive:true,force:true});
  assert.deepEqual(asked,[1440]);assert.equal(out.sourceSide,1440);assert.deepEqual([out.width,out.height],[2560,1440]);assert.ok(args.join(' ').includes('-crf 18'));
+});
+
+test('video cutter: 4K keeps the selected canvas and retries HD before falling back to light footage',async t=>{
+ const {cutSize,renderCut}=await import('../server/cut.mjs'),{formatFor}=await import('../server/remote.mjs');
+ const fs=await import('node:fs'),path=await import('node:path'),{localEnv}=await import('../server/config.mjs');
+ const folder=fs.mkdtempSync(path.join(localEnv().TMP,'cut-4k-'));t.after(()=>fs.rmSync(folder,{recursive:true,force:true}));
+ const segments=[{start:10,end:12}];
+ assert.deepEqual(cutSize('shorts',2160),{width:2160,height:3840});
+ assert.deepEqual(cutSize('video',2160),{width:3840,height:2160});
+ assert.equal(validateCut({segments,format:'shorts',quality:2160},60).quality,2160);
+ assert.match(formatFor('youtube','section',360,{section:2160}),/^bv\*\[protocol\^=m3u8\]\[height=2160\]/);
+ assert.match(formatFor('youtube','section',360,{section:2160,portrait:true}),/\[width=2160\]/);
+ const asked=[],args=[];
+ const result=await renderCut({remote:{proxy:true},sourcePath:'light.mp4'},folder,{id:'four-k',segments,format:'shorts',quality:2160,framing:'split',layout:defaultLayout('shorts')},{
+  section:async(j,f,a,b,{height})=>{asked.push(height);if(height===2160)throw new Error('4K section unavailable');return {file:'hd.mp4',start:5,width:1920,height:1080};},
+  runCommand:async(cmd,params)=>{args.push(...params);fs.writeFileSync(params.at(-1),'video');},
+  probeFile:async()=>({width:2160,height:3840,duration:2})
+ });
+ assert.deepEqual(asked,[2160,1080]);
+ assert.ok(args.includes('hd.mp4'));
+ assert.equal(result.preview,false);
+ assert.equal(result.sourceSide,1080);
+ assert.deepEqual([result.width,result.height],[2160,3840]);
 });

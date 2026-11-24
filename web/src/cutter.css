@@ -93,6 +93,8 @@
 .cut-box.game .cut-box-label{top:auto;bottom:-3px;transform:translateY(100%);border-radius:0 0 5px 5px}
 .cut-preview{position:relative;margin:0 auto;width:100%;border:3px solid var(--ink);border-radius:12px;overflow:visible;background:#000}
 .cut-preview canvas{display:block;width:100%;height:auto;border-radius:9px}
+.cut-camera-sample{max-height:18rem;overflow:auto;border:2px solid var(--ink);border-radius:8px;background:#000}
+.cut-camera-sample canvas{display:block;max-width:none}
 .cut-preview .cut-box-label{font-size:10px}
 .cutter-hint{margin:0;font:600 13px/1.4 'Comic Neue',sans-serif;color:var(--ink-soft)}
 .swatch{display:inline-block;width:11px;height:11px;border-radius:3px;border:2px solid var(--ink);margin:0 4px -1px 0}.swatch.cam{background:#ff5fc8}.swatch.game{background:#3fe0a6}

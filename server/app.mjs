@@ -221,12 +221,13 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
  for(const j of store.list())if((j.cuts||[]).some(c=>c.status==='rendering'))store.update(j.id,{cuts:j.cuts.map(c=>c.status==='rendering'?{...c,status:'failed',error:'The app stopped while this cut was rendering. Cut it again.'}:c)});
  const setCut=(jobId,id,patch)=>{const job=store.get(jobId);store.update(jobId,{cuts:(job.cuts||[]).map(c=>c.id===id?{...c,...patch}:c)});};
  // Sharp preview for long streams: the cutter plays full-quality parts (the same files exports use) instead of the light copy.
- const hdChains=new Map(),hdList=job=>readSections(store.folder(job.id)).map(x=>({start:x.start,end:x.end,width:x.width,height:x.height,url:`/api/jobs/${job.id}/hd/${encodeURIComponent(x.file)}`}));
- app.get('/api/jobs/:id/hd',(req,res)=>{const job=get(req);res.json({proxy:!!job.remote?.proxy,sourceHeight:job.remote?.sourceHeight||Math.min(job.metadata?.width||0,job.metadata?.height||0)||null,sections:job.remote?.proxy?hdList(job):[]});});
+ const hdChains=new Map(),hdList=job=>readSections(store.folder(job.id)).map(x=>({start:x.start,end:x.end,width:x.width,height:x.height,requestedHeight:x.requestedHeight,url:`/api/jobs/${job.id}/hd/${encodeURIComponent(x.file)}`}));
+ app.get('/api/jobs/:id/hd',(req,res)=>{const job=get(req),proxy=!!job.remote?.proxy;const sourceHeight=proxy?job.remote.sourceHeight:Math.min(job.metadata?.width||0,job.metadata?.height||0);res.json({proxy,sourceHeight:sourceHeight||null,sections:proxy?hdList(job):[]});});
  app.post('/api/jobs/:id/hd',async(req,res)=>{const job=get(req);if(!job.remote?.proxy)throw fail('This video is already in full quality',409);const start=Number(req.body?.start),end=Number(req.body?.end),duration=job.metadata?.duration||0;
   if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>duration+1||end-start>600)throw fail('Choose up to 10 minutes inside the video');
+  const height=req.body?.height??1080;if(height!==1080&&height!==2160)throw fail('Choose a preview source up to 1080p or 2160p');
   // One download at a time per project, in the order asked.
-  const task=(hdChains.get(job.id)||Promise.resolve()).catch(()=>{}).then(()=>ensureSection(job,store.folder(job.id),start,end));hdChains.set(job.id,task.catch(()=>{}));
+  const task=(hdChains.get(job.id)||Promise.resolve()).catch(()=>{}).then(()=>ensureSection(job,store.folder(job.id),start,end,{height}));hdChains.set(job.id,task.catch(()=>{}));
   await task;res.json({sections:hdList(job)});});
  app.get('/api/jobs/:id/hd/:file',(req,res)=>{const job=get(req),name=req.params.file;if(!/^[\w.-]+\.(mp4|mkv|webm)$/.test(name)||!readSections(store.folder(job.id)).some(x=>x.file===name))throw fail('Not found',404);res.sendFile(path.join(store.folder(job.id),'hires',name),FILES);});
  // Camera + gameplay layout: find the streamer's camera in a stretch of the video (cached per range).

@@ -31,7 +31,8 @@ function selector(platform,mode,height,section=1080){
   if(mode==='proxy')return `bv*[vcodec^=avc1][height<=${height}]+ba[acodec^=mp4a]/bv*[height<=${height}]+ba/b[height<=${height}]/wv*+ba/w`;
   // Sections: YouTube throttles ffmpeg's many small range requests on a plain file (a 12 s section took over 4 min),
   // while its HLS formats come in small segments (75 s of 1080p in 9 s), so HLS first.
-  return `bv*[protocol^=m3u8][vcodec^=avc1][height<=${section}]+ba[protocol^=m3u8]/bv*[protocol^=m3u8][height<=${section}]+ba[protocol^=m3u8]/b[protocol^=m3u8][height<=${section}]/bv*[vcodec^=avc1][height<=${section}]+ba[acodec^=mp4a]/bv*[height<=${section}]+ba/b[height<=${section}]`;
+  const prefer4k=section===2160?'bv*[protocol^=m3u8][height=2160]+ba[protocol^=m3u8]/b[protocol^=m3u8][height=2160]/bv*[height=2160]+ba/b[height=2160]/bv*[height>1080][height<2160]+ba/b[height>1080][height<2160]/':'';
+  return `${prefer4k}bv*[protocol^=m3u8][vcodec^=avc1][height<=${section}]+ba[protocol^=m3u8]/bv*[protocol^=m3u8][height<=${section}]+ba[protocol^=m3u8]/b[protocol^=m3u8][height<=${section}]/bv*[vcodec^=avc1][height<=${section}]+ba[acodec^=mp4a]/bv*[height<=${section}]+ba/b[height<=${section}]`;
  }
  if(mode==='proxy')return `b[height<=${height}][vcodec!=none]/w[vcodec!=none]`;
  // Twitch clips also offer vertical 'portrait-*' crops (we frame our own) and 1440p; Kick clips list one stream with no height or codec.
@@ -210,7 +211,7 @@ function forgetBlindFacecams(folder,sec){
  const dir=path.join(folder,'clips');let names=[];try{names=fs.readdirSync(dir).filter(f=>f.endsWith('.facecam.json'));}catch{return;}
  for(const f of names)try{const r=JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));if(!r.found&&r.start<sec.end&&r.end>sec.start)fs.rmSync(path.join(dir,f),{force:true});}catch{}
 }
-/** `height`: the most the section may have (1080 by default; the Video cutter asks for 1440 for 2K exports). */
+/** `height`: the most the section may have, measured on the short side. Defaults to 1080. */
 export async function ensureSection(job,folder,start,end,{signal,height=1080,runCommand=run,align=alignSection,probeFile=probe,frames=sectionFrames}={}){
  const remote=job.remote;if(!remote?.proxy)throw new Error('This project has the full-quality source already');
  const total=remote.duration||Infinity;end=Math.min(end,total-1);start=Math.max(0,Math.min(start,end-.5));
