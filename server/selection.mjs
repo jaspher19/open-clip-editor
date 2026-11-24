@@ -4,6 +4,7 @@ import {laugh,strong,clipCue,clamp,maskProfanity,dropProfanity,loudness,cueSums,
 const CATEGORIES=['funny','highlight','clippable'];
 /** Shorts play at most 60 s (longer ones are blocked worldwide once a Content ID claim lands); the source window may run to 90 s because pauses are trimmed. */
 export const PLAY_MAX=60,SPAN_MAX=90;
+const MAX_CANDIDATES=30;
 /**
  * Templates built around one kind of moment (the meme edits) carry a `moment` shape: played length `play` [lo,hi] s,
  * source window `min`–`max` s, where the payoff sits (`payoff`, 0–1), and `cut` (a jump cut right before it) or
@@ -11,7 +12,7 @@ export const PLAY_MAX=60,SPAN_MAX=90;
  */
 export function momentShape(options={}){return EDIT_TEMPLATES.find(t=>t.id===options.editTemplate)?.moment||null;}
 export function validateCandidates(list,duration,{min=20}={}){
- if(!Array.isArray(list)||list.length>30)throw new Error('Invalid clip response');
+ if(!Array.isArray(list)||list.length>MAX_CANDIDATES)throw new Error('Invalid clip response');
  return list.map(c=>{if(!c||typeof c.start!=='number'||typeof c.end!=='number'||!Number.isFinite(c.start)||!Number.isFinite(c.end)||c.start<0||c.end>duration+.01||c.end-c.start<min||c.end-c.start>SPAN_MAX)throw new Error('Invalid candidate time range');return {id:c.id&&/^[a-f0-9-]{36}$/.test(c.id)?c.id:randomUUID(),start:c.start,end:c.end,title:String(c.title||'Selected moment').slice(0,100),hook:String(c.hook||'').slice(0,200),score:Math.max(0,Math.min(100,Number(c.score)||50)),reasons:Array.isArray(c.reasons)?c.reasons.map(String).slice(0,4):['Suggested moment'],category:CATEGORIES.includes(c.category)?c.category:'clippable',...(Number.isFinite(c.peakAt)?{peakAt:c.peakAt}:{}),...(c.titleSource?{titleSource:String(c.titleSource)}:{}),kept:true,settings:{}};});
 }
 /** "auto" scales with the source: about one clip per 11 minutes, 3–12. Explicit counts are kept. */
@@ -62,7 +63,7 @@ export function gameSignal(signals,secs){const out=new Float32Array(secs+1),a=si
 export function pickClips(transcript,options={},{people={host:null,named:[]},crowd=[],signals=null,chat=[],lessons=null}={}){
  const {count='auto',threshold=.6,padding=.12}=options,shape=momentShape(options),minDuration=shape?.min??options.minDuration??45,maxDuration=shape?.max??options.maxDuration??90;
  const words=transcript.words||[],duration=transcript.duration||words.at(-1)?.end||0;if(words.length<8||duration<minDuration)return [];
- const n=words.length,wanted=clipCount(count,duration),cues=cueSums(words),loud=loudness(transcript);
+ const n=words.length,wanted=Math.min(MAX_CANDIDATES,clipCount(count,duration)),cues=cueSums(words),loud=loudness(transcript);
  const isStart=words.map((w,i)=>i===0||/[.!?]$/.test(words[i-1].text)||w.start-words[i-1].end>.7);
  const isEnd=words.map((w,i)=>i===n-1||/[.!?]$/.test(w.text)||words[i+1].start-w.end>.6);
  // On-screen action (workers/signals.py): a chase or a fight counts even while nobody talks, so a wild moment the

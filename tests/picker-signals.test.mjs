@@ -3,8 +3,8 @@ import {pickClips,gameSignal} from '../server/selection.mjs';import {judgeMoment
 import {buildClipEdl} from '../server/edl.mjs';import {validateOptions} from '../server/options.mjs';import {applyTemplate} from '../server/templates.mjs';
 
 // 20 minutes of flat chatter; a quiet stretch around 610 s where the game explodes and nobody says anything.
-function stream(){const words=[];let t=0;const say=text=>{for(const w of text.split(' ')){words.push({text:w,start:+t.toFixed(2),end:+(t+.28).toFixed(2)});t+=.34;}t+=.05;};
- while(t<1200){if(t>600&&t<616){t+=16;say('so what do we do now.');continue;}say('we are just driving around the city looking for the next mission right now.');}return {words,duration:t};}
+function stream(duration=1200){const words=[];let t=0;const say=text=>{for(const w of text.split(' ')){words.push({text:w,start:+t.toFixed(2),end:+(t+.28).toFixed(2)});t+=.34;}t+=.05;};
+ while(t<duration){if(t>600&&t<616){t+=16;say('so what do we do now.');continue;}say('we are just driving around the city looking for the next mission right now.');}return {words,duration:t};}
 const quietBlast=secs=>{const action=Array(secs).fill(.2);for(let s=604;s<=612;s++)action[s]=3;return {action};};
 
 test('on-screen action: a chase the streamer watches in silence becomes a moment and stays in the edit',()=>{
@@ -23,6 +23,11 @@ test('the AI judge runs for every template: a general gaming-Short brief, the po
  const {clips,status}=await judgeMoments(tr,options,{ask,signals:quietBlast(secs)});
  assert.equal(status.status,'done');assert.ok(status.pool<=18,'smaller pool for longer moments');assert.match(prompt,/GAMING SHORT/);assert.match(prompt,/on-screen action at the peak/);
  assert.equal(clips[0].reasons[0],'AI pick: the car explodes out of nowhere');assert.equal(clips[0].score,96);assert.ok(clips[0].start<=607&&clips[0].end>=609);
+});
+test('the local picker caps oversized internal candidate requests before validation',()=>{
+ const tr=stream(5*3600),options=validateOptions(applyTemplate('glow-card',{}));
+ assert.equal(pickClips(tr,{...options,count:36}).length,30);
+ assert.equal(pickClips(tr,{...options,count:24}).length,24);
 });
 test('Twitch chat: PRIVMSG text is read, a chat spike becomes a moment about 6 s earlier, recorded without usernames',async()=>{
  const {privmsg,chatSignal,recordChat,loadChat,CHAT_DELAY}=await import('../server/twitch-chat.mjs');
