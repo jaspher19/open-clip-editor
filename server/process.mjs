@@ -1,4 +1,4 @@
-import {spawn} from 'node:child_process';import fs from 'node:fs';import {localEnv,ROOT} from './config.mjs';
+import {spawn} from 'node:child_process';import fs from 'node:fs';import path from 'node:path';import {localEnv,ROOT} from './config.mjs';
 export async function run(command,args,{cwd=ROOT,signal,onLine,logFile,timeout=60*60*1000,idleTimeout=0,maxOutput=2_000_000,env={}}={}){
  if(signal?.aborted)throw new Error('Job cancelled');
  for(const value of [timeout,idleTimeout])if(!Number.isFinite(value)||value<0||value>2147483647)throw new Error('Invalid subprocess timeout');
@@ -13,7 +13,7 @@ export async function run(command,args,{cwd=ROOT,signal,onLine,logFile,timeout=6
   child.stdout.on('data',c=>read(c,false));child.stderr.on('data',c=>read(c,true));
   const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);clearTimeout(idleTimer);signal?.removeEventListener('abort',abort);log?.end();error?reject(error):resolve(value);};
   child.on('error',e=>finish(new Error(`Cannot start ${command}: ${e.message}`)));
-  child.on('close',(code)=>{if(buffer.trim())onLine?.(buffer,false);if(errBuffer.trim())onLine?.(errBuffer,true);if(signal?.aborted)return finish(new Error('Job cancelled'));if(timedOut)return finish(new Error(timedOut==='idle'?`${command} stopped without progress: no output for ${Math.round(idleTimeout/1000)} seconds`:`${command} timed out after ${Math.round(timeout/1000)} seconds`));if(code!==0)return finish(new Error(`${command} failed (${code}): ${(stderr||stdout).slice(-5000)}`));finish(null,{stdout,stderr});});
+  child.on('close',(code)=>{if(buffer.trim())onLine?.(buffer,false);if(errBuffer.trim())onLine?.(errBuffer,true);if(signal?.aborted)return finish(new Error('Job cancelled'));if(timedOut)return finish(new Error(timedOut==='idle'?`${command} stopped without progress: no output for ${Math.round(idleTimeout/1000)} seconds`:`${command} timed out after ${Math.round(timeout/1000)} seconds`));if(code!==0){const hint=crashHint(code);return finish(new Error(hint?`${hint} (${path.basename(String(command))} crashed: Windows error 0x${(code>>>0).toString(16).toUpperCase()})`:`${command} failed (${code}): ${(stderr||stdout).slice(-5000)}`));}finish(null,{stdout,stderr});});
  });
 }
 export async function probe(file,options={}){
@@ -35,4 +35,20 @@ export function filterScriptArgs(file){
   try{await run('ffmpeg',['-v','error','-nostdin','-f','lavfi','-i','color=c=black:s=16x16:d=0.04','-/filter_complex',graph,'-map','[v]','-f','null','-'],{timeout:30000});return 'new';}
   catch{return 'old';}finally{fs.rmSync(dir,{recursive:true,force:true});}})();
  return filterScriptMode.then(mode=>mode==='new'?['-/filter_complex',file]:['-filter_complex_script',file]);
+}
+
+/** Download link for the current Microsoft Visual C++ Runtime (x64). */
+export const VC_RUNTIME_URL='https://aka.ms/vs/17/release/vc_redist.x64.exe';
+/**
+ * Plain-language fix for a Windows crash exit code, or null. A user's transcription died with 3221225477
+ * (0xC0000005, access violation) while loading the speech model: the usual cause is an outdated msvcp140.dll, since
+ * the speech engine is built with a newer Microsoft compiler (programs built with Visual Studio 17.10+ crash on an older
+ * runtime's std::mutex).
+ */
+export function crashHint(code){
+ switch(Number(code)>>>0){
+  case 0xC0000005:case 0xC0000409:case 0xC0000374:return `The local speech or video helper crashed. On Windows this is almost always an outdated Microsoft Visual C++ Runtime: install the latest one from ${VC_RUNTIME_URL}, restart the computer, then press Retry`;
+  case 0xC0000135:case 0xC0000139:return `A Windows component the local helper needs is missing: install the Microsoft Visual C++ Runtime from ${VC_RUNTIME_URL}, then press Retry`;
+  case 0xC000001D:return 'The local speech model needs a newer processor (it uses AVX instructions this CPU does not have). Transcription cannot run on this computer';
+  default:return null;}
 }

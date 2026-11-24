@@ -196,7 +196,7 @@ npm run setup:faces    # optional: face-follow framing model
 npm run build          # builds the web app
 ```
 
-`npm run setup` checks that FFmpeg has `libass`. If it says FFmpeg needs the libass filter, install a full FFmpeg build and run it again.
+`npm run setup` checks everything OpenClip needs (Node.js, Python, FFmpeg with captions, and on Windows the Visual C++ Runtime) and ends with a checklist. If something is missing, it says what and gives the install command for your computer; install it, open a new terminal, and run `npm run setup` again.
 ## 3. Start the app
 
 ```powershell
@@ -313,6 +313,7 @@ npm run setup:references                                             # optional:
 - **"node", "python", "ffmpeg" or "git" is not recognized.** Close the terminal and open a new one after installing. If it still fails, the program's folder isn't on your `PATH`: reinstall it, and for Python tick *Add python.exe to PATH*. On Windows, `python` can also open the Microsoft Store instead. Turn that off under *Settings > Apps > Advanced app settings > App execution aliases*.
 - **Every job fails during transcription (often on a Mac).** The project's Python environment was made with a Python older than 3.11. macOS comes with Python 3.9. Run `npm run setup` again: it finds Python 3.11–3.13 (or uses uv) and rebuilds the environment. If it says no such Python was found, run `brew install uv` and run setup again.
 - **My API key isn't picked up.** The home page says which keys OpenClip found and what is wrong with the settings file. The usual causes: the key line still starts with `#`; the file is really named `.env.txt` (Windows hides extensions, so turn on *View > File name extensions*); or the key is not right after the `=` (for example `GEMINI_API_KEY=AIza...`). OpenClip reads `.env` from its own folder, including files PowerShell saved as UTF-16, and picks up changes by itself. `npm run build` and `npm run setup` are not needed for a new key.
+- **Transcription crashes on Windows ("Windows error 0xC0000005", or `python.exe failed (3221225477)`).** The speech engine needs a current Microsoft Visual C++ Runtime, and an older one makes it crash as the model loads. Install the latest from <https://aka.ms/vs/17/release/vc_redist.x64.exe>, restart the computer, then press **Retry job**. `npm run setup` checks the runtime version and warns when it is too old.
 - **Setup fails installing faster-whisper.** Your Python is probably too new (3.14 or later). Install Python 3.12, or install uv, then delete the `.venv` folder and run `npm run setup` again.
 - **Captions don't render, or setup complains about libass.** Install a full FFmpeg build and make sure it's first on your `PATH`.
 - **A YouTube, Twitch or Kick link fails.** These sites change often. Run `npm run setup` to update yt-dlp, or download the video and drop the file in instead. Private, members-only, subscriber-only and DRM videos aren't supported. For a Kick stream, wait until it has ended.
