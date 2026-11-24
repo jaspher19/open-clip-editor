@@ -1,7 +1,7 @@
 import {fitPlayed} from './edl.mjs';
 import fs from 'node:fs';import path from 'node:path';import {run,probe} from './process.mjs';import {PYTHON,ROOT} from './config.mjs';import {importYouTube} from './ingest.mjs';import {pickClips,clipCount,momentShape} from './selection.mjs';import {titleClips} from './titles.mjs';import {streamPeople} from './people.mjs';import {renderClip} from './render.mjs';
 import {pickWithProvider} from './providers.mjs';import {ensureSignals} from './signals.mjs';import {followLiveChat,jobChat} from './twitch-chat.mjs';import {loadLessons} from './learning.mjs';import {judgeMoments,judgeReady} from './meme-judge.mjs';
-import {enrichClip,publicationMetadata} from './context.mjs';import {campaignReady,readCampaign,campaignBrief,campaignOptions,campaignPlayMax,applyCampaignMeta} from './campaign.mjs';import {importSource,prefetchSections} from './remote.mjs';import {isRemote,PLATFORMS} from './sources.mjs';import {sourceClip} from './source-clip.mjs';import {collectCrowd,loadCrowd} from './twitch-clips.mjs';import {scanMode,fastScan} from './scan.mjs';import {prepareAudio} from './audio.mjs';import {rawTranscript,rawMoments,rawClip} from './raw.mjs';
+import {enrichClip,publicationMetadata} from './context.mjs';import {fetchYouTubeChat} from './youtube-chat.mjs';import {playedLength} from './edl.mjs';import {campaignReady,readCampaign,campaignBrief,campaignOptions,campaignPlayMax,applyCampaignMeta} from './campaign.mjs';import {importSource,prefetchSections} from './remote.mjs';import {isRemote,PLATFORMS} from './sources.mjs';import {sourceClip} from './source-clip.mjs';import {collectCrowd,loadCrowd} from './twitch-clips.mjs';import {scanMode,fastScan} from './scan.mjs';import {prepareAudio} from './audio.mjs';import {rawTranscript,rawMoments,rawClip} from './raw.mjs';
 export async function runPipeline(store,id,{signal,render=true}={}){
  const folder=store.folder(id);let job=store.get(id);
  const update=(stage,progress,message,patch={})=>{job=store.update(id,{status:'running',stage,progress,message,...patch});};
@@ -17,7 +17,9 @@ export async function runPipeline(store,id,{signal,render=true}={}){
   try{followLiveChat(job);}catch{}
   // Twitch VODs: viewers' clips of the broadcast, when the owner added a Twitch app key. Optional and never fatal.
   if(job.source?.type==='twitch'&&job.source.kind==='video'&&!job.crowd){update('probe',.155,'Checking which moments viewers clipped');const crowd=await collectCrowd(job,folder);if(crowd)update('probe',.16,crowd.status==='done'?`Viewers made ${crowd.clips} clips of this stream`:'Reading video details',{crowd});}
-  const metadata=await probe(job.sourcePath,{signal});update('audio',.17,'Preparing local speech audio',{metadata});
+  const metadata=await probe(job.sourcePath,{signal});
+  // YouTube streams: fetch the chat replay alongside audio and transcription (where chat went wild is a strong signal).
+  const chatTask=fetchYouTubeChat(job,folder,{signal}).catch(()=>null);update('audio',.17,'Preparing local speech audio',{metadata});
   const audio=path.join(folder,'audio.wav');await prepareAudio({sourcePath:job.sourcePath,audioPath:audio,sourceDuration:metadata.audioDuration||metadata.duration,signal});
   const transcriptFile=path.join(folder,'transcript.json');
   // Raw Clip template: no transcription. A word-free transcript carries the loudness the moment finder and timeline use.
@@ -34,6 +36,9 @@ export async function runPipeline(store,id,{signal,render=true}={}){
   }
   const transcript=JSON.parse(fs.readFileSync(transcriptFile,'utf8'));transcript.words||=[];const linkClip=job.source?.kind==='clip',raw=!!transcript.raw;if(!linkClip&&!raw&&!transcript.words.length)throw new Error('No usable speech transcript was found');
   const reused=!!job.clips?.length,count=clipCount(job.options.count,metadata.duration),basePicking={...job.options,count};
+  if(!reused&&!linkClip){const waiting=setTimeout(()=>update('select',.555,'Reading the live chat replay'),1500);// A 6-hour stream's chat replay took 25 minutes to download: wait at most 3 more minutes, then go on without it
+   // (it keeps downloading for the timeline and later picks).
+   const n=await Promise.race([chatTask,new Promise(r=>setTimeout(()=>r(null),3*60e3))]);clearTimeout(waiting);if(n)job=store.update(id,{chatReplay:{messages:n}});}
   // Campaign requirements (AI only): read the brief once into rules that steer picking, lengths, shape and upload details.
   if(!reused&&!linkClip&&!raw&&String(job.options.campaign||'').trim()){let campaign=job.campaign||null;
    if(!campaignReady())campaign={status:'skipped',error:'Set up an AI provider in .env (Gemini, Groq, Ollama or Claude) to use campaign requirements.'};
@@ -47,10 +52,15 @@ export async function runPipeline(store,id,{signal,render=true}={}){
   let clips;
   if(!reused&&linkClip)clips=[sourceClip(job,metadata,transcript)];
   else if(!reused&&raw)clips=rawMoments({energy:transcript.energy,action:signals?.action,duration:metadata.duration,count}).map(m=>rawClip(job,m));
-  else if(!reused&&judgeReady(picking)){update('select',.565,`AI is choosing the best ${(momentShape(picking)?.label||'moment').toLowerCase()}s`);const judged=await judgeMoments({...transcript,duration:metadata.duration},picking,{people:streamPeople(job,{folder}),crowd:loadCrowd(folder),signals,chat:jobChat(job),lessons:loadLessons(store.root)});clips=judged.clips;job=store.update(id,{aiMoments:judged.status});}
-  else clips=reused?job.clips:job.options.picker==='heuristic'?pickClips({...transcript,duration:metadata.duration},picking,{people:streamPeople(job,{folder}),crowd:loadCrowd(folder),signals,chat:jobChat(job),lessons:loadLessons(store.root)}):await pickWithProvider(transcript,picking,{signal});if(!clips.length)throw new Error('Not enough speech for a 20–60 second clip. Try a longer speech-based video.');
+  else if(!reused&&judgeReady(picking)){update('select',.565,`AI is choosing the best ${(momentShape(picking)?.label||'moment').toLowerCase()}s`);const judged=await judgeMoments({...transcript,duration:metadata.duration},picking,{people:streamPeople(job,{folder}),crowd:loadCrowd(folder),signals,chat:jobChat(job,folder),lessons:loadLessons(store.root)});clips=judged.clips;job=store.update(id,{aiMoments:judged.status});}
+  else clips=reused?job.clips:job.options.picker==='heuristic'?pickClips({...transcript,duration:metadata.duration},picking,{people:streamPeople(job,{folder}),crowd:loadCrowd(folder),signals,chat:jobChat(job,folder),lessons:loadLessons(store.root)}):await pickWithProvider(transcript,picking,{signal});if(!clips.length)throw new Error('Not enough speech for a 20–60 second clip. Try a longer speech-based video.');
   // Whichever picker chose them, finished clips play for at most a minute.
   if(!reused&&!linkClip&&!raw)clips=clips.map(c=>fitPlayed(transcript.words,c,job.options,rules?campaignPlayMax(rules,job.options.outputFormat!=='video'):60));
+  // Strong opening: when a standard clip's payoff comes late, it opens on the payoff for a moment (cold open) and then
+  // plays from the setup, so the first seconds hold viewers. Meme templates have their own shape; off with autoHook:false.
+  if(!reused&&!linkClip&&!raw&&job.options.autoHook!==false&&!momentShape(job.options))clips=clips.map(c=>{if(!Number.isFinite(c.peakAt)||c.settings?.coldOpen)return c;
+   const late=playedLength(transcript.words.filter(w=>w.end>c.start&&w.start<c.start+c.peakAt),{start:c.start,end:c.start+c.peakAt},job.options);
+   return late>=25?{...c,settings:{...(c.settings||{}),coldOpen:true},reasons:[...(c.reasons||[]),`Opens on the payoff first: it comes ${Math.round(late)} s in`]}:c;});
   // Hooks and titles: one batched AI call (free providers first) or local who-did-what titles; a retry keeps finished ones.
   let aiTitles=job.aiTitles;
   // Clip links with real speech get written titles like any moment; near-silent ones keep the platform title or streamer and game.

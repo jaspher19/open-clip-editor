@@ -17,9 +17,9 @@ function stream(minutes=30){
 }
 
 test('auto clip count scales with length; explicit counts are kept',()=>{
- assert.equal(clipCount('auto',600),3);assert.equal(clipCount('auto',8030),12);assert.equal(clipCount('auto',40000),12);assert.equal(clipCount(5,8030),5);
+ assert.equal(clipCount('auto',600),3);assert.equal(clipCount('auto',8030),12);assert.equal(clipCount('auto',40000),24);assert.equal(clipCount(5,8030),5);
  assert.equal(validateOptions({}).count,'auto');assert.equal(validateOptions({}).autoExport,true);assert.equal(validateOptions({model:'large-v3-turbo'}).model,'large-v3-turbo');
- assert.throws(()=>validateOptions({count:2}),/auto or 3–12/);assert.throws(()=>validateOptions({count:13}),/auto or 3–12/);
+ assert.throws(()=>validateOptions({count:2}),/auto or 3–24/);assert.throws(()=>validateOptions({count:25}),/auto or 3–24/);assert.equal(validateOptions({count:24}).count,24);
 });
 
 test('the picker lands on real reaction peaks with setup before and an ending after, at varied lengths and scores',()=>{

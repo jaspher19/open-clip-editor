@@ -3,7 +3,7 @@
 // work/chat/twitch-<broadcast id>.jsonl: one line per message with seconds since the stream started and the text only
 // (no usernames). Chat only arrives from the moment we connect, so it helps when the same broadcast is imported again
 // later (paste the link again for the newer part) or its moments are re-picked.
-import fs from 'node:fs';import path from 'node:path';import {WORK} from './config.mjs';import {clamp} from './moments.mjs';
+import fs from 'node:fs';import path from 'node:path';import {WORK} from './config.mjs';import {clamp} from './moments.mjs';import {loadYouTubeChat} from './youtube-chat.mjs';
 
 export const CHAT_URL='wss://irc-ws.chat.twitch.tv:443';
 export const CHAT_DIR=path.join(WORK,'chat');
@@ -41,24 +41,29 @@ export const chatRecorders=()=>[...recorders.values()];
 export function loadChat(id,dir=CHAT_DIR){if(!id)return [];try{return fs.readFileSync(chatFile(id,dir),'utf8').split('\n').filter(Boolean).map(l=>{try{return JSON.parse(l);}catch{return null;}}).filter(m=>m&&Number.isFinite(m.t));}catch{return [];}}
 
 // Laughing and hype emotes and words that mark a moment in Twitch chat.
-const LAUGH=/\b(?:KEKW|LUL|LULW|OMEGALUL|ICANT|LMAO+|LMFAO|LOL+|xd+|HAHA\w*|dead)\b|😂|🤣|💀/i,HYPE=/\b(?:POG\w*|W+|CLIP+(?: IT| THAT)?|NO WAY|WTF|HOLY|OMG|Clueless|monkaS|PepeHands|L+)\b|\?{3,}|!{3,}/i;
+const LAUGH=/\b(?:KEKW|LUL|LULW|OMEGALUL|ICANT|LMAO+|LMFAO|LOL+|xd+|HAHA\w*|dead)\b|😂|🤣|💀|:face-with-tears-of-joy:|:rolling-on-the-floor-laughing:|:skull:|:loudly-crying-face:/i,HYPE=/\b(?:POG\w*|W+|CLIP+(?: IT| THAT)?|NO WAY|WTF|HOLY|OMG|Clueless|monkaS|PepeHands|L+)\b|\?{3,}|!{3,}/i;
 /**
  * Per-second chat score 0–3, moved back by CHAT_DELAY: messages per second against the rolling 5-minute median, with
  * laughing and hype messages counting double. Empty (all zero) without chat.
  */
 export function chatSignal(messages,secs){const out=new Float32Array(secs+1);if(!messages?.length)return out;
- const rate=new Float32Array(secs+1);for(const {t,m} of messages){const s=Math.round(t-CHAT_DELAY);if(s<0||s>secs)continue;rate[s]+=LAUGH.test(m)||HYPE.test(m)?2:1;}
- const smooth=new Float32Array(secs+1);for(let t=0;t<=secs;t++){let n=0;for(let k=Math.max(0,t-2);k<=Math.min(secs,t+2);k++)n+=rate[k];smooth[t]=n/5;}
+ const rate=new Float32Array(secs+1),react=new Float32Array(secs+1);for(const {t,m} of messages){const s=Math.round(t-CHAT_DELAY);if(s<0||s>secs)continue;const hot=LAUGH.test(m)||HYPE.test(m);rate[s]+=hot?2:1;if(hot)react[s]++;}
+ // Busy chats (a big YouTube stream runs ~15 messages a second) barely change their overall rate at a big moment;
+ // what spikes is laughing and hype: measured on a 6-hour stream, the reaction rate reached 2.8× normal in the top 1% of
+ // seconds (overall rate: 1.4×). So busy chats are scored on reactions alone, small chats on everything.
+ const busyChat=messages.length/Math.max(1,secs)>=3;
+ const smooth=new Float32Array(secs+1),src=busyChat?react:rate;for(let t=0;t<=secs;t++){let n=0;for(let k=Math.max(0,t-2);k<=Math.min(secs,t+2);k++)n+=src[k];smooth[t]=n/5;}
  // Baseline: median of 5-second means around each point (±150 s), sampled every 10 s.
  const base=new Float32Array(secs+1),step=10;let prev=0;
  for(let c=0;c<=secs;c+=step){const vals=[];for(let k=Math.max(0,c-150);k<=Math.min(secs,c+150);k+=5)vals.push(smooth[k]);vals.sort((a,b)=>a-b);const med=vals[vals.length>>1]||0;for(let t=c;t<Math.min(secs+1,c+step);t++)base[t]=med;prev=med;}
- for(let t=0;t<=secs;t++){const b=Math.max(base[t]||prev,.3);out[t]=clamp((smooth[t]/b-2)/1.5,0,3);}
+ for(let t=0;t<=secs;t++){const b=Math.max(base[t]||prev,.3);out[t]=busyChat?clamp((smooth[t]/b-1.6)/1,0,3):clamp((smooth[t]/b-2)/1.5,0,3);}
  return out;
 }
 
 /** The broadcast a job's chat belongs to: Twitch past broadcasts only (the VOD id). */
 export const chatId=job=>job?.source?.type==='twitch'&&job.source.kind==='video'&&job.source.id?String(job.source.id):null;
-export const jobChat=job=>loadChat(chatId(job));
+/** A project's chat: recorded Twitch chat, or a YouTube stream's chat replay stored with the project (server/youtube-chat.mjs). */
+export const jobChat=(job,folder)=>job?.source?.type==='youtube'?(folder?loadYouTubeChat(folder):[]):loadChat(chatId(job));
 /**
  * Start recording chat for a project imported from a live Twitch stream (no-op otherwise, or when it is already
  * recording). Recording stops 24 h after the stream started, or after 45 quiet minutes.

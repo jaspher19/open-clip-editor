@@ -3,7 +3,7 @@
 // for their exact format; every other template as a Short for a gaming clip channel. Its times are snapped to real
 // words and checked against the moment's shape.
 import {z} from 'zod';import {askAI,metadataProviders} from './metadata-ai.mjs';import {momentShape,pickClips,clipCount,PLAY_MAX} from './selection.mjs';import {playedLength} from './edl.mjs';import {laugh,strong} from './moments.mjs';
-export const POOL=30,POOL_GENERAL=18;
+export const POOL=30,POOL_GENERAL=36;
 const Scores=z.object({picks:z.array(z.object({
  id:z.number().int().describe('Candidate number'),
  start:z.number().describe('Source seconds where the clip should start: the first word of the setup'),
@@ -59,7 +59,7 @@ export const judgeReady=(options,env=process.env)=>options.picker==='heuristic'&
 export async function judgeMoments(transcript,options,{people,crowd=[],signals=null,chat=[],lessons=null,ask=askAI,env}={}){
  const words=transcript.words||[],wanted=clipCount(options.count,transcript.duration),meme=!!momentShape(options);
  // Normal moments are longer than meme beats, so the pool is smaller to keep the prompt within free-tier limits.
- const pool=pickClips(transcript,{...options,count:meme?POOL:Math.min(POOL_GENERAL,Math.max(12,wanted*2))},{people,crowd,signals,chat,lessons});
+ const pool=pickClips(transcript,{...options,count:meme?POOL:Math.min(POOL_GENERAL,Math.max(12,Math.ceil(wanted*1.5)))},{people,crowd,signals,chat,lessons});
  if(!pool.length)return {clips:[],status:{status:'skipped',pool:0}};
  let data,provider,model,lastError;
  // One retry with the strongest half of the pool (a smaller request) before falling back to the local ranking.

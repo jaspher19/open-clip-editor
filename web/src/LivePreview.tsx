@@ -33,15 +33,34 @@ function wordColor(look:Look,words:Word[],k:number){const pal=look.palette||[loo
  if(look.rule==='cycle'){let prev=-1;for(let i=0;i<=k;i++)prev=pick(i,pal.length,prev);return pal[prev];}
  if(look.rule==='keywords'){const size=look.words>=3?look.words:6,first=Math.floor(k/size)*size,phrase=words.slice(first,first+size).map(w=>w.text.replace(/[^\p{L}\p{N}']/gu,''));let hot=-1;phrase.forEach((b,i)=>{if(b.length>=4&&!STOP.has(b.toLowerCase())&&(hot<0||b.length>phrase[hot].length))hot=i;});return k-first===hot||/[!?]$/.test(words[k].text)?pal[Math.floor(k/size)%pal.length]:look.color;}
  return look.color;}
-function ReferenceCaption({look,words,time,top,wide}:{look:Look;words:Word[];time:number;top:string;wide:boolean}){
+function ReferenceCaption({look,words,time,top,wide,x=.5}:{look:Look;words:Word[];time:number;top:string;wide:boolean;x?:number}){
  let i=words.length-1;while(i>=0&&words[i].start>time)i--;if(i<0||time>=words[i].end+.15)return null;const first=Math.floor(i/look.words)*look.words,shown=words.slice(first,look.build?i+1:first+look.words);
  const text=shown.map(w=>look.textCase==='upper'?w.text.toUpperCase():w.text.toLowerCase()),chars=Math.max(...text.map(t=>t.length),text.join(' ').length/(look.build?2:1));
  const fs=Math.min(look.fs,(look.fit||900)/(Math.max(1,Math.min(chars,28))*(GW[look.font]||.47))),unit=wide?1080/1920:1,em=(EM[look.font]||.65)*fs/10.8*unit,px=(n:number)=>`${(n/10.8*unit).toFixed(3)}cqw`;
  const hard=[look.shadow?`${px(look.shadow)} ${px(look.shadow)} 0 #000`:'',look.soft?`${px(3)} ${px(3)} ${px(8)} #00000080`:''].filter(Boolean);
- const style={top,fontFamily:`'${look.font}'`,fontSize:`${em.toFixed(3)}cqw`,textTransform:'none',lineHeight:look.box?1.15:1.08,textShadow:hard.join(',')||'none',WebkitTextStroke:look.outline?`${px(look.outline*2)} #000`:undefined,paintOrder:'stroke fill',textWrap:'balance'} as CSSProperties;
+ const style={top,...sideways(x),fontFamily:`'${look.font}'`,fontSize:`${em.toFixed(3)}cqw`,textTransform:'none',lineHeight:look.box?1.15:1.08,textShadow:hard.join(',')||'none',WebkitTextStroke:look.outline?`${px(look.outline*2)} #000`:undefined,paintOrder:'stroke fill',textWrap:'balance'} as CSSProperties;
  return <div className="live-caption" style={style}><span style={look.box?{background:look.box,padding:`0 ${px(14)}`,boxDecorationBreak:'clone',WebkitBoxDecorationBreak:'clone'}:undefined}>{shown.map((w,j)=>{const c=wordColor(look,words,first+j),glow=look.glow&&c.toUpperCase()!==look.color.toUpperCase();return <span key={j} style={{color:c,textShadow:glow?`0 0 ${px(14)} ${c},${hard.join(',')||'0 0 0 transparent'}`:undefined}}>{text[j]}{j<shown.length-1?' ':''}</span>;})}</span></div>;
 }
 type Segment=Range&{outStart:number;part?:boolean};
+/** Captions keep 90% of the frame's width; a dragged centre moves that band sideways. */
+const sideways=(x:number):CSSProperties=>Math.abs(x-.5)<.001?{}:{left:`${((x-.5)*100+5).toFixed(2)}%`,right:`${((.5-x)*100+5).toFixed(2)}%`};
+/**
+ * The captions' drag handle in the clip editor's preview: drag to place them (snaps to the centre lines), arrow keys
+ * to nudge (Shift for bigger steps), double-click to put them back on the template's spot. Shares of the frame.
+ */
+function CaptionHandle({x,y,custom,onMove}:{x:number;y:number;custom:boolean;onMove:(p:{x:number;y:number}|null)=>void}){
+ const drag=useRef<{dx:number;dy:number;rect:DOMRect}|null>(null),frame=useRef(0),pending=useRef<{x:number;y:number}|null>(null);
+ const place=(px:number,py:number)=>{let nx=Math.min(.85,Math.max(.15,px)),ny=Math.min(.95,Math.max(.05,py));if(Math.abs(nx-.5)<.025)nx=.5;if(Math.abs(ny-.5)<.015)ny=.5;return {x:+nx.toFixed(4),y:+ny.toFixed(4)};};
+ const flush=()=>{frame.current=0;if(pending.current)onMove(pending.current);};
+ return <div className={`live-caption-handle ${custom?'custom':''}`} style={{left:`${x*100}%`,top:`${y*100}%`}} role="slider" tabIndex={0} aria-label="Captions: drag to move, arrow keys to nudge, double-click to reset" aria-valuetext={`${Math.round(x*100)}% across, ${Math.round(y*100)}% down`}
+  onPointerDown={e=>{e.preventDefault();e.stopPropagation();const rect=(e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();drag.current={dx:(e.clientX-rect.left)/rect.width-x,dy:(e.clientY-rect.top)/rect.height-y,rect};e.currentTarget.setPointerCapture(e.pointerId);}}
+  onPointerMove={e=>{const d=drag.current;if(!d)return;pending.current=place((e.clientX-d.rect.left)/d.rect.width-d.dx,(e.clientY-d.rect.top)/d.rect.height-d.dy);if(!frame.current)frame.current=requestAnimationFrame(flush);}}
+  onPointerUp={e=>{if(!drag.current)return;drag.current=null;e.currentTarget.releasePointerCapture?.(e.pointerId);if(frame.current){cancelAnimationFrame(frame.current);frame.current=0;}if(pending.current){onMove(pending.current);pending.current=null;}}}
+  onDoubleClick={e=>{e.stopPropagation();onMove(null);}}
+  onKeyDown={e=>{const step=e.shiftKey?.05:.01,d={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]}[e.key];if(!d)return;e.preventDefault();e.stopPropagation();onMove(place(x+d[0],y+d[1]));}}>
+  <span>Captions · drag to move</span>
+ </div>;
+}
 type Phase={kind:'normal'}|{kind:'cold';until:number}|{kind:'hold';label:string}|{kind:'replay';until:number;label:string};
 
 /**
@@ -49,7 +68,7 @@ type Phase={kind:'normal'}|{kind:'cold';until:number}|{kind:'hold';label:string}
  * cuts are skipped, extra parts follow, and freezes, replays, the cold open and on-screen effects play out.
  * `words` already carry caption corrections and exclude cut words.
  */
-export default function LivePreview({video,src,segments,words,settings,hook,sourceAspect,samples,fontFamily,accent,effects=[],coldOpenAt,stack=null}:{stack?:StackLayout|null;video:RefObject<HTMLVideoElement|null>;src:string;segments:Segment[];words:Word[];settings:Partial<Settings>&EngagementSettings;hook:string;sourceAspect:number;samples:{time:number;centerX:number}[];fontFamily?:string;accent:string;effects?:Effect[];coldOpenAt?:number}){
+export default function LivePreview({video,src,segments,words,settings,hook,sourceAspect,samples,fontFamily,accent,effects=[],coldOpenAt,stack=null,onCaptionMove}:{onCaptionMove?:(p:{x:number;y:number}|null)=>void;stack?:StackLayout|null;video:RefObject<HTMLVideoElement|null>;src:string;segments:Segment[];words:Word[];settings:Partial<Settings>&EngagementSettings;hook:string;sourceAspect:number;samples:{time:number;centerX:number}[];fontFamily?:string;accent:string;effects?:Effect[];coldOpenAt?:number}){
  const [time,setTime]=useState(segments[0]?.start??0),[playing,setPlaying]=useState(false),[mode,setMode]=useState<'edited'|'original'>('edited'),[phase,setPhase]=useState<Phase>({kind:'normal'}),[rewind,setRewind]=useState(false);
  const raf=useRef(0),seg=useRef(0),done=useRef(new Set<string>()),last=useRef(0),phaseRef=useRef<Phase>({kind:'normal'}),holding=useRef(false),timer=useRef(0);
  const first=segments[0],total=outputLength(segments);
@@ -87,7 +106,8 @@ export default function LivePreview({video,src,segments,words,settings,hook,sour
  const videoStyle:CSSProperties=mode==='original'?{}:stacked?{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0}:contained?{position:'absolute',left:0,width:'100%',top:framing==='editorial'?'26%':'50%',height:'auto',transform:framing==='editorial'?undefined:'translateY(-50%)'}:{position:'absolute',top:0,height:'100%',width:`${box.width}%`,left:`${box.left}%`,maxWidth:'none',objectFit:'cover'};
  const out=toOutput(time,segments),elapsed=out??0,showHook=settings.hookEnabled!==false&&!!hook&&phase.kind!=='cold'&&(settings.titleMode==='persistent'||elapsed<Number(settings.hookDuration||2.8)),chunk=settings.captionsEnabled===false||phase.kind==='cold'?null:captionChunk(words,time);
  // Reference styles use their own font unless a caption font is chosen (fontFamily is then the user's pick).
- const captionTop=CAPTION_TOP[String(settings.captionPosition||'lower')]||'68%',base=LOOKS[String(settings.style||'')],look=base&&settings.font&&settings.font!=='auto'&&fontFamily?{...base,font:fontFamily}:base;
+ const custom=Number.isFinite(settings.captionY),capY=custom?Number(settings.captionY):parseFloat(CAPTION_TOP[String(settings.captionPosition||'lower')]||'68')/100,capX=Number.isFinite(settings.captionX)?Number(settings.captionX):.5;
+ const captionTop=`${(capY*100).toFixed(2)}%`,base=LOOKS[String(settings.style||'')],look=base&&settings.font&&settings.font!=='auto'&&fontFamily?{...base,font:fontFamily}:base;
  function toggle(){const v=video.current;if(!v)return;if(v.paused&&!holding.current)v.play().catch(()=>{});else{holding.current=false;window.clearTimeout(timer.current);setP({kind:'normal'});v.pause();}}
  function seek(o:number){const t=toSource(o,segments);if(video.current){video.current.currentTime=t;video.current.playbackRate=1;}seg.current=Math.max(0,segments.findIndex(s=>t>=s.start&&t<=s.end));setP({kind:'normal'});setTime(t);}
  const label=phase.kind==='hold'||phase.kind==='replay'?phase.label:phase.kind==='cold'?'Cold open':'';
@@ -96,12 +116,13 @@ export default function LivePreview({video,src,segments,words,settings,hook,sour
   <div className={`live-frame ${mode} framing-${framing} ${wide?'wide':'tall'} ${shake&&mode==='edited'?'is-shaking':''} ${phase.kind==='hold'?'is-frozen':''}`} style={mode==='edited'?{aspectRatio:String(frameAspect)}:undefined}>
    <div className="live-zoom" style={mode==='edited'&&zoomScale!==1?{transform:`scale(${zoomScale.toFixed(3)})`}:undefined}><video ref={video} src={src} style={videoStyle} controls={mode==='original'} playsInline preload="metadata" onLoadedMetadata={()=>{if(video.current&&first&&video.current.currentTime<first.start)video.current.currentTime=first.start;}}/>{stacked&&stack&&<StackCanvas video={video} layout={stack} sourceAspect={sourceAspect}/>}</div>
    {mode==='edited'&&<>{showHook&&<div className={settings.hookPosition==='middle'?'live-hook middle':'live-hook'}><HookTitle text={hook} accent={accent} fontFamily={fontFamily}/></div>}{settings.seriesLabel&&<span className="live-series">{String(settings.seriesLabel)}</span>}
-    {look&&settings.captionsEnabled!==false&&phase.kind!=='cold'&&<ReferenceCaption look={look} words={words} time={time} top={captionTop} wide={wide}/>}
+    {look&&settings.captionsEnabled!==false&&phase.kind!=='cold'&&<ReferenceCaption look={look} words={words} time={time} top={captionTop} wide={wide} x={capX}/>}
     {settings.watermark&&<div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:`${(Number(settings.watermarkY??.82)*100).toFixed(1)}%`,transform:'translateY(-50%)',textAlign:'center',fontFamily:`'${look?.font||'Work Sans'}'`,fontWeight:700,fontSize:`${((EM[look?.font||'Work Sans']||.65)*(wide?30/19.2:38/10.8)).toFixed(3)}cqw`,color:'#ffffff73',WebkitTextStroke:`${(wide?2/19.2:2/10.8).toFixed(3)}cqw #0000004c`,paintOrder:'stroke fill',pointerEvents:'none',zIndex:1}}>{String(settings.watermark)}</div>}
-    {chunk&&!look&&<div className="live-caption" style={{top:captionTop,fontFamily,'--hook-accent':accent} as CSSProperties}>{chunk.words.map((w:{text:string;active:boolean},i:number)=><span key={i} className={w.active?'active':undefined}>{w.text}{i<chunk.words.length-1?' ':''}</span>)}</div>}
+    {chunk&&!look&&<div className="live-caption" style={{top:captionTop,...sideways(capX),fontFamily,'--hook-accent':accent} as CSSProperties}>{chunk.words.map((w:{text:string;active:boolean},i:number)=><span key={i} className={w.active?'active':undefined}>{w.text}{i<chunk.words.length-1?' ':''}</span>)}</div>}
     {pop&&<div className="live-pop" key={pop.id} style={{fontFamily,'--hook-accent':accent} as CSSProperties}>{pop.emoji&&<span className="live-pop-emoji">{pop.emoji}</span>}{pop.text||'!!'}</div>}
     {label&&<div className={`live-label phase-${phase.kind}`}>{label}</div>}
     {flash&&<i className="live-flash" style={{opacity:Math.max(0,1-(time-flash.at)/Number(flash.duration??.3))}}/>}{rewind&&<i className="live-rewind"/>}
+    {onCaptionMove&&settings.captionsEnabled!==false&&<CaptionHandle x={capX} y={capY} custom={custom} onMove={onCaptionMove}/>}
     <span className="live-badge">Preview</span></>}
   </div>
   {mode==='edited'&&<div className="live-controls"><button type="button" className="icon-button" onClick={toggle} aria-label={playing?'Pause preview':'Play preview'}>{playing?<Pause size={18}/>:<Play size={18}/>}</button><input type="range" aria-label="Preview position" min={0} max={Math.max(.1,total)} step={0.05} value={Math.min(total,Math.max(0,elapsed))} onChange={e=>seek(e.target.valueAsNumber)}/><span className="live-time">{clock(elapsed)} / {clock(total)}</span></div>}

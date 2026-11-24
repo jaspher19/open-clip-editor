@@ -196,3 +196,11 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .campaign-applied{background:var(--yellow);border:2px solid var(--ink);border-radius:10px;padding:6px 10px}
 @media(max-width:600px){.campaign-rules b{display:block;min-width:0}}
 .campaign-field textarea{font:inherit;font-size:15px;line-height:1.4}
+.youtube-guide-nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.youtube-guide-panel small{display:block;margin-top:6px;color:var(--ink-soft)}
+
+/* Clip editor: drag handle for the captions (LivePreview CaptionHandle). */
+.live-caption-handle{position:absolute;z-index:6;width:84%;height:11%;transform:translate(-50%,-50%);border:2px dashed transparent;border-radius:10px;cursor:move;touch-action:none;transition:border-color .15s,background .15s}
+.live-caption-handle span{position:absolute;left:50%;top:-4px;transform:translate(-50%,-100%);padding:2px 8px;border-radius:999px;background:#ffd23f;border:2px solid #16121f;color:#16121f;font:800 11px/1.2 'Comic Neue',sans-serif;white-space:nowrap;opacity:0;transition:opacity .15s;pointer-events:none}
+.live-caption-handle:hover,.live-caption-handle:focus-visible,.live-caption-handle:active{border-color:#ffd23f;background:rgba(255,210,63,.12);outline:none}
+.live-caption-handle:hover span,.live-caption-handle:focus-visible span,.live-caption-handle:active span{opacity:1}
+.live-caption-handle.custom{border-color:rgba(255,210,63,.55)}

@@ -50,7 +50,7 @@ All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* 
 ## What it does
 
 - **Runs locally.** Transcription (Whisper), editing and rendering (FFmpeg) all happen on your machine. No account and no API key are required.
-- **Finds moments for you.** Laughs, hype words, "clip that", loud reactions, busy on-screen action and (for Twitch) live chat going wild rank every part of the stream. Each pick gets the setup it needs before the payoff, and silent action like a chase is kept instead of trimmed as a pause.
+- **Finds moments for you.** Laughs, hype words, "clip that", loud reactions, busy on-screen action and live chat going wild (Twitch chat, and the chat replay of past YouTube streams) rank every part of the stream. Clips whose payoff comes late open on it for a moment, then play from the setup, so the first seconds hold viewers. Each pick gets the setup it needs before the payoff, and silent action like a chase is kept instead of trimmed as a pause.
 - **18 edit templates**, including facecam layouts for streams (Cam Split, Glow Card), two meme edits (Meme Reveal and Skull Ending) built from frame-by-frame measurements of viral Shorts, and **Raw Clip**: no transcription and no edits, just the loudest and busiest moments cut as they happened.
 - **Portrait or landscape.** Choose 9:16 (Shorts, TikTok, Reels) or 16:9 (YouTube videos) before you start. Every template follows the shape you chose.
 - **Video cutter.** Cut any parts of a video into one MP4: drag across the loudness timeline or mark with I and O, add suggested moments, reorder, box the camera and the gameplay and place them, add text in any of 8 fonts and auto captions, and export in 9:16 or 16:9 (up to 4K) exactly as the live preview shows. Post the result without downloading it.
@@ -215,11 +215,12 @@ The first transcription downloads the Whisper model you picked (the `small.en` d
 
 1. **Your video.** Paste a public YouTube video or live stream, a Twitch VOD, clip or live channel, or a Kick VOD or clip, or drop an MP4, MOV, MKV, WebM or M4V file (up to 4 GB). Streams longer than 90 minutes (up to 30 hours) download as a light 360p copy for finding moments; each finished clip is then rendered from a 1080p download of just that part of the stream. A Twitch or Kick clip link becomes one edited clip. **Live streams:** paste a YouTube live link or a Twitch channel that is live, and everything streamed so far is imported (an 11-hour stream takes about 8 minutes at 360p); clips render from 1080p fetched straight from the live stream. Paste again later for the newer part. Kick only shares the last few seconds while live, so paste a Kick stream once it has ended. A Twitch channel must save past broadcasts. Streams over 2 hours get a **fast scan**: a quick draft of the whole stream finds the likely moments, and only those (about a fifth of the stream) are transcribed properly. Add a moment anywhere on the timeline and that part is transcribed on the spot. Choose *Full transcript* under *Long streams* if you want every word. You can add a line of context, for example *"A costume challenge at a Halloween party"*.
 2. **Shape and edit style.** Choose **Portrait 9:16** or **Landscape 16:9**, then **Meme edit**, **Standard clips** or **Raw clips**, and pick a template. Each card plays a preview. Your shape stays when you switch templates. In 16:9 the whole picture is kept; the facecam, letterbox and white-canvas layouts only apply to 9:16.
-3. **Moments.** Choose how many clips you want (or *Auto*, about one per 11 minutes of video). Then press the start button.
+3. **Moments.** Choose how many clips you want, up to 24 (or *Auto*, about one per 11 minutes of video, up to 24). Then press the start button.
 
 OpenClip downloads (or uploads), transcribes, finds the moments and edits every one. When it's done, each clip is ready to download or post. Open any clip to change it:
 
 - Click transcript words to set the start and end, or to fix a caption.
+- Drag the captions anywhere on the preview to place them (arrow keys nudge, double-click resets), or pick a preset position.
 - Change the template, font, caption position, colours, motion and hook text in **Style & hook**, and the YouTube title, description and tags in **Upload details**.
 - Add effects on the timeline: zoom, shake, flash, freeze, replay, sound, pop text and *ACTION* labels.
 - Swap a clip for the next-best moment, or pick a range yourself on the stream timeline.
@@ -305,10 +306,10 @@ The project page shows the rules it used. The brief is pasted text (Whop pages n
 
 ## Optional: posting to YouTube
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), create a project and enable **YouTube Data API v3**.
-2. Set up the OAuth consent screen and add your Google account as a **test user**.
-3. Create an **OAuth client ID** of type **Desktop app** and download its JSON file.
-4. In **Automation → YouTube setup**, paste the JSON or choose the downloaded file, then click **Save credentials**. Click **Connect YouTube** and authorize your channel.
+1. Sign in to [Google Cloud Console](https://console.cloud.google.com/projectcreate) with **the Google account that owns your YouTube channel** and create a project (no billing needed). Enable [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) in it.
+2. Open the [Google Auth Platform](https://console.cloud.google.com/auth/overview) and click **Get started**: an app name, your email, and under **Audience** choose **Personal**. Personal means only you can sign in, with no test users, no "unverified app" warning and no weekly re-sign-in. If Personal isn't offered, choose **External** and add your email under **Audience → Test users** (Google then asks you to sign in again every 7 days).
+3. In [Clients](https://console.cloud.google.com/auth/clients), **Create client** → **Desktop app** → **Create**, and click **Download JSON** before closing the window: Google shows the secret only once.
+4. In **Automation → YouTube setup** (the in-app guide walks through these steps), choose the JSON file, click **Save credentials**, then **Connect YouTube** and sign in with the same account. With an External app, click **Advanced → Go to OpenClip** on Google's "hasn't verified this app" screen.
 5. Open **Posting calendar**, add edited clips (or any finished MP4), edit the title, description and tags, and save drafts.
 6. Select drafts and press **Upload selected**. Uploads are **private by default**. A scheduled post uploads now and YouTube publishes it at the time you set. New Google Cloud projects may be limited to private uploads until Google audits them.
 7. Optional: in **Posting calendar → Auto-post**, turn on auto-posting. When a project finishes, its best clean clips (kept, exported, no warnings) upload as public right away (2 by default) and up to 9 more are scheduled at your daily release times, using titles built from the on-screen hook with an emoji and hashtags. Each project auto-posts once, and nothing already uploaded is uploaded again. YouTube allows about 6 uploads a day by default, so keep the numbers near that.

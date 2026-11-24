@@ -15,8 +15,8 @@ export function validateCandidates(list,duration,{min=20}={}){
  if(!Array.isArray(list)||list.length>MAX_CANDIDATES)throw new Error('Invalid clip response');
  return list.map(c=>{if(!c||typeof c.start!=='number'||typeof c.end!=='number'||!Number.isFinite(c.start)||!Number.isFinite(c.end)||c.start<0||c.end>duration+.01||c.end-c.start<min||c.end-c.start>SPAN_MAX)throw new Error('Invalid candidate time range');return {id:c.id&&/^[a-f0-9-]{36}$/.test(c.id)?c.id:randomUUID(),start:c.start,end:c.end,title:String(c.title||'Selected moment').slice(0,100),hook:String(c.hook||'').slice(0,200),score:Math.max(0,Math.min(100,Number(c.score)||50)),reasons:Array.isArray(c.reasons)?c.reasons.map(String).slice(0,4):['Suggested moment'],category:CATEGORIES.includes(c.category)?c.category:'clippable',...(Number.isFinite(c.peakAt)?{peakAt:c.peakAt}:{}),...(c.titleSource?{titleSource:String(c.titleSource)}:{}),kept:true,settings:{}};});
 }
-/** "auto" scales with the source: about one clip per 11 minutes, 3–12. Explicit counts are kept. */
-export function clipCount(count,duration){return Number.isInteger(count)?count:clamp(Math.round((duration||0)/660),3,12);}
+/** "auto" scales with the source: about one clip per 11 minutes, 3–24. Explicit counts are kept. */
+export function clipCount(count,duration){return Number.isInteger(count)?count:clamp(Math.round((duration||0)/660),3,24);}
 
 const filler=/^(?:and|but|so|like|uh+|um+|or|because|cause|then|yeah|okay|ok)\b/i;
 const leadFiller=/^(?:(?:yo+|bro|bruh|dude|man|like|uh+|um+|okay|ok|so|and|but|yeah|nah|chat|look|listen|wait)[,!.]?\s+)+/i;
