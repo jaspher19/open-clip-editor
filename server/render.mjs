@@ -1,6 +1,6 @@
 import {loadSignals,gameKeeps} from './signals.mjs';import {sourceTime,playedLength} from './edl.mjs';import {PLAY_MAX} from './selection.mjs';import {checkExport} from './qc.mjs';
 import {effectBeats,effectAss,writeEffects,manualEffectsAss,gradeFilter,DEFAULT_SOUNDS} from './effects.mjs';
-import {clipFacecam,stackPlan,stackFilters,validBox,reactionWindows} from './stack.mjs';
+import {clipFacecam,stackPlan,stackFilters,validBox,reactionWindows,faceToolsProblem} from './stack.mjs';
 import fs from 'node:fs';import path from 'node:path';import {buildClipEdl,retimeWords,clockEdl,placeEffects} from './edl.mjs';import {makeAss,makeSrt} from './captions.mjs';import {run,probe,filterScriptArgs} from './process.mjs';import {ROOT,PYTHON} from './config.mjs';import {zoomFilter} from './templates.mjs';import {publicationMetadata} from './context.mjs';import {validateOptions,MUSIC_NAME} from './options.mjs';import {mapFaceTrack,cropCenterExpression,cropFraction,letterboxBand,letterboxFilters} from './framing.mjs';import {hasProfanity} from './moments.mjs';import {ensureSection} from './remote.mjs';import {screenText} from './onscreen.mjs';import {memePlan,skullFilters,skullGraph,skullAss,skullSide,labelAss,lookFilter} from './meme-edit.mjs';
 /** Background music: a music-library track by file name (work/music-library), else the project's uploaded track. */
 export function musicPath(job,options){if(options.musicTrack){if(!MUSIC_NAME.test(options.musicTrack))throw new Error('Invalid music track');const file=path.join(ROOT,'work','music-library',options.musicTrack);if(path.dirname(file)!==path.join(ROOT,'work','music-library')||!fs.existsSync(file))throw new Error('That music track is no longer in the music library');return file;}return job.musicPath&&fs.existsSync(job.musicPath)?job.musicPath:null;}
@@ -69,7 +69,7 @@ export async function renderClip(job,clip,transcript,{folder,signal,onProgress}=
     // The editor preview shows these cuts too: saved in source time next to the clip.
     fs.writeFileSync(path.join(clips,`${name}.zooms.json`),JSON.stringify({cam:stack.zooms.map(([a,b])=>[sourceTime(edl,a),sourceTime(edl,b)]).filter(([a,b])=>a!==null&&b!==null&&b>a)}));}
    framingNote=stack?stack.note:detected?.full?'No facecam: the camera fills the frame · center crop':'No facecam found · center crop';}
-  catch(e){if(signal?.aborted)throw e;framingNote='No facecam found · center crop';fs.writeFileSync(path.join(clips,`${name}.facecam-error.txt`),e.message);}
+  catch(e){if(signal?.aborted)throw e;const why=faceToolsProblem(e.message);framingNote=why?`${why} · center crop for now`:/does not cover|section/i.test(e.message)?'Couldn’t load the full-quality part to find the facecam · center crop':'Facecam search failed · center crop';fs.writeFileSync(path.join(clips,`${name}.facecam-error.txt`),e.message);}
  }
  // The skull goes beside the face, on the side away from it, once the face track is known.
  if(plan.skull){const held=edl.find(x=>x.kind==='skull'),fraction=faceInfo.width?cropFraction(faceInfo.width,faceInfo.height):0;fs.appendFileSync(path.join(clips,`${name}.ass`),skullAss(plan.skull,{outputFormat:options.outputFormat,side:wide||manualCrop?'left':skullSide(faceInfo.samples,held?.start,fraction)}));}

@@ -167,6 +167,9 @@ export function readSections(folder){try{const list=JSON.parse(fs.readFileSync(i
 /** A section well below the stream's own quality (short side under 720p, or under the source when that is lower). */
 export const lowQuality=(job,s)=>{const want=Math.min(720,Number(job.remote?.sourceHeight)||720),side=Math.min(Number(s.width)||0,Number(s.height)||0);return side>0&&side<want;};
 const covers=(s,start,end)=>s.start<=start+1e-3&&s.end>=end-1e-3;
+// At the very start of a stream, an aligned section begins a few frames in (seen: 0.1 s): nothing exists before
+// that, so a section starting within half a second covers a moment that starts at 0.
+export const sectionCovers=(s,start,end)=>covers(s,start,end)||(start<.5&&s.start<=.5&&s.end>=end-1e-3);
 /** Downloads in flight, per job folder, so a prefetch and a render never fetch the same window twice. */
 const inflight=new Map();let writeChain=Promise.resolve();
 function forget(folder,file){writeChain=writeChain.then(()=>writeJsonAtomic(indexFile(folder),readSections(folder).filter(s=>s.file!==file)));return writeChain;}
@@ -219,18 +222,18 @@ export async function ensureSection(job,folder,start,end,{signal,height=1080,run
  for(const low of readSections(folder).filter(s=>covers(s,start,end)&&lowQuality(job,s)&&!s.lowAccepted)){await forget(folder,low.file);fs.rmSync(path.join(folder,'hires',low.file),{force:true});}
  // Above 1080p only a section that is that sharp (or was already asked for at that height) will do.
  const sharp=s=>height<=1080||Math.min(Number(s.width)||0,Number(s.height)||0)>=Math.min(height,Number(remote.sourceHeight)||height)-8||(s.requestedHeight||1080)>=height;
- let hit=readSections(folder).filter(s=>covers(s,start,end)&&sharp(s)).sort((x,y)=>Math.min(y.width||0,y.height||0)-Math.min(x.width||0,x.height||0))[0];
+ let hit=readSections(folder).filter(s=>sectionCovers(s,start,end)&&sharp(s)).sort((x,y)=>Math.min(y.width||0,y.height||0)-Math.min(x.width||0,x.height||0))[0];
  // Sections cached before the picture check get it once.
  if(hit&&!hit.framesChecked){const fixed=await fixSection(folder,hit.file,{signal,frames});hit={...hit,file:fixed||hit.file,framesChecked:true,...(fixed?{repairedFrom:hit.file}:{})};if(fixed){await forget(folder,hit.repairedFrom);forgetBlindFacecams(folder,hit);}await remember(folder,hit);}
  if(hit)return {...hit,file:path.join(folder,'hires',hit.file)};
- const pending=inflight.get(folder)||[];for(const p of pending)if((p.h||1080)>=height&&covers({start:p.a+MAX_SHIFT,end:p.b-MAX_SHIFT},start,end)){const got=await p.promise;if(covers(got,start,end))return got;}
+ const pending=inflight.get(folder)||[];for(const p of pending)if((p.h||1080)>=height&&covers({start:p.a+MAX_SHIFT,end:p.b-MAX_SHIFT},start,end)){const got=await p.promise;if(sectionCovers(got,start,end))return got;}
  const a=Math.max(0,Math.floor(start-SECTION_PAD)),b=Math.min(Math.ceil(total),Math.ceil(end+SECTION_PAD));
  if(!(b>a))throw new Error('Invalid source section');
  const grab=()=>downloadSection(job,folder,a,b,{signal,height,runCommand,align,probeFile,frames});
  // YouTube's live listing sometimes offers only low qualities for a moment: one more try, then keep what came back.
  const promise=grab().then(async got=>{if(!lowQuality(job,got))return got;const again=await grab();if(!lowQuality(job,again))return again;
   const kept={...again,lowAccepted:true};await remember(folder,{...kept,file:path.basename(kept.file)});return kept;});const entry={a,b,h:height,promise};inflight.set(folder,[...pending,entry]);
- try{const got=await promise;if(!covers(got,start,end))throw new Error(`The downloaded section (${got.start.toFixed(1)}–${got.end.toFixed(1)} s) does not cover ${start.toFixed(1)}–${end.toFixed(1)} s`);return got;}
+ try{const got=await promise;if(!sectionCovers(got,start,end))throw new Error(`The downloaded section (${got.start.toFixed(1)}–${got.end.toFixed(1)} s) does not cover ${start.toFixed(1)}–${end.toFixed(1)} s`);return got;}
  finally{inflight.set(folder,(inflight.get(folder)||[]).filter(x=>x!==entry));}
 }
 async function downloadSection(job,folder,a,b,{signal,height=1080,runCommand,align,probeFile,frames}){

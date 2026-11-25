@@ -686,3 +686,4 @@ button:disabled{opacity:.55;filter:grayscale(.6)}
 .more-status.done{background:#e6ffd9}
 .more-status.failed{background:#ffe3df}
 .new-chip{background:var(--lime,#b6ff5c);color:var(--ink)}
+.facecam-note{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0;padding:7px 10px;border:2px solid var(--ink);border-radius:8px;background:#fff1c9;color:var(--ink);font-size:12.5px;font-weight:700;line-height:1.35}.facecam-note svg{flex:none;margin-top:2px}

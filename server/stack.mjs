@@ -108,3 +108,15 @@ export function reactionWindows({audio,edl,words=[],duration}){
  for(const l of [...levels].filter(l=>l.at>3&&l.at<duration-2.5&&l.db>=median+7).sort((a,b)=>b.db-a.db)){if(picks.length>=3)break;if(picks.every(p=>Math.abs(p-l.at)>=7))picks.push(l.at);}
  return [[0,Math.min(OPEN_ZOOM,duration)],...picks.sort((a,b)=>a-b).map(t=>[+Math.max(0,t-.35).toFixed(3),+Math.min(duration,t-.35+REACTION).toFixed(3)])];
 }
+
+/**
+ * Why the facecam search could not run, in plain words with the fix (shown on the clip instead of a vague
+ * "No facecam found"). Returns null for errors that are not about the face tools.
+ */
+export function faceToolsProblem(message){
+ const m=String(message||'');
+ if(/Face model missing|No module named ['"]?mediapipe|ModuleNotFoundError/i.test(m))return 'Face tools are not installed: run npm run setup:faces, then render again';
+ if(/DLL load failed|_framework_bindings|msvcp|vcruntime/i.test(m))return 'Face tools are installed but Windows can’t load them: install the Microsoft Visual C++ Redistributable (aka.ms/vs/17/release/vc_redist.x64.exe), then render again';
+ if(/cv2|opencv|numpy\.core|numpy\.dtype size changed|_ARRAY_API|compiled using NumPy/i.test(m))return 'Face tools clash with another package: run npm run setup:faces again (it repairs this), then render again';
+ return null;
+}
