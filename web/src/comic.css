@@ -693,3 +693,8 @@ button:disabled{opacity:.55;filter:grayscale(.6)}
 .clip-delete:focus-visible{outline:3px solid var(--blue,#2f6bff);outline-offset:2px}
 .clip-delete:disabled{opacity:.5;cursor:not-allowed}
 .clip-confirm{margin:8px 0 0}
+.hook-field.hook-off textarea{opacity:.75;border-style:dashed}.hook-off-note{display:block;margin:2px 0 4px;color:var(--ink-soft);font-weight:700}
+/* The context line (second line on the video), as the export draws it: small, under the hook for the whole clip. */
+.live-context{display:block;margin-top:.5em;font:600 3.4cqw/1.25 'Work Sans',system-ui,sans-serif;color:#fff;text-shadow:0 0 .25em #000,0 .08em .1em #000}
+.live-context.alone{position:absolute;left:6%;right:6%;top:6%;text-align:center;z-index:2}
+.live-hook .live-context{color:#fff}

@@ -129,3 +129,16 @@ export function spreadTranslation(slotCount,text,language=''){
  else tokens.forEach((t,i)=>{out[Math.floor(i*n/k)]=t.slice(0,120);});
  return out;
 }
+
+/**
+ * Effects still inside what the clip plays (its range and extra parts). Trimming the clip or removing a part takes
+ * the effects on that footage with it, as it does for cuts; otherwise the save is refused ("must sit inside the clip").
+ * @param {{at:number}[]} effects
+ * @param {number} start
+ * @param {number} end
+ * @param {{start:number,end:number}[]} [parts]
+ */
+export function effectsInside(effects,start,end,parts=[]){
+ const spans=[{start,end},...(parts||[])];
+ return (effects||[]).filter(e=>Number.isFinite(e?.at)&&spans.some(s=>e.at>=s.start-.01&&e.at<=s.end+.01));
+}
