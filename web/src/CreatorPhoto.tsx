@@ -5,7 +5,8 @@ import type {Job} from './types';
 // user picked, or the creator's initials on a colour of their own.
 const initials=(name:string)=>{const parts=name.replace(/[^\p{L}\p{N}\s]/gu,' ').trim().split(/\s+/).filter(Boolean);return ((parts[0]?.[0]||'?')+(parts.length>1?parts.at(-1)![0]:parts[0]?.[1]||'')).toUpperCase();};
 const hue=(s:string)=>[...s].reduce((h,c)=>(h*31+c.charCodeAt(0))%360,7);
-export const creatorName=(j:Job)=>j.creator?.name||j.source?.name||j.title||'New project';
+// Local uploads have no channel: their file name, without the extension.
+export const creatorName=(j:Job)=>j.creator?.name||(j.source?.name||j.title||'').replace(/\.(mp4|mov|mkv|webm|m4v)$/i,'')||'New project';
 
 export function CreatorAvatar({job,version,status}:{job:Job;version:number;status:''|'processing'|'failed'}){
  const name=creatorName(job),key=`${job.creator?.name||''}|${version}`;const [shown,setShown]=useState<string|null>(null);

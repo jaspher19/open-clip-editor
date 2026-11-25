@@ -12,16 +12,24 @@ const CHOICES=['en',...LANGUAGES];
 const base=(code:string)=>code.split('-')[0].toLowerCase();
 
 async function translateLines(jobId:string,from:string,to:string,lines:string[],onProgress:(text:string)=>void):Promise<string[]>{
- const api=browserApi();
+ const api=browserApi();let stuck=false;
  if(api&&from){const ready=await api.availability({sourceLanguage:from,targetLanguage:to}).catch(()=>'unavailable');
   if(ready!=='unavailable'){
    if(ready!=='available')onProgress('Downloading the language pack once (it stays on this computer)…');
-   const t=await api.create({sourceLanguage:from,targetLanguage:to,monitor:m=>m.addEventListener('downloadprogress',e=>onProgress(`Downloading the language pack · ${Math.round(((e as ProgressEvent).loaded||0)*100)}%`))});
-   try{const out:string[]=[];for(let i=0;i<lines.length;i++){onProgress(`Translating line ${i+1} of ${lines.length}…`);out.push(await t.translate(lines[i]));}return out;}finally{t.destroy?.();}
+   // A language pack download can stall (offline, blocked, or Chrome busy): after 20 s without progress, use the AI key.
+   let moved=Date.now();
+   const making=api.create({sourceLanguage:from,targetLanguage:to,monitor:m=>m.addEventListener('downloadprogress',e=>{moved=Date.now();onProgress(`Downloading the language pack · ${Math.round(((e as ProgressEvent).loaded||0)*100)}%`);})});
+   let timer=0;const stalled=new Promise<null>(resolve=>{timer=window.setInterval(()=>{if(Date.now()-moved>20000)resolve(null);},1000);});
+   const t=await Promise.race([making.catch(()=>null),stalled]).finally(()=>clearInterval(timer));
+   if(t){try{const out:string[]=[];for(let i=0;i<lines.length;i++){onProgress(`Translating line ${i+1} of ${lines.length}…`);out.push(await t.translate(lines[i]));}return out;}finally{t.destroy?.();}}
+   making.then(late=>late.destroy?.()).catch(()=>{});
+   onProgress('The browser’s language pack isn’t downloading. Trying your AI key instead…');stuck=true;
   }}
  onProgress('Translating with your AI key…');
  const r=await fetch(`/api/jobs/${jobId}/captions/translate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from,to,lines})});
- const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Translation failed');return d.lines;
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(stuck&&r.status===409?'This browser’s language pack didn’t download. Check your internet and press Translate again, or add a free AI key (for example GEMINI_API_KEY) to .env and restart.':d.error||'Translation failed');
+ return d.lines;
 }
 
 export default function CaptionTranslate({jobId,words,edits,setEdits,ranges,spoken}:{jobId:string;words:Word[];edits:Record<string,string>;setEdits:(e:Record<string,string>)=>void;ranges:Range[];spoken:string}){

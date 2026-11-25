@@ -6,9 +6,12 @@ Paste a public YouTube, Twitch or Kick link (a past broadcast, a clip, or a YouT
 
 ## Spare me some change ☕
 
-OpenClip is free and made by one person, **Jaspher Tampos**. If it saves you time, a small tip keeps it going. Scan with any InstaPay bank or e-wallet (GCash, Maya, BPI, BDO and more).
+OpenClip is free and made by one person, **Jaspher Tampos**. If it saves you time, a small tip keeps it going.
 
-<img src="docs/media/tip-qr.png" alt="InstaPay QR code for Open Clip (BPI)" width="220">
+- **In the Philippines:** scan the InstaPay code with any bank or e-wallet (GCash, Maya, BPI, BDO and more).
+- **From anywhere else:** tip by card or PayPal on Ko-fi: **[ko-fi.com/jasphertampos](https://ko-fi.com/jasphertampos)**, or scan the Ko-fi code.
+
+<img src="docs/media/tip-cards.png" alt="Two QR codes: InstaPay for the Philippines, and Ko-fi (ko-fi.com/jasphertampos) for tips from anywhere" width="560">
 
 ## See it in action
 
@@ -23,14 +26,15 @@ All three clips were made by OpenClip from one 12-minute film, *Tears of Steel* 
 
 | | |
 | :---: | :---: |
-| ![New project: paste a link or drop a file, pick an edit style](docs/media/new-project.jpg) | ![Finished project: edited clips ready to post](docs/media/project-clips.jpg) |
-| **New project:** your video, an edit style, how many moments | **Your clips:** edited and ready, with the whole-stream timeline above |
-| ![Clip editor: live preview and word-level transcript](docs/media/clip-editor.jpg) | ![Templates: choose a different edit for any clip](docs/media/templates.jpg) |
-| **Clip editor:** trim and cut on words, fix captions | **Style & hook:** switch templates, fonts, colours and motion |
+| ![Start screen: paste a link or drop a file; your projects listed by creator, with a language menu at the top](docs/media/new-project.jpg) | ![Finished project: Clip again for more clips, and one clip updating on its own while the others stay playable](docs/media/project-clips.jpg) |
+| **New project:** paste a link or drop a file. Your projects are listed by creator, with their photo, and the whole app can switch language from the top bar | **Your clips:** edited and ready. **Clip again** adds more without repeating one, and an edited clip re-renders on its own while you keep working |
+| ![Clip editor: captions translated to Spanish, synced to the speech](docs/media/clip-editor.jpg) | ![Templates: choose a different edit for any clip](docs/media/templates.jpg) |
+| **Clip editor:** trim and cut on words, fix captions, or **translate them** into another language, still synced to the speech | **Style & hook:** switch templates, fonts, colours and motion |
 
-![Posting calendar: drafts, scheduling and private uploads](docs/media/posting-calendar.jpg)
-
-**Posting calendar:** edit titles and descriptions, schedule, and upload privately to YouTube.
+| | |
+| :---: | :---: |
+| ![Posting calendar: each post with its thumbnail, drafts and scheduled days](docs/media/posting-calendar.jpg) | ![Post dialog: a preview of the finished video before you upload](docs/media/post-preview.jpg) |
+| **Posting calendar:** every post shows its thumbnail; edit titles and descriptions, schedule, and upload privately to YouTube | **Ready to post?** see the finished video before it goes up |
 
 ### New: Video cutter, auto captions, TikTok and portrait or landscape
 
