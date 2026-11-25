@@ -1,74 +1,74 @@
 /* Video cutter (VideoCutter.tsx): same paper-and-ink look as the stream timeline. */
 .cutter{display:grid;gap:18px;min-width:0}
-.cutter .muted{margin:0;color:var(--ink-soft)}
+.cutter .muted{margin:0;color:var(--text-soft)}
 .cutter-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.cutter-head h1{display:flex;align-items:center;gap:10px;font:40px/1 var(--display);letter-spacing:1px;margin:0 0 6px;color:var(--ink)}
+.cutter-head h1{display:flex;align-items:center;gap:10px;font:40px/1 var(--display);letter-spacing:calc(1px*var(--track));margin:0 0 6px;color:var(--text)}
 .cutter-project{display:grid;gap:4px;min-width:min(340px,100%)}
 .cutter-project select{max-width:100%}
 .cutter-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:18px;align-items:start}
-.cutter-player,.cutter-panel{background:var(--paper,#fffaf0);border:3px solid var(--ink);border-radius:18px;box-shadow:0 6px 0 var(--ink);padding:16px;display:grid;gap:12px;min-width:0}
-.cutter-panel h2{display:flex;align-items:center;gap:8px;font:26px/1 var(--display);letter-spacing:1px;margin:0;color:var(--ink)}
+.cutter-player,.cutter-panel{background:var(--paper,#fffaf0);border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:18px;box-shadow:0 6px 0 var(--pop-c);padding:16px;display:grid;gap:12px;min-width:0}
+.cutter-panel h2{display:flex;align-items:center;gap:8px;font:26px/1 var(--display);letter-spacing:calc(1px*var(--track));margin:0;color:var(--text)}
 .cutter-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .cutter-side{display:grid;gap:18px;min-width:0}
-.cutter-video{width:100%;max-height:62vh;margin:0 auto;background:#000;border:3px solid var(--ink);border-radius:12px;overflow:hidden;display:flex;justify-content:center}
+.cutter-video{width:100%;max-height:62vh;margin:0 auto;background:#000;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:12px;overflow:hidden;display:flex;justify-content:center}
 .cutter-video video{width:100%;height:100%;object-fit:contain;cursor:pointer;display:block}
 .cutter-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cutter-controls .secondary,.cutter-controls .primary{min-height:40px;padding:6px 14px;font-size:15px}
-.cutter-clock{font:700 16px/1 'Comic Neue',sans-serif;font-variant-numeric:tabular-nums;color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:8px;padding:8px 10px}
-.cutter-mark{display:inline-flex;align-items:center;gap:4px;font:700 14px/1 'Comic Neue',sans-serif;background:var(--yellow);border:2px solid var(--ink);border-radius:999px;padding:5px 6px 5px 12px;color:var(--ink)}
+.cutter-clock{font:700 16px/1 var(--body);font-variant-numeric:tabular-nums;color:var(--text);background:var(--surface);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:8px;padding:8px 10px}
+.cutter-mark{display:inline-flex;align-items:center;gap:4px;font:700 14px/1 var(--body);background:var(--sel);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;padding:5px 6px 5px 12px;color:var(--text)}
 .cutter-timeline{display:grid;gap:6px}
 .cutter-zoom{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
 .cutter-zoom>span:last-child{display:inline-flex;gap:10px}
 .cutter-strip{height:110px}
-.cut-suggestion{position:absolute;bottom:0;height:22px;min-width:3px;padding:0;border:2px solid var(--ink);border-radius:5px 5px 0 0;background:rgba(255,138,31,.55);cursor:pointer}
+.cut-suggestion{position:absolute;bottom:0;height:22px;min-width:3px;padding:0;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:5px 5px 0 0;background:rgba(255,138,31,.55);cursor:pointer}
 .cut-suggestion:hover,.cut-suggestion:focus-visible{background:rgba(255,138,31,.85);outline:none}
-.cut-part{position:absolute;top:0;height:calc(100% - 26px);min-width:4px;padding:2px 4px;border:3px solid var(--ink);border-radius:6px;background:rgba(155,225,93,.55);color:var(--ink);font:800 13px/1 'Comic Neue',sans-serif;text-align:left;cursor:pointer;overflow:hidden}
+.cut-part{position:absolute;top:0;height:calc(100% - 26px);min-width:4px;padding:2px 4px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:6px;background:rgba(155,225,93,.55);color:var(--text);font:800 13px/1 var(--body);text-align:left;cursor:pointer;overflow:hidden}
 .cut-part:hover,.cut-part:focus-visible{background:rgba(155,225,93,.8);outline:none}
 .cut-part.warn{background:rgba(255,210,63,.7)}
 .cut-playhead{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--red,#ef3e36);pointer-events:none}
 .cut-markline{position:absolute;top:0;bottom:0;width:0;border-left:3px dashed var(--blue-deep,#1559a8);pointer-events:none}
-.cutter-legend{display:flex;align-items:center;gap:6px;margin:0;font:600 13px/1 'Comic Neue',sans-serif;color:var(--ink-soft)}
-.cutter-legend i{display:inline-block;width:14px;height:10px;border:2px solid var(--ink);border-radius:3px;margin-left:8px}
+.cutter-legend{display:flex;align-items:center;gap:6px;margin:0;font:600 13px/1 var(--body);color:var(--text-soft)}
+.cutter-legend i{display:inline-block;width:14px;height:10px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:3px;margin-left:8px}
 .cutter-legend i:first-child{margin-left:0}.lg-part{background:rgba(155,225,93,.8)}.lg-suggest{background:rgba(255,138,31,.85)}
 .cut-parts{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:360px;overflow:auto}
-.cut-parts li{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;border:2px solid var(--ink);border-radius:12px;padding:6px 8px}
-.cut-parts b{display:grid;place-items:center;width:26px;height:26px;border:2px solid var(--ink);border-radius:50%;background:var(--lime,#9be15d);font:800 13px/1 'Comic Neue',sans-serif}
-.cut-parts small{font-weight:700;color:var(--ink-soft);font-variant-numeric:tabular-nums}
-.cut-arrow{color:var(--ink-soft)}
-.cut-time{display:inline-flex;align-items:center;border:2px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden}
-.cut-time input{width:78px;border:0;padding:4px 2px;text-align:center;font:700 14px/1 'Comic Neue',sans-serif;font-variant-numeric:tabular-nums;min-height:0;box-shadow:none;border-radius:0}
-.cut-time button{display:grid;place-items:center;width:26px;height:28px;border:0;background:var(--paper-2,#ffeeb8);color:var(--ink);cursor:pointer;padding:0}
+.cut-parts li{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--surface);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:12px;padding:6px 8px}
+.cut-parts b{display:grid;place-items:center;width:26px;height:26px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:50%;background:var(--ok);font:800 13px/1 var(--body)}
+.cut-parts small{font-weight:700;color:var(--text-soft);font-variant-numeric:tabular-nums}
+.cut-arrow{color:var(--text-soft)}
+.cut-time{display:inline-flex;align-items:center;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:8px;background:var(--surface);overflow:hidden}
+.cut-time input{width:78px;border:0;padding:4px 2px;text-align:center;font:700 14px/1 var(--body);font-variant-numeric:tabular-nums;min-height:0;box-shadow:none;border-radius:0}
+.cut-time button{display:grid;place-items:center;width:26px;height:28px;border:0;background:var(--paper-2,#ffeeb8);color:var(--text);cursor:pointer;padding:0}
 .cut-row-actions{display:inline-flex;gap:4px;margin-left:auto}
-.cut-row-actions button{display:grid;place-items:center;width:30px;height:30px;border:2px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;padding:0}
+.cut-row-actions button{display:grid;place-items:center;width:30px;height:30px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;padding:0}
 .cut-row-actions button:disabled{opacity:.35;cursor:default}
 .cut-parts-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .cut-parts-actions .secondary{min-height:38px;padding:5px 14px;font-size:14px}
-.cutter-total{font:700 14px/1 'Comic Neue',sans-serif;background:var(--lime,#9be15d);border:2px solid var(--ink);border-radius:999px;padding:5px 10px;color:var(--ink)}
+.cutter-total{font:700 14px/1 var(--body);background:var(--ok);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;padding:5px 10px;color:var(--text)}
 .cut-shapes{display:grid;gap:8px}
-.cut-shapes button{display:flex;align-items:flex-start;gap:10px;text-align:left;padding:10px 12px;border:3px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);cursor:pointer}
-.cut-shapes button.selected{background:var(--yellow)}
-.cut-shapes button>span{flex:1}.cut-shapes strong{display:block;font-size:15px}.cut-shapes small{display:block;font-size:13px;color:var(--ink-soft)}
+.cut-shapes button{display:flex;align-items:flex-start;gap:10px;text-align:left;padding:10px 12px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer}
+.cut-shapes button.selected{background:var(--sel)}
+.cut-shapes button>span{flex:1}.cut-shapes strong{display:block;font-size:15px}.cut-shapes small{display:block;font-size:13px;color:var(--text-soft)}
 .cut-export{justify-content:center}
-.cutter-note,.cutter-warning{margin:0;font:600 14px/1.35 'Comic Neue',sans-serif;border:2px solid var(--ink);border-radius:10px;padding:8px 12px;color:var(--ink)}
-.cutter-note{background:#e9f5ff}.cutter-warning{background:var(--yellow);display:flex;align-items:center;gap:8px}
-.cut-reason{font-weight:600;color:var(--ink-soft)}
+.cutter-note,.cutter-warning{margin:0;font:600 14px/1.35 var(--body);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:10px;padding:8px 12px;color:var(--text)}
+.cutter-note{background:var(--tint-blue,#e9f5ff)}.cutter-warning{background:var(--sel);display:flex;align-items:center;gap:8px}
+.cut-reason{font-weight:600;color:var(--text-soft)}
 .cut-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.cut-item{display:flex;gap:14px;align-items:flex-start;background:#fff;border:2px solid var(--ink);border-radius:14px;padding:10px}
-.cut-item video,.cut-thumb{flex:none;background:#000;border:2px solid var(--ink);border-radius:8px}
+.cut-item{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:14px;padding:10px}
+.cut-item video,.cut-thumb{flex:none;background:#000;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:8px}
 .cut-item video.wide,.cut-thumb.wide{width:240px;aspect-ratio:16/9}
 .cut-item video.tall,.cut-thumb.tall{width:110px;aspect-ratio:9/16}
 .cut-thumb{display:grid;place-items:center;color:#fff}
 .cut-info{display:grid;gap:6px;min-width:0;flex:1}
-.cut-info strong{font-size:16px;overflow-wrap:anywhere}.cut-info small{color:var(--ink-soft);font-weight:600}
+.cut-info strong{font-size:16px;overflow-wrap:anywhere}.cut-info small{color:var(--text-soft);font-weight:600}
 .cut-item-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .cut-item-actions .secondary{min-height:36px;padding:5px 14px;font-size:14px;text-decoration:none}
 .danger-text{color:var(--red,#ef3e36)}
-.cutter-empty{display:grid;justify-items:center;gap:10px;text-align:center;padding:48px 16px;background:var(--paper,#fffaf0);border:3px solid var(--ink);border-radius:18px}
+.cutter-empty{display:grid;justify-items:center;gap:10px;text-align:center;padding:48px 16px;background:var(--paper,#fffaf0);border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:18px}
 .cutter-empty h2{font:30px/1 var(--display);margin:0}
-.raw-note{display:block;padding:12px;border:2px dashed var(--ink);border-radius:10px;background:#fff;font-weight:600}
+.raw-note{display:block;padding:12px;border:max(1px,calc(2px*var(--bwk))) dashed var(--edge);border-radius:10px;background:var(--surface);font-weight:600}
 .project-heading-actions{display:flex;gap:10px;flex-wrap:wrap}
 .shape-kind{margin-bottom:12px}
-.shape-note{margin:-4px 0 12px;font:600 14px/1.35 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.shape-note{margin:-4px 0 12px;font:600 14px/1.35 var(--body);color:var(--text-soft)}
 .edit-kind.kind-three{grid-template-columns:repeat(3,1fr)}
 @media(max-width:1100px){.cutter-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.edit-kind.kind-three{grid-template-columns:1fr}}
@@ -84,89 +84,89 @@
 .cut-box.text:hover,.cut-box.text.selected{border-color:#ffd23f;background:rgba(255,210,63,.12)}
 .cut-box.selected,.cut-box:focus-visible{box-shadow:0 0 0 3px rgba(255,255,255,.9),0 0 0 6px var(--ink);outline:none;z-index:2}
 .cut-box.cam{z-index:1}.cut-box.text{z-index:3}
-.cut-box-label{position:absolute;left:-3px;top:-3px;transform:translateY(-100%);padding:2px 7px;border-radius:5px 5px 0 0;font:800 11px/1.3 'Comic Neue',sans-serif;color:#16121f;white-space:nowrap;pointer-events:none}
+.cut-box-label{position:absolute;left:-3px;top:-3px;transform:translateY(-100%);padding:2px 7px;border-radius:5px 5px 0 0;font:800 11px/1.3 var(--body);color:#16121f;white-space:nowrap;pointer-events:none}
 .cut-box.cam .cut-box-label{background:#ff5fc8}.cut-box.game .cut-box-label{background:#3fe0a6}
 .cut-box.text .cut-box-label{display:none}
 .cut-box-handle{position:absolute;width:14px;height:14px;background:#fff;border:2px solid var(--ink);border-radius:3px;touch-action:none}
 .cut-box-handle.nw{left:-8px;top:-8px;cursor:nwse-resize}.cut-box-handle.ne{right:-8px;top:-8px;cursor:nesw-resize}
 .cut-box-handle.sw{left:-8px;bottom:-8px;cursor:nesw-resize}.cut-box-handle.se{right:-8px;bottom:-8px;cursor:nwse-resize}
 .cut-box.game .cut-box-label{top:auto;bottom:-3px;transform:translateY(100%);border-radius:0 0 5px 5px}
-.cut-preview{position:relative;margin:0 auto;width:100%;border:3px solid var(--ink);border-radius:12px;overflow:visible;background:#000}
+.cut-preview{position:relative;margin:0 auto;width:100%;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:12px;overflow:visible;background:#000}
 .cut-preview canvas{display:block;width:100%;height:auto;border-radius:9px}
-.cut-camera-sample{max-height:18rem;overflow:auto;border:2px solid var(--ink);border-radius:8px;background:#000}
+.cut-camera-sample{max-height:18rem;overflow:auto;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:8px;background:#000}
 .cut-camera-sample canvas{display:block;max-width:none}
 .cut-preview .cut-box-label{font-size:10px}
-.cutter-hint{margin:0;font:600 13px/1.4 'Comic Neue',sans-serif;color:var(--ink-soft)}
-.swatch{display:inline-block;width:11px;height:11px;border-radius:3px;border:2px solid var(--ink);margin:0 4px -1px 0}.swatch.cam{background:#ff5fc8}.swatch.game{background:#3fe0a6}
+.cutter-hint{margin:0;font:600 13px/1.4 var(--body);color:var(--text-soft)}
+.swatch{display:inline-block;width:11px;height:11px;border-radius:3px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);margin:0 4px -1px 0}.swatch.cam{background:#ff5fc8}.swatch.game{background:#3fe0a6}
 .cut-shape-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cut-shape-tabs button{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border:3px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);font:800 14px/1 'Comic Neue',sans-serif;cursor:pointer}
-.cut-shape-tabs button.selected{background:var(--yellow)}
+.cut-shape-tabs button{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:10px;background:var(--surface);color:var(--text);font:800 14px/1 var(--body);cursor:pointer}
+.cut-shape-tabs button.selected{background:var(--sel)}
 .cut-layout-tools,.cut-texts,.cut-text-edit{display:grid;gap:10px}
-.cut-texts{border-top:2px dashed var(--ink);padding-top:12px}
-.cut-texts h3{display:flex;align-items:center;gap:6px;font:22px/1 var(--display);letter-spacing:1px;margin:0;color:var(--ink)}
+.cut-texts{border-top:max(1px,calc(2px*var(--bwk))) dashed var(--edge);padding-top:12px}
+.cut-texts h3{display:flex;align-items:center;gap:6px;font:22px/1 var(--display);letter-spacing:calc(1px*var(--track));margin:0;color:var(--text)}
 .cut-presets,.cut-text-chips,.cut-layout-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .cut-layout-row .secondary,.cut-texts .secondary{min-height:36px;padding:5px 12px;font-size:14px}
-.chip{border:2px solid var(--ink);border-radius:999px;background:#fff;color:var(--ink);padding:6px 12px;font:700 13px/1 'Comic Neue',sans-serif;cursor:pointer}
-.chip:hover{background:var(--paper-2,#ffeeb8)}.chip.selected{background:var(--yellow)}
+.chip{border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;background:var(--surface);color:var(--text);padding:6px 12px;font:700 13px/1 var(--body);cursor:pointer}
+.chip:hover{background:var(--paper-2,#ffeeb8)}.chip.selected{background:var(--sel)}
 .cut-text-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cut-text-grid label,.cut-text-edit>label{display:grid;gap:4px}
 .cut-text-grid input[type=range]{width:100%}
 .cut-text-edit textarea{resize:vertical;font-size:15px}
 /* Quality: what the player shows, full-quality downloads, export quality. */
-.cut-quality-badge{position:absolute;right:8px;bottom:8px;z-index:4;pointer-events:none;font:800 12px/1 'Comic Neue',sans-serif;color:#16121f;background:#ffd23f;border:2px solid #16121f;border-radius:999px;padding:4px 9px}
+.cut-quality-badge{position:absolute;right:8px;bottom:8px;z-index:4;pointer-events:none;font:800 12px/1 var(--body);color:#16121f;background:#ffd23f;border:2px solid #16121f;border-radius:999px;padding:4px 9px}
 .cut-quality-badge.hd{background:#9be15d}
-.cutter-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:600 13px/1.35 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.cutter-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:600 13px/1.35 var(--body);color:var(--text-soft)}
 .cutter-hd>span{display:inline-flex;align-items:center;gap:6px}
 .cut-quality{display:flex;flex-wrap:wrap;gap:8px}
 /* Tip jar (TipJar.tsx): the author's QR, the Tip me button and the credit under the logo. */
-.brand-by{grid-column:1/-1;justify-self:start;display:inline-flex;align-items:center;gap:7px;width:max-content;margin:-2px 0 16px 40px;padding:2px 9px 2px 3px;background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:3px 3px 0 var(--ink);transform:rotate(-3deg);font:400 13px/1 var(--display);letter-spacing:1px;color:var(--ink);text-transform:uppercase;transition:transform .18s ease;cursor:default}
-.brand-by b{font:800 9px/1 'Comic Neue',sans-serif;letter-spacing:.6px;color:#fff;background:var(--red);border:2px solid var(--ink);border-radius:999px;padding:2px 6px}
+.brand-by{grid-column:1/-1;justify-self:start;display:inline-flex;align-items:center;gap:7px;width:max-content;margin:-2px 0 16px 40px;padding:2px 9px 2px 3px;background:var(--surface);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;box-shadow:3px 3px 0 var(--pop-c);transform:rotate(calc(-3deg*var(--tilt)));font:400 13px/1 var(--display);letter-spacing:calc(1px*var(--track));color:var(--text);text-transform:var(--case);transition:transform .18s ease;cursor:default}
+.brand-by b{font:800 9px/1 var(--body);letter-spacing:calc(.6px*var(--track));color:#fff;background:var(--red);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;padding:2px 6px}
 .brand-by span{text-shadow:1px 1px 0 var(--yellow)}
-.brand-by:hover{transform:rotate(2deg) scale(1.06)}
-@media (prefers-reduced-motion:reduce){.brand-by{transition:none}.brand-by:hover{transform:rotate(-3deg)}}
+.brand-by:hover{transform:rotate(calc(2deg*var(--tilt))) scale(1.06)}
+@media (prefers-reduced-motion:reduce){.brand-by{transition:none}.brand-by:hover{transform:rotate(calc(-3deg*var(--tilt)))}}
 .topbar-actions{display:inline-flex;align-items:center;gap:10px}
-.tip-button{display:inline-flex;align-items:center;gap:7px;border:3px solid var(--ink);border-radius:999px;background:var(--yellow);color:var(--ink);font:800 15px/1 'Comic Neue',sans-serif;padding:8px 14px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);white-space:nowrap}
-.tip-button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
-.tip-button.compact{font-size:13px;padding:5px 11px;border-width:2px;box-shadow:2px 2px 0 var(--ink)}
-.tip-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:10px 14px;background:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);font:600 15px/1.35 'Comic Neue',sans-serif;color:var(--ink)}
-.tip-dialog{position:fixed;width:min(860px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:20px 20px 16px;border:3px solid var(--ink);border-radius:18px;background:var(--paper,#fff6dc);color:var(--ink);box-shadow:8px 8px 0 var(--ink);text-align:center}
+.tip-button{display:inline-flex;align-items:center;gap:7px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:999px;background:var(--sel);color:var(--text);font:800 15px/1 var(--body);padding:8px 14px;cursor:pointer;box-shadow:3px 3px 0 var(--pop-c);white-space:nowrap}
+.tip-button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--pop-c)}
+.tip-button.compact{font-size:13px;padding:5px 11px;border-width:2px;box-shadow:2px 2px 0 var(--pop-c)}
+.tip-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:10px 14px;background:var(--surface);border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:14px;box-shadow:0 4px 0 var(--pop-c);font:600 15px/1.35 var(--body);color:var(--text)}
+.tip-dialog{position:fixed;width:min(860px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:20px 20px 16px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:18px;background:var(--paper,#fff6dc);color:var(--text);box-shadow:8px 8px 0 var(--pop-c);text-align:center}
 .tip-dialog::backdrop{background:rgba(22,18,31,.55)}
-.tip-dialog h2{display:flex;align-items:center;justify-content:center;gap:8px;font:30px/1 var(--display);letter-spacing:1px;margin:4px 0 8px}
-.tip-dialog p{margin:0 0 12px;font:600 15px/1.4 'Comic Neue',sans-serif}
+.tip-dialog h2{display:flex;align-items:center;justify-content:center;gap:8px;font:30px/1 var(--display);letter-spacing:calc(1px*var(--track));margin:4px 0 8px}
+.tip-dialog p{margin:0 0 12px;font:600 15px/1.4 var(--body)}
 /* Tip QR card: only the OpenClip name and the code. The code stays straight, black on pure white, never covered. */
-.tip-card{position:relative;margin:6px auto 14px;width:fit-content;max-width:100%;padding:16px 18px 20px;border:3px solid var(--ink);border-radius:20px;background:radial-gradient(circle at 1px 1px,rgba(22,18,31,.13) 1px,transparent 1.6px) 0 0/9px 9px,var(--yellow);box-shadow:5px 5px 0 var(--ink);display:grid;justify-items:center;gap:14px}
-.tip-card-name{display:inline-flex;align-items:center;gap:9px;font:34px/1 var(--display);letter-spacing:1.5px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink);transform:rotate(-3deg)}
+.tip-card{position:relative;margin:6px auto 14px;width:fit-content;max-width:100%;padding:16px 18px 20px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:20px;background:radial-gradient(circle at 1px 1px,rgba(22,18,31,.13) 1px,transparent 1.6px) 0 0/9px 9px,var(--sel);box-shadow:5px 5px 0 var(--pop-c);display:grid;justify-items:center;gap:14px}
+.tip-card-name{display:inline-flex;align-items:center;gap:9px;font:34px/1 var(--display);letter-spacing:calc(1.5px*var(--track));color:#fff;-webkit-text-stroke:2px var(--stroke-c);paint-order:stroke fill;text-shadow:3px 3px 0 var(--pop-c);transform:rotate(calc(-3deg*var(--tilt)))}
 .tip-card-name .brand-mark{display:grid;place-items:center;width:38px;height:38px;flex:none;-webkit-text-stroke:0;text-shadow:none}
-.tip-card-qr{position:relative;max-width:100%;padding:6px;border:3px solid var(--ink);border-radius:16px;background:#fff;box-shadow:4px 4px 0 var(--ink)}
+.tip-card-qr{position:relative;max-width:100%;padding:6px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:16px;background:var(--surface);box-shadow:4px 4px 0 var(--pop-c)}
 .tip-card-qr img{display:block;max-width:100%;height:auto;aspect-ratio:1;image-rendering:pixelated;border-radius:8px}
 .tip-corner{position:absolute;width:26px;height:26px;border:5px solid var(--red);pointer-events:none}
 .tip-corner.tl{top:-11px;left:-11px;border-right:0;border-bottom:0;border-radius:12px 0 0 0}
 .tip-corner.tr{top:-11px;right:-11px;border-left:0;border-bottom:0;border-radius:0 12px 0 0;border-color:var(--blue)}
 .tip-corner.bl{bottom:-11px;left:-11px;border-right:0;border-top:0;border-radius:0 0 0 12px;border-color:var(--blue)}
 .tip-corner.br{bottom:-11px;right:-11px;border-left:0;border-top:0;border-radius:0 0 12px 0}
-.tip-dialog .tip-small{font-size:13px;color:var(--ink-soft)}
-.tip-dialog .tip-by{margin:10px 0 0;font-size:12px;color:var(--ink-soft)}
+.tip-dialog .tip-small{font-size:13px;color:var(--text-soft)}
+.tip-dialog .tip-by{margin:10px 0 0;font-size:12px;color:var(--text-soft)}
 .tip-actions{display:flex;justify-content:center}
-.tip-close{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:32px;height:32px;border:2px solid var(--ink);border-radius:50%;background:#fff;color:var(--ink);cursor:pointer}
+.tip-close{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:32px;height:32px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:50%;background:var(--surface);color:var(--text);cursor:pointer}
 
 /* Credit link and the update check. */
 a.brand-by{text-decoration:none;cursor:pointer}
 a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .tip-by a,.update-dialog .tip-by a{color:var(--blue-deep);font-weight:800}
-.update-button{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:999px;background:#fff;color:var(--ink);font:800 13px/1 'Comic Neue',sans-serif;padding:5px 11px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
-.update-button:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
-.update-dialog{position:fixed;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:20px;border:3px solid var(--ink);border-radius:18px;background:var(--paper,#fff6dc);color:var(--ink);box-shadow:8px 8px 0 var(--ink)}
+.update-button{display:inline-flex;align-items:center;gap:6px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;background:var(--surface);color:var(--text);font:800 13px/1 var(--body);padding:5px 11px;cursor:pointer;box-shadow:2px 2px 0 var(--pop-c);white-space:nowrap}
+.update-button:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--pop-c)}
+.update-dialog{position:fixed;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:20px;border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:18px;background:var(--paper,#fff6dc);color:var(--text);box-shadow:8px 8px 0 var(--pop-c)}
 .update-dialog::backdrop{background:rgba(22,18,31,.55)}
-.update-dialog h2{display:flex;align-items:center;gap:8px;font:28px/1 var(--display);letter-spacing:1px;margin:2px 0 14px}
-.update-status{display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;padding:10px 12px;border:2px solid var(--ink);border-radius:12px;font:700 15px/1.35 'Comic Neue',sans-serif;background:#fff}
-.update-status.ok{background:#effbe3}.update-status.new{background:var(--yellow)}.update-status.warn{background:#fff0ec}
+.update-dialog h2{display:flex;align-items:center;gap:8px;font:28px/1 var(--display);letter-spacing:calc(1px*var(--track));margin:2px 0 14px}
+.update-status{display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;padding:10px 12px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:12px;font:700 15px/1.35 var(--body);background:var(--surface)}
+.update-status.ok{background:var(--tint-green,#effbe3)}.update-status.new{background:var(--sel)}.update-status.warn{background:var(--tint-red,#fff0ec)}
 .update-list{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:6px;max-height:220px;overflow:auto}
-.update-list li{display:grid;gap:2px;padding:8px 10px;background:#fff;border:2px solid var(--ink);border-radius:10px;font:600 14px/1.3 'Comic Neue',sans-serif}
-.update-list small{color:var(--ink-soft)}
-.update-help{margin:0 0 8px;font:600 14px/1.4 'Comic Neue',sans-serif}.update-help.warn{margin-top:10px;color:#9c2b20}
+.update-list li{display:grid;gap:2px;padding:8px 10px;background:var(--surface);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:10px;font:600 14px/1.3 var(--body)}
+.update-list small{color:var(--text-soft)}
+.update-help{margin:0 0 8px;font:600 14px/1.4 var(--body)}.update-help.warn{margin-top:10px;color:#9c2b20}
 .update-steps{margin:0 0 10px;padding:10px 12px;background:#16121f;color:#9be15d;border-radius:10px;font:600 14px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap}
 .update-dialog .secondary{min-height:38px;padding:5px 14px;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-.update-dialog .tip-by{margin:14px 0 0;font:600 12px/1.3 'Comic Neue',sans-serif;color:var(--ink-soft)}
+.update-dialog .tip-by{margin:14px 0 0;font:600 12px/1.3 var(--body);color:var(--text-soft)}
 
 /* Clip editor footer: Save (and update the video) is the main action. */
 .editor-save{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
@@ -176,83 +176,83 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .cutter-left{display:grid;gap:18px;min-width:0;align-content:start}
 
 /* Your parts, right under the timeline inside the player box. */
-.cutter-parts-inline{display:grid;gap:10px;padding-top:12px;border-top:2px dashed var(--ink)}
-.cutter-parts-inline h2{display:flex;align-items:center;gap:8px;font:24px/1 var(--display);letter-spacing:1px;margin:0;color:var(--ink)}
+.cutter-parts-inline{display:grid;gap:10px;padding-top:12px;border-top:max(1px,calc(2px*var(--bwk))) dashed var(--edge)}
+.cutter-parts-inline h2{display:flex;align-items:center;gap:8px;font:24px/1 var(--display);letter-spacing:calc(1px*var(--track));margin:0;color:var(--text)}
 /* Auto captions in the Video cutter. */
-.cut-captions{border-top:2px dashed var(--ink);padding-top:12px}
-.cut-fix-words summary{cursor:pointer;font:800 14px/1.3 'Comic Neue',sans-serif;color:var(--blue-deep)}
+.cut-captions{border-top:max(1px,calc(2px*var(--bwk))) dashed var(--edge);padding-top:12px}
+.cut-fix-words summary{cursor:pointer;font:800 14px/1.3 var(--body);color:var(--blue-deep)}
 .cut-word-chips{display:flex;flex-wrap:wrap;gap:5px;max-height:220px;overflow:auto;padding:2px}
-.cut-word{border:2px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink);padding:3px 7px;font:700 13px/1.2 'Comic Neue',sans-serif;cursor:pointer}
-.cut-word:hover{background:var(--paper-2,#ffeeb8)}.cut-word.fixed{background:var(--lime,#9be15d)}
-.cut-word-input{width:110px;min-height:0;padding:3px 6px;font:700 13px/1.2 'Comic Neue',sans-serif;border:2px solid var(--blue-deep);border-radius:8px}
+.cut-word{border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:8px;background:var(--surface);color:var(--text);padding:3px 7px;font:700 13px/1.2 var(--body);cursor:pointer}
+.cut-word:hover{background:var(--paper-2,#ffeeb8)}.cut-word.fixed{background:var(--ok)}
+.cut-word-input{width:110px;min-height:0;padding:3px 6px;font:700 13px/1.2 var(--body);border:2px solid var(--blue-deep);border-radius:8px}
 
 .cut-item-actions .primary{min-height:36px;padding:5px 14px;font-size:14px}
 
 /* Settings check on the home page (SettingsNotice.tsx). */
-.settings-ok{display:flex;align-items:center;gap:6px;margin:14px 0 0;font:700 13px/1.3 'Comic Neue',sans-serif;color:var(--ink-soft)}
-.settings-notice{display:flex;align-items:flex-start;gap:10px;margin:16px 0 0;padding:12px 14px;background:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);font:600 14px/1.4 'Comic Neue',sans-serif;color:var(--ink)}
-.settings-notice>div{flex:1}.settings-notice ul{margin:6px 0;padding-left:18px}.settings-notice small{color:var(--ink-soft)}
+.settings-ok{display:flex;align-items:center;gap:6px;margin:14px 0 0;font:700 13px/1.3 var(--body);color:var(--text-soft)}
+.settings-notice{display:flex;align-items:flex-start;gap:10px;margin:16px 0 0;padding:12px 14px;background:var(--surface);border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:14px;box-shadow:0 4px 0 var(--pop-c);font:600 14px/1.4 var(--body);color:var(--text)}
+.settings-notice>div{flex:1}.settings-notice ul{margin:6px 0;padding-left:18px}.settings-notice small{color:var(--text-soft)}
 .settings-notice code{background:var(--paper-2,#ffeeb8);padding:1px 4px;border-radius:4px}
 
 /* Campaign requirements (Campaign.tsx and the New project field). */
 .campaign-field textarea{width:100%;resize:vertical;min-height:90px}
-.campaign-locked{margin:10px 0 0;font:600 13px/1.4 'Comic Neue',sans-serif;color:var(--ink-soft)}
-.campaign-card{display:flex;gap:12px;align-items:flex-start;margin:0 0 18px;padding:14px 16px;background:#fff;border:3px solid var(--ink);border-radius:16px;box-shadow:0 5px 0 var(--ink);color:var(--ink)}
-.campaign-card.warn{background:#fff0ec}
-.campaign-card>div{flex:1;min-width:0}.campaign-card h2{font:24px/1 var(--display);letter-spacing:1px;margin:0 0 6px}
-.campaign-card p{margin:0 0 8px;font:600 14px/1.4 'Comic Neue',sans-serif}.campaign-card small{color:var(--ink-soft);font-weight:600}
+.campaign-locked{margin:10px 0 0;font:600 13px/1.4 var(--body);color:var(--text-soft)}
+.campaign-card{display:flex;gap:12px;align-items:flex-start;margin:0 0 18px;padding:14px 16px;background:var(--surface);border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:16px;box-shadow:0 5px 0 var(--pop-c);color:var(--text)}
+.campaign-card.warn{background:var(--tint-red,#fff0ec)}
+.campaign-card>div{flex:1;min-width:0}.campaign-card h2{font:24px/1 var(--display);letter-spacing:calc(1px*var(--track));margin:0 0 6px}
+.campaign-card p{margin:0 0 8px;font:600 14px/1.4 var(--body)}.campaign-card small{color:var(--text-soft);font-weight:600}
 .campaign-rules{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:5px}
-.campaign-rules li{font:600 14px/1.35 'Comic Neue',sans-serif;overflow-wrap:anywhere}.campaign-rules b{display:inline-block;min-width:150px;margin-right:6px;font-weight:800}
-.campaign-applied{background:var(--yellow);border:2px solid var(--ink);border-radius:10px;padding:6px 10px}
+.campaign-rules li{font:600 14px/1.35 var(--body);overflow-wrap:anywhere}.campaign-rules b{display:inline-block;min-width:150px;margin-right:6px;font-weight:800}
+.campaign-applied{background:var(--sel);border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:10px;padding:6px 10px}
 @media(max-width:600px){.campaign-rules b{display:block;min-width:0}}
 .campaign-field textarea{font:inherit;font-size:15px;line-height:1.4}
-.youtube-guide-nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.youtube-guide-panel small{display:block;margin-top:6px;color:var(--ink-soft)}
+.youtube-guide-nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.youtube-guide-panel small{display:block;margin-top:6px;color:var(--text-soft)}
 
 /* Clip editor: drag handle for the captions (LivePreview CaptionHandle). */
 .live-caption-handle{position:absolute;z-index:6;width:84%;height:11%;transform:translate(-50%,-50%);border:2px dashed transparent;border-radius:10px;cursor:move;touch-action:none;transition:border-color .15s,background .15s}
-.live-caption-handle span{position:absolute;left:50%;top:-4px;transform:translate(-50%,-100%);padding:2px 8px;border-radius:999px;background:#ffd23f;border:2px solid #16121f;color:#16121f;font:800 11px/1.2 'Comic Neue',sans-serif;white-space:nowrap;opacity:0;transition:opacity .15s;pointer-events:none}
+.live-caption-handle span{position:absolute;left:50%;top:-4px;transform:translate(-50%,-100%);padding:2px 8px;border-radius:999px;background:#ffd23f;border:2px solid #16121f;color:#16121f;font:800 11px/1.2 var(--body);white-space:nowrap;opacity:0;transition:opacity .15s;pointer-events:none}
 .live-caption-handle:hover,.live-caption-handle:focus-visible,.live-caption-handle:active{border-color:#ffd23f;background:rgba(255,210,63,.12);outline:none}
 .live-caption-handle:hover span,.live-caption-handle:focus-visible span,.live-caption-handle:active span{opacity:1}
 .live-caption-handle.custom{border-color:rgba(255,210,63,.55)}
 
 /* Top-bar language menu (LanguagePicker). */
 .lang-picker{position:relative;display:inline-flex}
-.lang-button.active{background:var(--yellow)}
+.lang-button.active{background:var(--sel)}
 .lang-button span{max-width:160px;overflow:hidden;text-overflow:ellipsis}
-.lang-menu{position:absolute;right:0;top:calc(100% + 10px);z-index:80;width:300px;max-width:calc(100vw - 32px);display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink);animation:lang-pop .14s ease-out}
+.lang-menu{position:absolute;right:0;top:calc(100% + 10px);z-index:80;width:300px;max-width:calc(100vw - 32px);display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--paper);color:var(--text);border:max(1px,calc(3px*var(--bwk))) solid var(--edge);border-radius:14px;box-shadow:5px 5px 0 var(--pop-c);animation:lang-pop .14s ease-out}
 @keyframes lang-pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.lang-revert{display:flex;align-items:center;justify-content:center;gap:7px;border:2px solid var(--ink);border-radius:999px;background:var(--yellow);color:var(--ink);font:800 14px/1 'Comic Neue',sans-serif;padding:8px 12px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
-.lang-revert:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
-.lang-search{display:flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:10px;background:#fff;padding:0 9px}
-.lang-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:700 14px 'Comic Neue',sans-serif;padding:7px 0;outline:none}
+.lang-revert{display:flex;align-items:center;justify-content:center;gap:7px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;background:var(--sel);color:var(--text);font:800 14px/1 var(--body);padding:8px 12px;cursor:pointer;box-shadow:2px 2px 0 var(--pop-c)}
+.lang-revert:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--pop-c)}
+.lang-search{display:flex;align-items:center;gap:6px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:10px;background:var(--surface);padding:0 9px}
+.lang-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--text);font:700 14px var(--body);padding:7px 0;outline:none}
 .lang-menu ul{list-style:none;margin:0;padding:0;max-height:min(360px,55vh);overflow-y:auto;display:flex;flex-direction:column;gap:2px}
-.lang-menu li button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:2px solid transparent;border-radius:9px;background:transparent;color:var(--ink);padding:6px 9px;cursor:pointer}
+.lang-menu li button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:2px solid transparent;border-radius:9px;background:transparent;color:var(--text);padding:6px 9px;cursor:pointer}
 .lang-menu li button span{display:flex;flex-direction:column;gap:1px;min-width:0}
 .lang-menu li button strong{font:800 15px/1.2 'Comic Neue',system-ui,sans-serif}
-.lang-menu li button small{font:700 12px/1.2 'Comic Neue',sans-serif;color:#5b5368}
-.lang-menu li button:hover:not(:disabled),.lang-menu li button:focus-visible{background:#fff;border-color:var(--ink);outline:none}
-.lang-menu li button.on{background:var(--yellow);border-color:var(--ink)}
+.lang-menu li button small{font:700 12px/1.2 var(--body);color:#5b5368}
+.lang-menu li button:hover:not(:disabled),.lang-menu li button:focus-visible{background:var(--surface);border-color:var(--edge);outline:none}
+.lang-menu li button.on{background:var(--sel);border-color:var(--edge)}
 .lang-menu li button:disabled{opacity:.45;cursor:not-allowed}
-.lang-empty{padding:10px;font:700 13px 'Comic Neue',sans-serif;color:#5b5368}
-.lang-note{margin:0;display:flex;align-items:flex-start;gap:6px;font:700 12px/1.35 'Comic Neue',sans-serif;color:#5b5368;border-top:2px dashed #16121f33;padding-top:8px}
+.lang-empty{padding:10px;font:700 13px var(--body);color:#5b5368}
+.lang-note{margin:0;display:flex;align-items:flex-start;gap:6px;font:700 12px/1.35 var(--body);color:#5b5368;border-top:2px dashed #16121f33;padding-top:8px}
 .lang-note svg{flex:none;margin-top:1px}
 @media (prefers-reduced-motion:reduce){.lang-menu{animation:none}}
-.lang-dot{width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--ink);display:inline-block}
-.lang-finish{background:var(--lime)}
+.lang-dot{width:8px;height:8px;border-radius:50%;background:var(--red);border:max(1px,calc(1.5px*var(--bwk))) solid var(--edge);display:inline-block}
+.lang-finish{background:var(--ok)}
 
 /* YouTube setup guide (YouTubeSetupGuide). */
-.yt-num{display:inline-grid;place-items:center;width:22px;height:22px;border:2px solid var(--ink);border-radius:50%;background:#fff;font-size:12px}
-.youtube-guide-steps button.done .yt-num{background:var(--lime)}
-.youtube-guide-panel{border:2px solid var(--ink);border-radius:10px;background:#fff;padding:12px 16px}
-.youtube-guide-panel h3{margin:0 0 6px;font:800 16px/1.2 'Comic Neue',sans-serif}
+.yt-num{display:inline-grid;place-items:center;width:22px;height:22px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:50%;background:var(--surface);font-size:12px}
+.youtube-guide-steps button.done .yt-num{background:var(--ok)}
+.youtube-guide-panel{border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:10px;background:var(--surface);padding:12px 16px}
+.youtube-guide-panel h3{margin:0 0 6px;font:800 16px/1.2 var(--body)}
 .youtube-guide-panel ol,.yt-more ol{margin:6px 0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45}
 .youtube-guide-panel code{font-size:12.5px;background:var(--paper);border:1px solid #16121f33;border-radius:4px;padding:0 4px}
-.yt-tip{font-size:13px!important;background:#fff4c2;border:1.5px dashed #16121f55;padding:6px 10px;border-radius:8px}
+.yt-tip{font-size:13px!important;background:var(--tint-yellow,#fff4c2);border:1.5px dashed #16121f55;padding:6px 10px;border-radius:8px}
 .yt-ok{display:flex;gap:6px;align-items:center;font-weight:700}
-.yt-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 12px;border:2px solid var(--ink);border-radius:999px;background:var(--yellow);color:var(--ink)!important;text-decoration:none!important;font-weight:800;box-shadow:2px 2px 0 var(--ink)}
-.yt-link:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.yt-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 12px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;background:var(--sel);color:var(--text)!important;text-decoration:none!important;font-weight:800;box-shadow:2px 2px 0 var(--pop-c)}
+.yt-link:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--pop-c)}
 .yt-more{margin-top:8px;font-size:14px}.yt-more summary,.yt-problems summary{cursor:pointer;font-weight:800}
-.yt-problems{margin-top:12px;border:2px solid var(--ink);border-radius:10px;background:var(--paper);padding:10px 14px}
+.yt-problems{margin-top:12px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:10px;background:var(--paper);padding:10px 14px}
 .yt-problems summary{display:flex;align-items:center;gap:6px}
 .yt-problems dl{margin:8px 0 0;display:flex;flex-direction:column;gap:8px}
 .yt-problems dt{font-weight:800;font-size:13.5px}.yt-problems dd{margin:2px 0 0;font-size:13.5px;line-height:1.45}
@@ -261,8 +261,8 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 /* The chosen project is still importing: wait here instead of switching to another project. */
 .cutter-importing{gap:12px}
 .cutter-importing p{max-width:520px}
-.cutter-import-bar{display:block;width:min(360px,90%);height:12px;border:2px solid var(--ink,#16121f);border-radius:7px;overflow:hidden;background:#fff}
-.cutter-import-bar i{display:block;height:100%;background:var(--lime,#9be564);transition:width .4s ease-out}
+.cutter-import-bar{display:block;width:min(360px,90%);height:12px;border:2px solid var(--ink,#16121f);border-radius:7px;overflow:hidden;background:var(--surface)}
+.cutter-import-bar i{display:block;height:100%;background:var(--ok);transition:width .4s ease-out}
 .cutter-importing .cutter-project{margin-top:6px;min-width:min(360px,90%)}
 @media(prefers-reduced-motion:reduce){.cutter-import-bar i{transition:none}}
 .cutter-importing{margin-top:28px}
@@ -280,8 +280,8 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 /* Two ways to tip, side by side: InstaPay (Philippines) and Ko-fi (worldwide); stacked on small screens. */
 .tip-cards{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:22px;margin:6px 0 12px}
 .tip-cards .tip-card{margin:0;align-content:start}
-.tip-tag{display:inline-block;padding:4px 12px;border:2px solid var(--ink);border-radius:999px;background:#fff;color:var(--ink);font:800 14px/1.1 'Comic Neue',sans-serif;box-shadow:2px 2px 0 var(--ink)}
-.tip-note{font:700 13px/1.3 'Comic Neue',sans-serif;color:var(--ink);text-align:center;margin-top:-6px}
-.tip-qr-badge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:var(--red);color:#fff;border:4px solid #fff;box-shadow:0 0 0 2.5px var(--ink)}
-.tip-link{display:inline-flex;align-items:center;gap:6px;margin-top:-4px;font:800 14px/1 'Comic Neue',sans-serif;color:var(--blue-deep,#0f5f99);text-decoration:underline;text-underline-offset:3px}
+.tip-tag{display:inline-block;padding:4px 12px;border:max(1px,calc(2px*var(--bwk))) solid var(--edge);border-radius:999px;background:var(--surface);color:var(--text);font:800 14px/1.1 var(--body);box-shadow:2px 2px 0 var(--pop-c)}
+.tip-note{font:700 13px/1.3 var(--body);color:var(--text);text-align:center;margin-top:-6px}
+.tip-qr-badge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:var(--red);color:#fff;border:4px solid #fff;box-shadow:0 0 0 2.5px var(--pop-c)}
+.tip-link{display:inline-flex;align-items:center;gap:6px;margin-top:-4px;font:800 14px/1 var(--body);color:var(--blue-deep,#0f5f99);text-decoration:underline;text-underline-offset:3px}
 .tip-link:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:4px}

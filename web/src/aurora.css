@@ -1,0 +1,88 @@
+/* Aurora: frosted glass over a slow field of light. Builds on the shared dark-design rules in themes.css.
+   Effects are kept to the ones that mean something: ambient light (place), cursor light on cards (what you're
+   pointing at), a shimmer only while something loads, a pulse only on the live connection. Effect layers are
+   pointer-events:none behind the content, and every animation stops with reduced motion. */
+
+:root[data-ui=aurora]{
+ --page:#121212;--side:rgba(22,22,22,.78);--paper:rgba(30,30,30,.96);--paper-2:#1e1e1e;--surface:rgba(255,255,255,.05);--surface-2:rgba(255,255,255,.085);--field:rgba(10,10,10,.62);
+ --glass:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.012) 140px),rgba(26,26,26,.66);
+ --edge:rgba(255,255,255,.08);--edge-strong:rgba(255,255,255,.14);--text:#ededed;--text-soft:#a6a6a6;--text-faint:#707070;
+ --accent:#f58a32;--accent-2:#ffb26b;--on-accent:#1b1206;--glow:0 0 0 3px rgba(245,138,50,.26);
+ --r:18px;--r-md:13px;--r-sm:10px;--btn-r:11px;
+ --display:'Montserrat ExtraBold','Montserrat',system-ui,sans-serif;--head-track:-.02em;
+ --lime:#4ade80;--orange:#f58a32;--red:#f2675a;--blue:#7aa7ff;--blue-deep:#ffad6b;
+ --sel:rgba(245,138,50,.15);--ok:rgba(74,222,128,.14);
+ --page-bg:#121212;
+ --pop:0 1px 0 rgba(255,255,255,.05) inset,0 14px 40px -22px rgba(0,0,0,.9);--pop-lg:0 1px 0 rgba(255,255,255,.06) inset,0 30px 70px -36px rgba(0,0,0,.95);
+ scrollbar-color:rgba(245,138,50,.4) transparent;
+}
+
+/* ---------- Ambient light and grain (behind everything) ---------- */
+:root[data-ui=aurora] body{isolation:isolate}
+:root[data-ui=aurora] body::before{content:'';position:fixed;inset:-25vmax;z-index:-2;pointer-events:none;
+ background:radial-gradient(30vmax 22vmax at 30% 26%,rgba(245,138,50,.42),transparent 70%),radial-gradient(24vmax 18vmax at 76% 22%,rgba(251,176,64,.2),transparent 70%),
+  radial-gradient(28vmax 22vmax at 64% 76%,rgba(214,74,42,.28),transparent 70%),radial-gradient(22vmax 18vmax at 24% 80%,rgba(140,70,30,.3),transparent 70%);
+ filter:blur(44px) saturate(1.15);will-change:transform;animation:aurora-drift 48s ease-in-out infinite alternate}
+:root[data-ui=aurora] body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+ background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+@keyframes aurora-drift{0%{transform:translate3d(0,0,0) rotate(0) scale(1)}50%{transform:translate3d(3vmax,-2vmax,0) rotate(6deg) scale(1.06)}100%{transform:translate3d(-2vmax,2vmax,0) rotate(-4deg) scale(1.02)}}
+
+/* ---------- Glass ---------- */
+:root[data-ui=aurora] .sidebar{background:var(--side);backdrop-filter:blur(22px) saturate(1.3)}
+:root[data-ui=aurora] .topbar{background:rgba(9,7,17,.52);backdrop-filter:blur(20px) saturate(1.3)}
+:root[data-ui=aurora] :is(.import-panel,.processing-panel,.summary-panel,.posting-calendar,.stream-timeline,.cutter-player,.cutter-panel,.countdown-card,.clip-card,.posting-form,.automation-builder,.automation-run,.youtube-connection,.posting-callout,.empty-clips,.cutter-empty,.how-it-works>div,.ready-banner,.tip-strip){
+ background:radial-gradient(460px circle at var(--mx,50%) var(--my,-60%),rgba(245,138,50,.1),transparent 62%),var(--glass);
+ backdrop-filter:blur(18px) saturate(1.2);border-color:var(--edge)}
+:root[data-ui=aurora] :is(.editor-dialog,.post-editor,.tip-dialog,.update-dialog,.youtube-setup-dialog,.ui-switch-menu,.footer-ready-panel,.start-bar){background:var(--paper);backdrop-filter:blur(24px) saturate(1.2)}
+:root[data-ui=aurora] :is(.editor-dialog,.post-editor,.tip-dialog,.update-dialog,.youtube-setup-dialog)::backdrop{background:rgba(5,4,11,.7);backdrop-filter:blur(8px)}
+:root[data-ui=aurora] :is(.editor-header,.post-editor>header,.editor-tabs){background:transparent}
+:root[data-ui=aurora] :is(.editor-footer,.post-editor>footer){background:var(--paper-2)}
+
+/* ---------- Accent: one solid colour, light only on hover ---------- */
+:root[data-ui=aurora] :is(.primary,.new-project){background:var(--accent);color:var(--on-accent);border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35);transition:background-color .18s,box-shadow .25s,transform .18s}
+:root[data-ui=aurora] :is(.primary,.new-project):hover:not(:disabled){background:#ff9d4d;filter:none;transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 10px 30px -12px rgba(245,138,50,.9)}
+:root[data-ui=aurora] .secondary{background:rgba(255,255,255,.05)}
+:root[data-ui=aurora] .secondary:hover:not(:disabled){background:rgba(245,138,50,.12);border-color:rgba(245,138,50,.45)}
+:root[data-ui=aurora] .brand-mark{background:var(--accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 18px -6px rgba(245,138,50,.8)}
+
+/* ---------- Navigation ---------- */
+:root[data-ui=aurora] .automation-nav{position:relative}
+:root[data-ui=aurora] .automation-nav.active{background:var(--accent);border-color:transparent;color:var(--on-accent);font-weight:700}
+:root[data-ui=aurora] .automation-nav.active svg.lucide{color:var(--on-accent)}
+:root[data-ui=aurora] .history-item.active{background:var(--accent);border-color:transparent}
+:root[data-ui=aurora] .history-item.active strong{color:var(--on-accent);font-weight:700}
+:root[data-ui=aurora] .history-item.active small{color:rgba(27,18,6,.72)}
+:root[data-ui=aurora] .history-row:has(.history-item.active) :is(.history-delete,.history-photo){background:rgba(27,18,6,.18);border-color:transparent;color:var(--on-accent)}
+:root[data-ui=aurora] .library-title>span{background:#2a2a2a;border-color:transparent;color:#d4d4d4}
+:root[data-ui=aurora] .history-item.active .creator-avatar{box-shadow:0 0 0 2px rgba(27,18,6,.35)}
+:root[data-ui=aurora] .connection i{animation:aurora-pulse 2.6s ease-out infinite}
+@keyframes aurora-pulse{0%{box-shadow:0 0 0 0 rgba(74,222,154,.5)}80%,100%{box-shadow:0 0 0 6px rgba(74,222,154,0)}}
+
+/* ---------- Cards: lift and cursor light (--mx/--my from UiSwitcher.tsx) ---------- */
+:root[data-ui=aurora] .clip-card{transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s}
+:root[data-ui=aurora] .clip-card:hover{transform:translateY(-4px);border-color:rgba(245,138,50,.3);box-shadow:0 26px 60px -30px rgba(160,70,10,.55)}
+:root[data-ui=aurora] .template-card{background:radial-gradient(240px circle at var(--mx,50%) var(--my,-60%),rgba(245,138,50,.14),transparent 62%),rgba(255,255,255,.035)}
+:root[data-ui=aurora] .template-card:hover{border-color:rgba(245,138,50,.36)}
+
+/* ---------- Loading shimmer (only on things that are actually working) ---------- */
+:root[data-ui=aurora] :is(.progress-track>i,.clip-render-bar i){background:linear-gradient(90deg,var(--accent) 0 35%,#ffd2a8 50%,var(--accent) 65% 100%);background-size:250% 100%;animation:aurora-shimmer 1.8s linear infinite}
+@keyframes aurora-shimmer{from{background-position:100% 0}to{background-position:-150% 0}}
+:root[data-ui=aurora] .timeline-clip{background:rgba(245,138,50,.3)}
+:root[data-ui=aurora] .timeline-bar.hype{background:var(--orange)}
+:root[data-ui=aurora] ::selection{background:var(--accent);color:var(--on-accent)}
+
+/* ---------- Page entrance: a screen settles in once when you open it ---------- */
+:root[data-ui=aurora] main>*{animation:aurora-rise .45s cubic-bezier(.2,.8,.2,1) backwards}
+:root[data-ui=aurora] main>*:nth-child(2){animation-delay:.04s}:root[data-ui=aurora] main>*:nth-child(n+3){animation-delay:.08s}
+@keyframes aurora-rise{from{opacity:0;transform:translateY(8px)}}
+
+/* Switcher preview tile */
+.ui-swatch.aurora{background:radial-gradient(60% 70% at 25% 30%,rgba(245,138,50,.75),transparent 70%),radial-gradient(60% 70% at 75% 95%,rgba(214,74,42,.6),transparent 70%),#121212}
+.ui-swatch.aurora i:nth-child(1){left:0;top:0;bottom:0;width:15px;background:rgba(22,22,22,.8);border-right:1px solid rgba(255,255,255,.1)}
+.ui-swatch.aurora i:nth-child(2){left:21px;top:8px;width:37px;height:21px;border-radius:5px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22)}
+.ui-swatch.aurora i:nth-child(3){left:21px;top:32px;width:20px;height:7px;border-radius:3px;background:#f58a32}
+
+@media(prefers-reduced-motion:reduce){
+ :root[data-ui=aurora] body::before,:root[data-ui=aurora] .connection i,:root[data-ui=aurora] :is(.progress-track>i,.clip-render-bar i),:root[data-ui=aurora] main>*{animation:none}
+ :root[data-ui=aurora] .clip-card:hover{transform:none}
+}
