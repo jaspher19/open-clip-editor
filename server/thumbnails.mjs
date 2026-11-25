@@ -26,3 +26,16 @@ export async function renderThumbnail(video,output,{time=0,text='',signal}={}){
   fs.renameSync(partial,output);return {time:at,text:assText(text)?String(text).trim().slice(0,40):''};
  }finally{fs.rmSync(work,{recursive:true,force:true});}
 }
+// Preview pictures for posts and finished clips: one small frame, made once and remade when the video changes.
+const posterJobs=new Map();
+/** Path of a small still of `video` (cached at `out`), taken a moment in so it isn't a black first frame. */
+export async function videoPoster(video,out,{signal}={}){
+ if(!fs.existsSync(video))throw new Error('The video file is missing');
+ try{if(fs.statSync(out).mtimeMs>=fs.statSync(video).mtimeMs&&fs.statSync(out).size>0)return out;}catch{}
+ if(!posterJobs.has(out))posterJobs.set(out,(async()=>{
+  const meta=await frameInfo(video,{signal}),at=Math.min(1.2,Math.max(0,meta.duration*.15)),temp=`${out}.${process.pid}.partial.jpg`;
+  try{await run('ffmpeg',['-v','error','-y','-ss',at.toFixed(2),'-i',video,'-frames:v','1','-vf',`scale=${meta.width>=meta.height?'480:-2':'-2:480'}`,'-q:v','4',temp],{signal,timeout:60000});fs.renameSync(temp,out);}
+  finally{fs.rmSync(temp,{force:true});}
+  return out;})().finally(()=>posterJobs.delete(out)));
+ return posterJobs.get(out);
+}

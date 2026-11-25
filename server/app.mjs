@@ -1,13 +1,13 @@
-import express from 'express';import {getLanguage,setLanguage,readStrings,saveStrings,validLanguage,aiTranslate,aiTranslateReady} from './ui-language.mjs';import multer from 'multer';import archiver from 'archiver';import fs from 'node:fs';import path from 'node:path';
+import express from 'express';import {getLanguage,setLanguage,readStrings,saveStrings,validLanguage,aiTranslate,aiTranslateReady,aiTranslateCaptions} from './ui-language.mjs';import multer from 'multer';import archiver from 'archiver';import fs from 'node:fs';import path from 'node:path';
 import {autoThumbnail,summaryText} from './autothumb.mjs';
 import {clipFacecam} from './stack.mjs';
 import {ROOT,PYTHON} from './config.mjs';import {publicJob} from './jobs.mjs';import {parseSourceUrl,jobSource} from './sources.mjs';import {ensureTranscribed} from './scan.mjs';import {validateOptions} from './options.mjs';
 import {EDIT_TEMPLATES,CAPTION_FONTS,applyTemplate} from './templates.mjs';import {CAPTION_STYLES} from './captions.mjs';import {run} from './process.mjs';import {randomUUID} from 'node:crypto';
 import {PostingQueue} from './posting.mjs';import {UploadLog,guardUploads} from './upload-log.mjs';import {SUMMARY_FORMATS} from './summary.mjs';import {writeMetadataAI,metadataProvider} from './metadata-ai.mjs';import {streamPeople,clipPeople} from './people.mjs';import {probe} from './process.mjs';
 import {ReferenceLibrary} from './references.mjs';
-import {validateClipEdits} from './clip-edits.mjs';import {clipTraits,refreshLessons,loadLessons} from './learning.mjs';import {autoPostJob,loadAutopost,saveAutopost} from './autopost.mjs';import {playedLength} from './edl.mjs';import {PLAY_MAX,SPAN_MAX,momentShape} from './selection.mjs';import {jobTimeline,bestUnused} from './timeline.mjs';import {MusicLibrary} from './music.mjs';import {titleClips} from './titles.mjs';import {cueSums,loudness,categoryScores} from './moments.mjs';
+import {validateClipEdits} from './clip-edits.mjs';import {clipTraits,refreshLessons,loadLessons} from './learning.mjs';import {autoPostJob,loadAutopost,saveAutopost} from './autopost.mjs';import {playedLength} from './edl.mjs';import {PLAY_MAX,SPAN_MAX,momentShape} from './selection.mjs';import {jobTimeline,bestUnused,unusedMoments} from './timeline.mjs';import {MusicLibrary} from './music.mjs';import {titleClips} from './titles.mjs';import {cueSums,loudness,categoryScores} from './moments.mjs';
 // Sound and publishing routes live in their own modules.
-import {registerSoundRoutes} from './sounds.mjs';import {registerPublishRoutes} from './publish-routes.mjs';
+import {registerSoundRoutes} from './sounds.mjs';import {registerCreatorRoutes} from './creators.mjs';import {registerPublishRoutes} from './publish-routes.mjs';
 import {TikTokClient,TikTokDrafts,registerTikTokRoutes,tiktokVideoError} from './tiktok.mjs';
 import {YouTubeClient,uploadBody} from './youtube.mjs';import {AutomationStore,AutomationEngine,validateRecipe} from './automation.mjs';import {enrichClip,publicationMetadata,normalizeTemplateMeta} from './context.mjs';import {renderCompilation} from './compilation.mjs';import {rawClip} from './raw.mjs';import {checkUpdates} from './updates.mjs';import {applyCampaignMeta,campaignReady} from './campaign.mjs';import {loadEnv,envStatus} from './env.mjs';import {validateCut,renderCut,cutWords,CAPTION_MAX_SECONDS} from './cut.mjs';import {ensureSection,readSections} from './remote.mjs';
 const busyStatuses=['queued','running','exporting'];
@@ -29,7 +29,7 @@ export function linkOldPosts(store,posting){
  for(const p of orphans){const bySize=outs.filter(o=>o.stat.size===p.media?.size),byTitle=outs.filter(o=>o.title&&o.title===p.label),hit=bySize.length===1?bySize[0]:byTitle.length===1?byTitle[0]:null;
   if(hit)posting.link(p.id,{jobId:hit.job.id,clipId:hit.clipId,videoMtime:bySize.length===1?hit.stat.mtimeMs:0});}
 }
-export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok=new TikTokClient(),automations,references=new ReferenceLibrary(),writeMetadata=writeMetadataAI}={}){
+export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok=new TikTokClient(),automations,references=new ReferenceLibrary(),writeMetadata=writeMetadataAI,creatorPhotos}={}){
  const uploadLog=new UploadLog(path.join(store.root,'posting','upload-log.json')),youtube=guardUploads(client,uploadLog,source=>clipRange(store,source));
  const engine=automations||new AutomationEngine({store:new AutomationStore(path.join(store.root,'automations')),jobs:store,queue,youtube,compile:(job,ids,options)=>renderCompilation(job,ids,{...options,folder:store.folder(job.id)})});
  const posting=new PostingQueue({root:path.join(store.root,'posting'),youtube});linkOldPosts(store,posting);backfillUploadLog(uploadLog,store,posting,engine);if(process.env.POSTING_AUTO!=='0')posting.startAuto();const app=express();app.locals.posting=posting;app.locals.automation=engine;app.locals.youtube=youtube;app.locals.references=references;
@@ -57,6 +57,9 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
  app.get('/api/ui-language/:lang/strings',(req,res)=>{if(!validLanguage(req.params.lang))throw fail('Unknown language');res.json(readStrings(req.params.lang,uiRoot));});
  app.post('/api/ui-language/:lang/strings',(req,res)=>{try{res.json({saved:saveStrings(req.params.lang,req.body?.entries,uiRoot)});}catch(e){throw fail(e.message);}});
  app.post('/api/ui-language/:lang/translate',async(req,res)=>{if(!validLanguage(req.params.lang)||req.params.lang==='en')throw fail('Unknown language');if(!aiTranslateReady())throw fail('Add an AI key to .env (or use Chrome or Edge) to translate OpenClip',409);const out=await aiTranslate(req.params.lang,req.body?.texts);saveStrings(req.params.lang,out,uiRoot);res.json(out);});
+ // Clip editor: caption lines translated with the user's AI key, when the browser has no built-in translator.
+ app.post('/api/jobs/:id/captions/translate',async(req,res)=>{get(req);const {from='',to,lines}=req.body||{};if(!validLanguage(to))throw fail('Choose a language');if(!aiTranslateReady())throw fail('This browser can’t translate on this computer. Open OpenClip in Chrome or Edge, or add a free AI key (for example GEMINI_API_KEY) to .env and restart.',409);
+  try{res.json({lines:await aiTranslateCaptions(from,to,lines)});}catch(e){throw fail(e.message);}});
  app.get('/api/settings-check',(req,res)=>res.json(envStatus()));
  app.get('/api/health',(req,res)=>{const modelRoot=path.join(ROOT,'.cache/models');res.json({name:'Open Clip Editor',local:true,campaigns:campaignReady(),pythonReady:fs.existsSync(PYTHON),providers:{heuristic:true,openai:!!process.env.OPENAI_API_KEY,anthropic:!!process.env.ANTHROPIC_API_KEY,judge:metadataProvider()},cachedModels:fs.existsSync(modelRoot)?fs.readdirSync(modelRoot).filter(f=>fs.existsSync(path.join(modelRoot,f,'model.bin'))):[],styles:Object.keys(CAPTION_STYLES),templates:EDIT_TEMPLATES.map(t=>({...t,reference:references.info(t.id)})),fonts:CAPTION_FONTS,features:{faceTrack:fs.existsSync(path.join(modelRoot,'face/blaze_face_short_range.tflite')),music:true,creatorStyles:true},version:'0.3.0',youtube:youtube.status()});});
  app.get('/api/templates/:id/reference',(req,res)=>{const info=references.info(req.params.id);if(!info)throw fail('Original reference not found',404);res.json(info);});
@@ -142,8 +145,9 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
  app.post('/api/jobs/upload',(req,res,next)=>{req.uploadJob=store.create({type:'upload'},{});next();},upload.single('video'),(req,res)=>{if(!req.file)throw fail('Choose a video file');let input;try{input=JSON.parse(req.body.options||'{}');}catch{throw fail('Invalid upload options');}const options=validateOptions(input);providerReady(options);const job=store.update(req.uploadJob.id,{source:{type:'upload',path:req.file.path,name:req.file.originalname},sourcePath:req.file.path,title:req.file.originalname,options});queue.enqueue(job.id);res.status(202).json(publicJob(job));});
  app.get('/api/jobs/:id',(req,res)=>res.json(publicJob(get(req))));
  app.get('/api/jobs/:id/events',(req,res)=>{const job=get(req);res.set({'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive'});res.flushHeaders();const send=j=>{if(j.id===job.id)res.write(`event: job\ndata: ${JSON.stringify(publicJob(j))}\n\n`);};send(job);store.on('update',send);const timer=setInterval(()=>res.write(': keepalive\n\n'),15000);req.on('close',()=>{clearInterval(timer);store.off('update',send);});});
- app.delete('/api/jobs/:id',(req,res)=>{const job=get(req);if(externalBusyJobs.has(job.id)||[...engine.active.values()].some(a=>a.jobId===job.id))throw fail('Stop this project’s automation before deleting it',409);if(queue.isBusy(job.id)||busyStatuses.includes(job.status))throw fail('Cancel processing before deleting this project',409);store.remove(job.id);res.json({ok:true,id:job.id});});
- app.post('/api/jobs/:id/cancel',(req,res)=>{const job=get(req);if(!queue.isBusy(job.id))throw fail('This job is not processing',409);queue.cancel(job.id);res.json({ok:true});});
+ app.delete('/api/jobs/:id',(req,res)=>{const job=get(req);if(externalBusyJobs.has(job.id)||[...engine.active.values()].some(a=>a.jobId===job.id))throw fail('Stop this project’s automation before deleting it',409);if(queue.isBusy(job.id)||busyStatuses.includes(job.status))throw fail('Cancel processing before deleting this project',409);if(finding.has(job.id))throw fail('Stop looking for more clips before deleting this project',409);if(queue.isRendering?.(job.id))throw fail('Some clips are still updating. Wait for them to finish (or cancel them), then delete.',409);store.remove(job.id);res.json({ok:true,id:job.id});});
+ app.post('/api/jobs/:id/cancel',(req,res)=>{const job=get(req);if(!queue.isBusy(job.id)&&!queue.isRendering?.(job.id))throw fail('This job is not processing',409);queue.cancel(job.id);res.json({ok:true});});
+ app.post('/api/jobs/:id/clips/:clipId/render/cancel',(req,res)=>{const job=get(req);if(!queue.cancelClip?.(job.id,req.params.clipId))throw fail('This clip is not updating',409);res.json({ok:true});});
  app.post('/api/jobs/:id/retry',(req,res)=>{const job=get(req);if(queue.isBusy(job.id))throw fail('This job is already processing',409);queue.enqueue(job.id);res.status(202).json(publicJob(store.get(job.id)));});
  app.post('/api/jobs/:id/context',(req,res)=>{const job=get(req);editable(job);const transcript=JSON.parse(fs.readFileSync(path.join(store.folder(job.id),'transcript.json'),'utf8'));const clips=job.clips.map(c=>({...enrichClip(c,transcript,job),dirty:true}));res.json(publicJob(store.update(job.id,{clips,compilation:null})));});
  app.post('/api/jobs/:id/compilation',(req,res)=>{const job=get(req);editable(job);const ids=req.body.clipIds||job.clips.filter(c=>c.kept).map(c=>c.id);if(!Array.isArray(ids)||ids.length<2||ids.length>5||new Set(ids).size!==ids.length||ids.some(id=>!job.clips.some(c=>c.id===id)))throw fail('Choose 2–5 distinct clips');if(req.body.title!==undefined&&(typeof req.body.title!=='string'||req.body.title.length>80))throw fail('Compilation title must be under 80 characters');job.compilation=null;job.options.compilationTitle=req.body.title||job.options.compilationTitle||'Selected moments';store.save(job);queue.enqueue(job.id,'compilation',ids);res.status(202).json(publicJob(store.get(job.id)));});
@@ -176,7 +180,9 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
   const playing=(words,a,b)=>playedLength(words,{...old,start:a,end:b,cuts,parts,effects:moments.effects??old.effects??[]},{...job.options,...old.settings,...(body.settings||{})});
   if(body.kept!==undefined&&typeof body.kept!=='boolean')throw fail('Invalid keep/discard choice');if(body.title!==undefined&&(typeof body.title!=='string'||body.title.length>100))throw fail('Title must be under 100 characters');
   const transcript=JSON.parse(fs.readFileSync(path.join(store.folder(job.id),'transcript.json'),'utf8'));
-  const edits={...(old.wordEdits||{}),...(body.wordEdits||{})};if(!body.wordEdits&&body.wordEdits!==undefined)throw fail('Invalid caption edits');
+  const edits={...(old.wordEdits||{}),...(body.wordEdits||{})};if(body.wordEdits!==undefined&&(!body.wordEdits||typeof body.wordEdits!=='object'||Array.isArray(body.wordEdits)))throw fail('Invalid caption edits');
+  // null removes an edit (back to the spoken word), e.g. after undoing a caption translation.
+  for(const [key,text]of Object.entries(edits))if(text===null)delete edits[key];
   for(const [key,text]of Object.entries(edits))if(!/^\d+$/.test(key)||!transcript.words[Number(key)]||typeof text!=='string'||text.length>120)throw fail('Invalid caption word edit');
   const edited=transcript.words.map((w,i)=>({...w,text:edits[i]??w.text})),main=edited.filter(w=>w.end>start&&w.start<end);
   // Raw clips (and projects without words) are cut as they are; spoken clips snap out to whole words.
@@ -212,7 +218,32 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
  app.post('/api/jobs/:id/clips/:clipId/swap',async(req,res)=>{const job=get(req);editable(job);const old=job.clips.find(c=>c.id===req.params.clipId);if(!old)throw fail('Clip not found',404);
   const next=bestUnused(jobTimeline(job,store.folder(job.id)).candidates,job.clips);if(!next)throw fail('No unused moment is left that does not overlap your other clips',404);
   const clip=await momentClip(job,next,{settings:old.settings,score:next.score,category:next.category,peakAt:next.peakAt,reasons:next.reasons});const fresh=store.get(job.id);editable(fresh);const index=fresh.clips.findIndex(c=>c.id===old.id);if(index<0)throw fail('Clip not found',404);
-  fresh.clips[index]={...clip,kept:old.kept};fresh.exports=fresh.exports.filter(e=>e.clipId!==old.id);saveClips(fresh);res.json({clip:fresh.clips.find(c=>c.id===clip.id),replaced:old.id,job:publicJob(fresh)});});
+  fresh.clips[index]={...clip,kept:old.kept};fresh.exports=fresh.exports.filter(e=>e.clipId!==old.id);fresh.retiredMoments=[...(fresh.retiredMoments||[]),{start:old.start,end:old.end}].slice(-60);saveClips(fresh);res.json({clip:fresh.clips.find(c=>c.id===clip.id),replaced:old.id,job:publicJob(fresh)});});
+ // Clip again: more clips from the same stream. The next-best moments that repeat nothing (no overlap with any clip,
+ // kept or discarded, or with a moment swapped away) are added one by one in the background, and each new clip renders
+ // on its own, so the project stays watchable and editable the whole time.
+ const finding=new Map();
+ app.post('/api/jobs/:id/more',(req,res)=>{const job=get(req);editable(job);if(finding.has(job.id))throw fail('Already looking for more clips in this project',409);if(!job.clips.length)throw fail('Find clips first',409);
+  const room=30-job.clips.length;if(room<=0)throw fail('A project holds up to 30 clips. Swap or delete some first.',409);
+  const wanted=Math.max(1,Math.min(room,10,Math.round(Number(req.body?.count)||5)));
+  const picks=unusedMoments(jobTimeline(job,store.folder(job.id)).candidates,{clips:job.clips,retired:job.retiredMoments},wanted);
+  if(!picks.length)throw fail('No new moments are left in this stream that don’t repeat your clips.',404);
+  const controller=new AbortController();finding.set(job.id,controller);
+  const updated=store.update(job.id,{more:{status:'running',wanted:picks.length,added:0,startedAt:new Date().toISOString()}});
+  addMoreClips(job.id,picks,controller.signal).catch(()=>{}).finally(()=>finding.delete(job.id));
+  res.status(202).json(publicJob(updated));});
+ app.post('/api/jobs/:id/more/cancel',(req,res)=>{const job=get(req),c=finding.get(job.id);if(!c)throw fail('Not looking for more clips',409);c.abort();res.json({ok:true});});
+ async function addMoreClips(id,picks,signal){let added=0,error='';const stop=job=>signal.aborted||queue.isBusy(id)||busyStatuses.includes(job.status)||job.clips.length>=30;
+  for(const next of picks){let job;try{job=store.get(id);}catch{return;}if(stop(job))break;
+   // Something added meanwhile (by hand, a swap) may cover this moment now.
+   if(!unusedMoments([next],{clips:job.clips,retired:job.retiredMoments},1).length)continue;
+   try{const clip=await momentClip(job,next,{score:next.score,category:next.category,peakAt:next.peakAt,reasons:[...(next.reasons||[]),'Added with Clip again']});
+    let fresh;try{fresh=store.get(id);}catch{return;}if(stop(fresh))break;if(!unusedMoments([clip],{clips:fresh.clips},1).length)continue;
+    fresh.clips.push({...clip,addedBy:'more'});fresh.more={...fresh.more,added:++added};saveClips(fresh);
+    if(fresh.options.autoExport!==false)try{queue.enqueue(id,'export',[clip.id]);}catch{/* stays "Not edited yet" with its Edit now button */}
+   }catch(e){error=e.message;}}
+  try{const job=store.get(id);store.update(id,{more:{...job.more,added,status:signal.aborted?'stopped':added?'done':'failed',error:added?'':error||'No new clip could be made from the moments left',finishedAt:new Date().toISOString()}});}catch{/* project deleted */}
+ }
  // Music library shared by every project.
  const music=new MusicLibrary(path.join(store.root,'music-library')),musicLibraryUpload=music.upload();app.locals.music=music;
  app.get('/api/music',async(req,res)=>res.json(await music.list()));
@@ -266,7 +297,7 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
   if(cut.file){const file=path.join(store.folder(job.id),'exports',cut.file);if(path.dirname(file)===path.join(store.folder(job.id),'exports'))fs.rmSync(file,{force:true});}
   res.json(publicJob(store.update(job.id,{cuts:(job.cuts||[]).filter(c=>c.id!==cut.id)})));});
  app.get('/api/jobs/:id/download',(req,res)=>{const job=get(req);const wanted=String(req.query.clips||'').split(',').filter(Boolean);const selected=job.exports.filter(e=>!wanted.length||wanted.includes(e.clipId));if(!selected.length)throw fail('No exports are ready');if(selected.some(e=>job.clips.find(c=>c.id===e.clipId)?.dirty))throw fail('Export the saved edits before downloading',409);res.attachment('open-clip-editor-exports.zip');const archive=archiver('zip',{zlib:{level:1}});archive.on('error',e=>res.destroy(e));archive.pipe(res);for(const [i,e]of selected.entries()){const clip=job.clips.find(c=>c.id===e.clipId);const name=String(clip?.title||'clip').replace(/[^\p{L}\p{N} -]/gu,'').trim().slice(0,70)||'clip';for(const ext of ['mp4','srt','txt','json','jpg']){const file=path.join(store.folder(job.id),'exports',`${e.clipId}.${ext}`);if(fs.existsSync(file))archive.file(file,{name:`${i+1}-${name}.${ext}`});}}archive.finalize();});
- registerSoundRoutes(app);registerPublishRoutes(app,{store,posting,youtube,writeMetadata});
+ registerSoundRoutes(app);registerPublishRoutes(app,{store,posting,youtube,writeMetadata});registerCreatorRoutes(app,{store,fail,...(creatorPhotos?{photos:creatorPhotos}:{})});
  const dist=path.join(ROOT,'web/dist');app.use(express.static(dist));app.get('/',(req,res)=>{const file=path.join(dist,'index.html');if(fs.existsSync(file))res.sendFile(file,FILES);else res.type('html').send('<h1>Open Clip Editor API is running</h1><p>Build the web app with npm run build.</p>');});
- app.use((error,req,res,next)=>{if(req.uploadJob)try{store.update(req.uploadJob.id,{status:'failed',stage:'error',message:error.message});}catch{}const status=error.code==='LIMIT_FILE_SIZE'?413:error.status||(/not found|missing/i.test(error.message)?404:400);res.status(status).json({error:error.code==='LIMIT_FILE_SIZE'?'The upload limit is 4 GB':error.message});});return app;
+ app.use((error,req,res,next)=>{if(req.uploadJob)try{store.update(req.uploadJob.id,{status:'failed',stage:'error',message:error.message});}catch{}const status=error.code==='LIMIT_FILE_SIZE'?413:error.status||(/not found|missing/i.test(error.message)?404:400);res.status(status).json({error:error.code==='LIMIT_FILE_SIZE'?(req.path.endsWith('/creator/photo')?'Pictures can be up to 3 MB':req.path.endsWith('/music')?'Music files can be up to 200 MB':'The upload limit is 4 GB'):error.message});});return app;
 }

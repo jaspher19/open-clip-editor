@@ -1,4 +1,4 @@
-import fs from 'node:fs';import path from 'node:path';import {writeClipBatchAI,metadataProviders} from './metadata-ai.mjs';import {streamPeople,clipPeople} from './people.mjs';import {pickHook,titleOptions} from './titles.mjs';import {renderThumbnail} from './thumbnails.mjs';import {placeLabels,withLabels} from './meme-edit.mjs';
+import fs from 'node:fs';import path from 'node:path';import {writeClipBatchAI,metadataProviders} from './metadata-ai.mjs';import {streamPeople,clipPeople} from './people.mjs';import {pickHook,titleOptions} from './titles.mjs';import {renderThumbnail,videoPoster} from './thumbnails.mjs';import {placeLabels,withLabels} from './meme-edit.mjs';
 import {autoThumbnail} from './autothumb.mjs';
 // Publishing extras: a fresh hook and title choices for one clip, and custom thumbnails for main-video posts.
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
@@ -45,6 +45,15 @@ export function registerPublishRoutes(app,{store,posting,env=process.env,fetchIm
    fs.copyFileSync(temp,shortThumb(p));res.json({...posting.public(p),shortThumbnail:{url:`/api/posting/${p.id}/thumbnail/short?v=${Date.now()}`,text:made.text}});}
   finally{fs.rmSync(temp,{force:true});}
  });
+ // Preview picture of a post: its custom thumbnail, its Shorts thumbnail image, or a frame of its video.
+ app.get('/api/posting/:id/poster',async(req,res)=>{const p=posting.get(req.params.id);let file=[posting.thumbnailFile(p.id),shortThumb(p)].find(f=>fs.existsSync(f));
+  if(!file)try{file=await videoPoster(p.file,path.join(posting.folder(p.id),'poster.jpg'));}catch(e){throw fail(e.message,404);}
+  res.set('Cache-Control','no-cache').sendFile(file,{dotfiles:'allow'});});
+ // Preview picture of a finished clip, for the Post dialog: the render's own still, or a frame of the export.
+ app.get('/api/jobs/:id/clips/:clipId/poster',async(req,res)=>{const job=store.get(req.params.id),output=(job.exports||[]).find(e=>e.clipId===req.params.clipId);if(!output||!/^[\w-]+$/.test(output.clipId))throw fail('This clip has no video yet',404);
+  const dir=path.join(store.folder(job.id),'exports'),still=path.join(dir,`${output.clipId}.jpg`),video=path.join(dir,`${output.clipId}.mp4`);let file=still;
+  try{if(!fs.existsSync(still)||fs.statSync(still).mtimeMs<fs.statSync(video).mtimeMs)file=await videoPoster(video,path.join(dir,`${output.clipId}.poster.jpg`));}catch(e){throw fail(e.message,404);}
+  res.set('Cache-Control','no-cache').sendFile(file,{dotfiles:'allow'});});
  app.get('/api/posting/:id/thumbnail/short',(req,res)=>{const file=shortThumb(posting.get(req.params.id));if(!fs.existsSync(file))throw fail('No thumbnail image yet',404);res.set('Cache-Control','no-store').sendFile(file,{dotfiles:'allow'});});
  app.get('/api/posting/:id/thumbnail',(req,res)=>{const file=posting.thumbnailFile(posting.get(req.params.id).id);if(!fs.existsSync(file))throw fail('No custom thumbnail yet',404);res.set('Cache-Control','no-store').sendFile(file,{dotfiles:'allow'});});
  app.delete('/api/posting/:id/thumbnail',(req,res)=>res.json(posting.public(posting.clearThumbnail(mainVideo(req.params.id).id))));

@@ -628,3 +628,61 @@ button:disabled{opacity:.55;filter:grayscale(.6)}
 .mock-stack .mock-cam .mock-person{height:78%;width:42%}
 .mock-stack .mock-game{position:absolute;left:0;right:0;top:36%;bottom:0;background:linear-gradient(160deg,#1f6f5c 0 30%,#2c3f7a 30% 62%,#7a3a5c 62%);opacity:.9}
 .mock-stack .mock-game::after{content:"";position:absolute;left:44%;top:40%;width:12%;aspect-ratio:1;border:2px solid #ffffffb0;border-radius:50%}
+/* Project list: creator photo instead of the stream title (the title is the row's tooltip). */
+.creator-avatar{position:relative;flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:2.5px solid var(--ink);background:hsl(var(--avatar-hue,40) 75% 74%);display:grid;place-items:center;color:var(--ink);font-weight:800;font-size:13px;letter-spacing:.02em}
+.creator-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.creator-avatar .history-dot{position:absolute;right:-4px;bottom:-4px;margin:0}
+.creator-avatar .history-dot:not(.processing):not(.failed){display:none}
+.history-row .history-item{min-height:62px}
+.history-photo{position:absolute;bottom:15px;right:8px;width:24px;height:24px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:7px;background:var(--paper);color:var(--ink);opacity:0;transition:opacity .12s}
+.history-delete{width:24px;height:24px}
+.history-row:hover .history-photo,.history-photo:focus-visible{opacity:1}
+.history-photo:hover{background:var(--yellow)}
+@media (hover:none){.history-photo{opacity:1}}
+.creator-menu b{font-weight:800}
+.creator-menu-error{flex-basis:100%;color:var(--red,#e63b2e)}
+/* Post previews: the post's thumbnail (or a frame of its video) beside its details. */
+.post-main{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;align-content:start}
+.post-main>*:not(.post-thumb){grid-column:2}
+.post-thumb{grid-column:1;grid-row:1 / span 12;align-self:start;display:block;width:62px;aspect-ratio:9/16;border:3px solid var(--ink);border-radius:8px;overflow:hidden;background:var(--ink);box-shadow:2px 2px 0 var(--ink)}
+.post-thumb.wide{width:118px;aspect-ratio:16/9}
+.post-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.post-thumb:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.post-thumb:focus-visible{outline:3px solid var(--blue,#2f6bff);outline-offset:2px}
+@media(max-width:520px){.post-thumb{width:48px}.post-thumb.wide{width:88px}}
+.post-preview{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;padding:12px;border:3px solid var(--ink);border-radius:10px;background:var(--paper-2,#fff4c2)}
+.post-preview video{width:132px;aspect-ratio:9/16;object-fit:cover;border:3px solid var(--ink);border-radius:8px;background:var(--ink);display:block}
+.post-preview.wide video{width:240px;aspect-ratio:16/9}
+.post-preview strong{display:block;font-size:15px}
+.post-preview p{margin:4px 0 0;font-size:13px}
+@media(max-width:560px){.post-preview,.post-preview.wide{grid-template-columns:1fr}.post-preview video,.post-preview.wide video{width:100%;max-width:240px;justify-self:center}}
+/* Clip editor: translate captions (Transcript tab). */
+.caption-translate{display:grid;gap:6px;margin:4px 0 10px;padding:10px 12px;border:3px solid var(--ink);border-radius:10px;background:var(--paper-2,#fff4c2);color:var(--ink)}
+.caption-translate-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.caption-translate-row label{font-weight:800;font-size:13px}
+.caption-translate-row select{flex:1 1 180px;min-width:0;max-width:280px}
+.caption-translate small{font-size:12px;color:var(--ink-soft)}
+.caption-translate .caption-translate-error{color:var(--red,#e63b2e);font-weight:700}
+/* A clip updating on its own: the project stays editable; only this card shows progress. */
+.clip-rendering{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;background:rgba(22,18,31,.82);color:var(--yellow);backdrop-filter:blur(2px)}
+.clip-rendering strong{font-size:15px;color:#fff}
+.clip-rendering small{font-size:12px;color:#e9e3f2}
+.clip-render-bar{display:block;width:min(220px,80%);height:10px;border:2px solid var(--yellow);border-radius:6px;overflow:hidden;background:transparent}
+.clip-render-bar i{display:block;height:100%;background:var(--yellow);transition:width .3s ease-out}
+.clip-rendering .text-button{color:#fff;display:inline-flex;align-items:center;gap:4px}
+@media(prefers-reduced-motion:reduce){.clip-render-bar i{transition:none}}
+.history-row .history-item{padding-right:34px;gap:9px}
+.history-row .creator-avatar{width:34px;height:34px;font-size:12px}
+.history-row .history-item small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-row .history-item>span:last-child{flex:1 1 auto;min-width:0}
+.history-row .history-item strong{max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-row .history-item small.history-date{margin-top:1px;opacity:.75;font-weight:600}
+.post-main>.format-badge{justify-self:start}
+/* Clip again */
+.clip-again{display:inline-flex;align-items:center;gap:6px}
+.clip-again select{width:auto;min-width:0;padding:8px 6px;border:3px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);font-weight:700}
+.more-status{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 14px;border:3px solid var(--ink);border-radius:10px;background:var(--paper);color:var(--ink);box-shadow:3px 3px 0 var(--ink);font-weight:600}
+.more-status>span{flex:1;min-width:0}
+.more-status.done{background:#e6ffd9}
+.more-status.failed{background:#ffe3df}
+.new-chip{background:var(--lime,#b6ff5c);color:var(--ink)}

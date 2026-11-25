@@ -1,5 +1,5 @@
 import fs from 'node:fs';import path from 'node:path';import {randomUUID} from 'node:crypto';import {EventEmitter} from 'node:events';import {WORK} from './config.mjs';import {validateOptions} from './options.mjs';
-import {writeJsonAtomic,replaceFile} from './atomic.mjs';import {EDIT_TEMPLATES} from './templates.mjs';
+import {writeJsonAtomic,replaceFile} from './atomic.mjs';import {EDIT_TEMPLATES} from './templates.mjs';import {creatorOf} from './creators.mjs';
 // Moment shapes of the templates that pick their own kind of moment, so the web app checks lengths the same way.
 const MOMENTS=Object.fromEntries(EDIT_TEMPLATES.filter(t=>t.moment).map(t=>[t.id,t.moment]));
 export class JobStore extends EventEmitter{
@@ -17,6 +17,9 @@ export class JobStore extends EventEmitter{
   this.emit('remove',id);this.purgeDeleted();}
  purgeDeleted(){for(const f of fs.readdirSync(this.root))if(f.startsWith('.deleted-'))try{fs.rmSync(path.join(this.root,f),{recursive:true,force:true,maxRetries:8,retryDelay:150});}catch{}}
  list(){return fs.readdirSync(this.root,{withFileTypes:true}).filter(f=>f.isDirectory()&&/^[a-f0-9-]{36}$/.test(f.name)).flatMap(f=>{try{return [this.get(f.name)];}catch{return [];}}).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));}
- recover(){for(const j of this.list())if(['running','queued','exporting'].includes(j.status))this.update(j.id,{status:'interrupted',message:'Processing was interrupted. Retry to continue from saved work.'});}
+ recover(){for(const j of this.list()){if(['running','queued','exporting'].includes(j.status))this.update(j.id,{status:'interrupted',message:'Processing was interrupted. Retry to continue from saved work.'});
+  // Clip renders don't survive a restart: the clip keeps its saved edits (still marked to update) without a stale progress.
+  if(j.more?.status==='running')this.update(j.id,{more:{...j.more,status:'stopped'}});
+  const stuck=(j.clips||[]).some(c=>c.render);if(stuck){const fresh=this.get(j.id);this.update(j.id,{clips:fresh.clips.map(c=>{if(!c.render)return c;const {render:_,...rest}=c;return {...rest,dirty:true};})});}}}
 }
-export function publicJob(job){const {sourcePath,musicPath,source,...safe}=job;return {...safe,source:{type:source.type,kind:source.kind||'video',name:source.name||'',url:source.url||'',section:source.section||null},sourceUrl:sourcePath?`/api/jobs/${job.id}/source`:null,moments:MOMENTS};}
+export function publicJob(job){const {sourcePath,musicPath,source,...safe}=job;return {...safe,source:{type:source.type,kind:source.kind||'video',name:source.name||'',url:source.url||'',section:source.section||null},sourceUrl:sourcePath?`/api/jobs/${job.id}/source`:null,creator:(({name,platform})=>({name,platform}))(creatorOf(job)),moments:MOMENTS};}

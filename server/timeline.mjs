@@ -30,3 +30,13 @@ export function jobTimeline(job,folder){
 
 /** Best unused candidate that overlaps none of `clips`. */
 export function bestUnused(candidates,clips){return [...candidates].sort((a,b)=>b.score-a.score).find(c=>!clips.some(k=>overlaps(c,k)))||null;}
+
+/**
+ * "Clip again": the `count` best candidates that repeat nothing — no overlap with the project's clips (kept or
+ * discarded), with moments swapped away earlier (`retired`), or with each other.
+ */
+export function unusedMoments(candidates,{clips=[],retired=[]}={},count=5){
+ const taken=[...clips,...retired].filter(r=>Number.isFinite(r?.start)&&Number.isFinite(r?.end)),out=[];
+ for(const c of [...candidates].sort((a,b)=>b.score-a.score)){if(out.length>=count)break;if(!taken.some(k=>overlaps(c,k))&&!out.some(k=>overlaps(c,k)))out.push(c);}
+ return out;
+}

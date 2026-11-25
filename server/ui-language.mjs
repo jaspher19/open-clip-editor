@@ -55,3 +55,22 @@ export async function aiTranslate(language,texts,{ask=askAI,chunk=60}={}){
  }
  return out;
 }
+
+/**
+ * Caption translation with the user's own AI key (for browsers without a built-in translator): spoken caption lines
+ * from `from` into `to`, one translation per line, short enough to read as subtitles.
+ */
+export async function aiTranslateCaptions(from,to,lines,{ask=askAI,chunk=40}={}){
+ if(!validLanguage(to))throw new Error('Unknown language');if(from&&!validLanguage(from))from='';
+ if(!Array.isArray(lines)||!lines.length||lines.length>400||lines.some(l=>typeof l!=='string'||l.length>MAX_TEXT))throw new Error('Send up to 400 caption lines');
+ const out=[];
+ for(let i=0;i<lines.length;i+=chunk){
+  const part=lines.slice(i,i+chunk);
+  const {data}=await ask({schema:Reply,maxTokens:8000,timeout:90000,
+   system:`You translate the spoken captions of a livestream clip${from?` from the language with the code "${from}"`:''} into the language with the code "${to}". Each input line is one spoken phrase; return exactly one translation per line, in the same order, never merging or splitting lines. Translate the meaning the way a native speaker would say it out loud, keeping it about as short as the original. Keep people's names, channel names, game names and numbers as they are. Keep swearing as mild or strong as it was. No quotes, notes or explanations.`,
+   user:JSON.stringify({from:from||'auto',to,lines:part})});
+  if(data.translations.length!==part.length)throw new Error('The AI returned the wrong number of lines. Try again.');
+  out.push(...part.map((l,k)=>String(data.translations[k]??'').replace(/\s+/g,' ').trim().slice(0,MAX_TEXT)));
+ }
+ return out;
+}

@@ -93,3 +93,39 @@ export function zoomBox(cam,face){
  const [x,y,w,h]=cam,nw=w/ZOOM,nh=h/ZOOM,cx=face?face[0]+face[2]/2:x+w/2,cy=face?face[1]+face[3]*.6:y+h/2;
  return [Math.max(x,Math.min(x+w-nw,cx-nw/2)),Math.max(y,Math.min(y+h-nh,cy-nh/2)),nw,nh].map(v=>+v.toFixed(5));
 }
+
+/**
+ * Caption translation, part 1: the clip's spoken words grouped into phrases to translate as whole sentences.
+ * A phrase ends at . ! ?, at a pause of `gap` seconds, or after `maxWords` words. Returns arrays of word indices.
+ * @param {{start:number,end:number,text:string}[]} words the whole transcript (with the owner's edits)
+ * @param {{start:number,end:number}[]} ranges what the clip plays (main range and extra parts)
+ */
+export function captionPhrases(words,ranges,{maxWords=14,gap=.7}={}){
+ const phrases=[];let current=[];
+ words.forEach((w,i)=>{if(!ranges.some(r=>w.end>r.start&&w.start<r.end)||!String(w.text||'').trim())return;
+  const prev=current.length?words[current.at(-1)]:null;
+  if(prev&&(current.length>=maxWords||/[.!?…]["”']?$/.test(prev.text)||w.start-prev.end>gap||i!==current.at(-1)+1)){phrases.push(current);current=[];}
+  current.push(i);});
+ if(current.length)phrases.push(current);return phrases;
+}
+const NO_SPACES=/^(ja|zh|th|lo|km|my)(-|$)/i;
+/** Words of a translated line; languages written without spaces are split into words with Intl.Segmenter. */
+export function translationTokens(text,language=''){
+ const clean=String(text||'').replace(/\s+/g,' ').trim();if(!clean)return [];
+ if(!NO_SPACES.test(language)||typeof Intl.Segmenter!=='function')return clean.split(' ');
+ const out=[];for(const s of new Intl.Segmenter(language,{granularity:'word'}).segment(clean)){if(!s.segment.trim())continue;if(!s.isWordLike&&out.length)out[out.length-1]+=s.segment;else out.push(s.segment);}
+ return out;
+}
+/**
+ * Caption translation, part 2: a translated phrase spread over the phrase's original word slots, in order, so the
+ * subtitles keep the speech timing. More words than slots share a slot; fewer leave the last slots of each stretch blank.
+ * @returns {string[]} one caption text per slot
+ */
+export function spreadTranslation(slotCount,text,language=''){
+ const tokens=translationTokens(text,language),n=slotCount,k=tokens.length,glue=NO_SPACES.test(language)?'':' ';
+ if(!n)return [];if(!k)return Array(n).fill('');
+ const out=Array(n).fill('');
+ if(k>=n)for(let j=0;j<n;j++)out[j]=tokens.slice(Math.floor(j*k/n),Math.floor((j+1)*k/n)).join(glue).slice(0,120);
+ else tokens.forEach((t,i)=>{out[Math.floor(i*n/k)]=t.slice(0,120);});
+ return out;
+}

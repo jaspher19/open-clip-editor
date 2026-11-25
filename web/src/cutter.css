@@ -129,11 +129,21 @@
 .tip-button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
 .tip-button.compact{font-size:13px;padding:5px 11px;border-width:2px;box-shadow:2px 2px 0 var(--ink)}
 .tip-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:10px 14px;background:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);font:600 15px/1.35 'Comic Neue',sans-serif;color:var(--ink)}
-.tip-dialog{position:fixed;width:min(400px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:20px 20px 16px;border:3px solid var(--ink);border-radius:18px;background:var(--paper,#fff6dc);color:var(--ink);box-shadow:8px 8px 0 var(--ink);text-align:center}
+.tip-dialog{position:fixed;width:min(860px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:20px 20px 16px;border:3px solid var(--ink);border-radius:18px;background:var(--paper,#fff6dc);color:var(--ink);box-shadow:8px 8px 0 var(--ink);text-align:center}
 .tip-dialog::backdrop{background:rgba(22,18,31,.55)}
 .tip-dialog h2{display:flex;align-items:center;justify-content:center;gap:8px;font:30px/1 var(--display);letter-spacing:1px;margin:4px 0 8px}
 .tip-dialog p{margin:0 0 12px;font:600 15px/1.4 'Comic Neue',sans-serif}
-.tip-dialog img{display:block;width:100%;max-width:300px;height:auto;margin:0 auto 10px;border:3px solid var(--ink);border-radius:12px;background:#fff}
+/* Tip QR card: only the OpenClip name and the code. The code stays straight, black on pure white, never covered. */
+.tip-card{position:relative;margin:6px auto 14px;width:fit-content;max-width:100%;padding:16px 18px 20px;border:3px solid var(--ink);border-radius:20px;background:radial-gradient(circle at 1px 1px,rgba(22,18,31,.13) 1px,transparent 1.6px) 0 0/9px 9px,var(--yellow);box-shadow:5px 5px 0 var(--ink);display:grid;justify-items:center;gap:14px}
+.tip-card-name{display:inline-flex;align-items:center;gap:9px;font:34px/1 var(--display);letter-spacing:1.5px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink);transform:rotate(-3deg)}
+.tip-card-name .brand-mark{display:grid;place-items:center;width:38px;height:38px;flex:none;-webkit-text-stroke:0;text-shadow:none}
+.tip-card-qr{position:relative;max-width:100%;padding:6px;border:3px solid var(--ink);border-radius:16px;background:#fff;box-shadow:4px 4px 0 var(--ink)}
+.tip-card-qr img{display:block;max-width:100%;height:auto;aspect-ratio:1;image-rendering:pixelated;border-radius:8px}
+.tip-corner{position:absolute;width:26px;height:26px;border:5px solid var(--red);pointer-events:none}
+.tip-corner.tl{top:-11px;left:-11px;border-right:0;border-bottom:0;border-radius:12px 0 0 0}
+.tip-corner.tr{top:-11px;right:-11px;border-left:0;border-bottom:0;border-radius:0 12px 0 0;border-color:var(--blue)}
+.tip-corner.bl{bottom:-11px;left:-11px;border-right:0;border-top:0;border-radius:0 0 0 12px;border-color:var(--blue)}
+.tip-corner.br{bottom:-11px;right:-11px;border-left:0;border-top:0;border-radius:0 0 12px 0}
 .tip-dialog .tip-small{font-size:13px;color:var(--ink-soft)}
 .tip-dialog .tip-by{margin:10px 0 0;font-size:12px;color:var(--ink-soft)}
 .tip-actions{display:flex;justify-content:center}
@@ -248,3 +258,30 @@ a.brand-by:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .yt-problems dt{font-weight:800;font-size:13.5px}.yt-problems dd{margin:2px 0 0;font-size:13.5px;line-height:1.45}
 .yt-problems p{font-size:13px}
 @media(max-width:560px){.youtube-guide-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* The chosen project is still importing: wait here instead of switching to another project. */
+.cutter-importing{gap:12px}
+.cutter-importing p{max-width:520px}
+.cutter-import-bar{display:block;width:min(360px,90%);height:12px;border:2px solid var(--ink,#16121f);border-radius:7px;overflow:hidden;background:#fff}
+.cutter-import-bar i{display:block;height:100%;background:var(--lime,#9be564);transition:width .4s ease-out}
+.cutter-importing .cutter-project{margin-top:6px;min-width:min(360px,90%)}
+@media(prefers-reduced-motion:reduce){.cutter-import-bar i{transition:none}}
+.cutter-importing{margin-top:28px}
+/* Suggested moments live in the editor's left column and fill the space beside the tall settings column;
+   the list scrolls inside the panel instead of stretching the page. */
+.cutter-grid{align-items:stretch}
+.cutter-side{align-content:start}
+.cutter-left{display:flex;flex-direction:column;gap:18px}
+.cutter-suggestions{display:flex;flex-direction:column;gap:12px;flex:1 1 auto;min-height:300px;contain:size;overflow:hidden}
+.cutter-suggestions .timeline-candidates{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding:2px 6px 4px 2px;scrollbar-gutter:stable}
+.cutter-suggestions>.text-button{align-self:flex-start}
+@media(max-width:1100px){.cutter-suggestions{contain:none;flex:none;min-height:0;max-height:min(520px,70vh)}}
+.cutter-left>.cutter-player{flex:none}
+
+/* Two ways to tip, side by side: InstaPay (Philippines) and Ko-fi (worldwide); stacked on small screens. */
+.tip-cards{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:22px;margin:6px 0 12px}
+.tip-cards .tip-card{margin:0;align-content:start}
+.tip-tag{display:inline-block;padding:4px 12px;border:2px solid var(--ink);border-radius:999px;background:#fff;color:var(--ink);font:800 14px/1.1 'Comic Neue',sans-serif;box-shadow:2px 2px 0 var(--ink)}
+.tip-note{font:700 13px/1.3 'Comic Neue',sans-serif;color:var(--ink);text-align:center;margin-top:-6px}
+.tip-qr-badge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:var(--red);color:#fff;border:4px solid #fff;box-shadow:0 0 0 2.5px var(--ink)}
+.tip-link{display:inline-flex;align-items:center;gap:6px;margin-top:-4px;font:800 14px/1 'Comic Neue',sans-serif;color:var(--blue-deep,#0f5f99);text-decoration:underline;text-underline-offset:3px}
+.tip-link:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:4px}

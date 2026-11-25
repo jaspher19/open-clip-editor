@@ -59,7 +59,17 @@ function drawFrame(ctx:CanvasRenderingContext2D,v:HTMLVideoElement,cw:number,ch:
 /** Cut any parts of a project's video into one MP4: suggestions from the stream timeline, drag or I/O to mark, a camera + gameplay layout and text, then export. */
 export default function VideoCutter({jobs,jobId,onPick,onChanged,onNewProject,onOpenCalendar,onConnectPosting}:{jobs:Job[];jobId:string|null;onPick:(id:string)=>void;onChanged:(job:Job)=>void;onNewProject:()=>void;onOpenCalendar:()=>void;onConnectPosting:()=>void}){
  const usable=jobs.filter(j=>j.sourceUrl&&j.metadata?.duration),job=usable.find(j=>j.id===jobId)||null;
- useEffect(()=>{if(!job&&usable[0])onPick(usable[0].id);},[job?.id,usable.length]);
+ // The chosen project may still be importing: stay on it (never switch the app to another project behind the user's
+ // back) and open it here as soon as its video is in. Only with no project chosen, or one that was deleted, pick one.
+ const importing=!job&&jobId?jobs.find(j=>j.id===jobId)||null:null;
+ useEffect(()=>{if(!job&&!importing&&usable[0])onPick(usable[0].id);},[job?.id,importing?.id,usable.length]);
+ if(importing){const waiting=busy(importing),failed=importing.status==='failed'||importing.status==='cancelled';
+  return <section className="cutter"><div className="cutter-empty cutter-importing" role="status">{waiting?<Loader2 className="spin" size={42}/>:<CircleAlert size={42}/>}
+  <h2>{waiting?'Your video is still importing':failed?(importing.status==='failed'?'This video didn’t import':'This import was stopped'):'This project’s video can’t be cut'}</h2>
+  <p>{waiting?`${importing.message||'Getting the video ready'}. The cutter opens it by itself as soon as the video is downloaded, while the clips are still being found.`:failed?importing.message||'Retry it from the project page.':'Its source video isn’t on this computer any more. Pick another project.'}</p>
+  {waiting&&<span className="cutter-import-bar" aria-hidden="true"><i style={{width:`${Math.round(Math.min(1,Math.max(.03,(importing.progress||0)/.15))*100)}%`}}/></span>}
+  {usable.length>0&&<label className="cutter-project"><span className="field-label">{waiting?'Or cut a ready project now':'Cut another project'}</span><select aria-label="Project to cut" value="" onChange={e=>{if(e.target.value)onPick(e.target.value);}}><option value="">Choose a project…</option>{usable.map(j=><option key={j.id} value={j.id}>{j.title||'Untitled video'} · {clock(j.metadata?.duration||0)}</option>)}</select></label>}
+ </div></section>;}
  if(!usable.length)return <section className="cutter"><div className="cutter-empty"><Film size={42}/><h2>Nothing to cut yet</h2><p>Start a project with a video link or a file first. Once the video is imported, cut any parts of it here.</p><button className="primary" onClick={onNewProject}><Plus size={17}/>New project</button></div></section>;
  if(!job)return <section className="cutter"><p className="muted"><Loader2 className="spin" size={16}/> Opening the project…</p></section>;
  return <CutterFor key={job.id} job={job} jobs={usable} onPick={onPick} onChanged={onChanged} onOpenCalendar={onOpenCalendar} onConnectPosting={onConnectPosting}/>;
@@ -260,6 +270,11 @@ function CutterFor({job,jobs,onPick,onChanged,onOpenCalendar,onConnectPosting}:{
     {overlapping&&<p className="cutter-warning">Some parts overlap, so that footage plays twice. That's fine if you meant it.</p>}
     </section>
        </div>
+   <section className="cutter-panel cutter-suggestions" aria-labelledby="suggest-title"><div className="cutter-panel-head"><h2 id="suggest-title"><Sparkles size={18}/>Suggested moments</h2>{(data?.candidates.length||0)>8&&<button type="button" className="text-button" onClick={()=>setShowAll(!showAll)}>{showAll?'Show fewer':`Show all ${data!.candidates.length}`}</button>}</div>
+    {!data?<p className="muted">{timelineNote||<><Loader2 className="spin" size={15}/> Finding the loud and busy parts…</>}</p>:!suggestions.length?<p className="muted">No suggestions for this video.</p>:
+    <ul className="timeline-candidates">{suggestions.map((c,i)=><li key={i}><button type="button" className="candidate-time" onClick={()=>seek(c.start,true)}>{clock(c.start)}</button><span className="candidate-kind">{Math.round(c.end-c.start)} s</span><span className="candidate-title">{c.title}{c.reasons?.[0]&&<small className="cut-reason"> · {c.reasons[0]}</small>}</span><span className="candidate-score">{c.score}</span><button type="button" className="secondary" onClick={()=>add(c)}><Plus size={14}/>Add</button></li>)}</ul>}
+    {!!data?.clips.length&&<button type="button" className="text-button" onClick={()=>setSegs([...segs,...data.clips.filter(c=>c.kept).map(c=>({start:round(c.start),end:round(c.end)}))])}><Plus size={14}/>Add this project's {data.clips.filter(c=>c.kept).length} kept clips as parts</button>}
+   </section>
    </div>
    <aside className="cutter-side">
     <section className="cutter-panel" aria-labelledby="look-title"><div className="cutter-panel-head"><h2 id="look-title">Preview</h2><span className="cutter-total">{format==='video'?'16:9':'9:16'} · {exportSize.width} × {exportSize.height}</span></div>
@@ -330,11 +345,6 @@ function CutterFor({job,jobs,onPick,onChanged,onOpenCalendar,onConnectPosting}:{
     </section>
    </aside>
   </div>
-  <section className="cutter-panel" aria-labelledby="suggest-title"><div className="cutter-panel-head"><h2 id="suggest-title"><Sparkles size={18}/>Suggested moments</h2>{(data?.candidates.length||0)>8&&<button type="button" className="text-button" onClick={()=>setShowAll(!showAll)}>{showAll?'Show fewer':`Show all ${data!.candidates.length}`}</button>}</div>
-   {!data?<p className="muted">{timelineNote||<><Loader2 className="spin" size={15}/> Finding the loud and busy parts…</>}</p>:!suggestions.length?<p className="muted">No suggestions for this video.</p>:
-   <ul className="timeline-candidates">{suggestions.map((c,i)=><li key={i}><button type="button" className="candidate-time" onClick={()=>seek(c.start,true)}>{clock(c.start)}</button><span className="candidate-kind">{Math.round(c.end-c.start)} s</span><span className="candidate-title">{c.title}{c.reasons?.[0]&&<small className="cut-reason"> · {c.reasons[0]}</small>}</span><span className="candidate-score">{c.score}</span><button type="button" className="secondary" onClick={()=>add(c)}><Plus size={14}/>Add</button></li>)}</ul>}
-   {!!data?.clips.length&&<button type="button" className="text-button" onClick={()=>setSegs([...segs,...data.clips.filter(c=>c.kept).map(c=>({start:round(c.start),end:round(c.end)}))])}><Plus size={14}/>Add this project's {data.clips.filter(c=>c.kept).length} kept clips as parts</button>}
-  </section>
   {!!job.cuts?.length&&<section className="cutter-panel" aria-labelledby="cuts-title"><h2 id="cuts-title">Your cuts</h2><ul className="cut-list">{job.cuts.map(c=><li key={c.id} className={`cut-item ${c.status}`}>
    {c.status==='done'?<video controls preload="none" src={`/api/jobs/${job.id}/cuts/${c.id}?v=${encodeURIComponent(c.finishedAt||'')}`} className={c.format==='video'?'wide':'tall'}/>:<div className={`cut-thumb ${c.format==='video'?'wide':'tall'}`}>{c.status==='rendering'?<Loader2 className="spin" size={26}/>:<CircleAlert size={26}/>}</div>}
    <div className="cut-info"><strong>{c.title}</strong><small>{c.quality||1080}p · {c.format==='video'?'Landscape 16:9':'Portrait 9:16'} · {c.framing==='split'?'camera + gameplay':c.framing==='fit'?'whole picture':'fill'}{c.captions?' · captions':''}{c.texts?.length?` · ${c.texts.length} text${c.texts.length===1?'':'s'}`:''} · {c.segments.length} part{c.segments.length===1?'':'s'} · {clock(c.duration||c.length)}{c.bytes?` · ${mb(c.bytes)}`:''}</small>

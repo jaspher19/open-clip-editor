@@ -24,7 +24,7 @@ export function languageName(code:string,inLanguage=code):string{try{const n=new
 
 // User content and things that must stay as they are.
 const SKIP='[translate="no"],.notranslate,[contenteditable=""],[contenteditable="true"],script,style,textarea,code,pre,kbd,svg,noscript,'+
- '.brand,.brand-by,.tip-qr,.history-item strong,.project-heading h1,.clip-headline,.moment-title,.candidate-title,.metadata-description,.post-caption,.post-card strong,.transcript-words,.live-caption,.live-pop,.live-series,.hook-title,.update-steps,.update-list strong';
+ '.brand,.brand-by,.tip-qr,.history-item strong,.creator-avatar,.creator-menu b,.project-heading h1,.clip-headline,.moment-title,.candidate-title,.metadata-description,.post-caption,.post-card strong,.transcript-words,.live-caption,.live-pop,.live-series,.hook-title,.update-steps,.update-list strong';
 const ATTRS=['title','placeholder','aria-label'] as const;
 const LETTER=/\p{L}/u,NUM=/\d+(?:[.,:]\d+)*/g,SLOT=/\{(\d+)\}/g;
 const LS_LANG='openclip-language',lsStrings=(l:string)=>`openclip-ui-${l}`;

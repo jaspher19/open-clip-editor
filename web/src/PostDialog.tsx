@@ -15,6 +15,13 @@ async function api<T>(url:string,init?:RequestInit):Promise<T>{const r=await fet
  const d=await r.json();if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);return d;}
 const localInput=(d:Date)=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
 
+/** The finished video with its preview picture, so you see what you are about to post. */
+function PostPreview({job,clipId,portrait,note}:{job:Job;clipId:string;portrait:boolean;note:string}){
+ const summary=clipId==='stream-summary',v=encodeURIComponent(summary?job.summary?.createdAt||'':job.exports.find(e=>e.clipId===clipId)?.createdAt||'');
+ const src=summary?`/api/jobs/${job.id}/summary?v=${v}`:`/api/jobs/${job.id}/export/${clipId}?v=${v}`,poster=summary?`/api/jobs/${job.id}/summary?type=jpg&v=${v}`:`/api/jobs/${job.id}/clips/${clipId}/poster?v=${v}`;
+ return <div className={`post-preview ${portrait?'':'wide'}`}><video key={src} src={src} poster={poster} controls muted playsInline preload="none" aria-label="Preview of the video you are posting"/><div><strong>Preview</strong><p className="muted">{note}</p></div></div>;
+}
+
 export default function PostDialog({job,clip,onClose,onReexport,onConnect}:{job:Job;clip:Pick<Clip,'id'|'title'>&{titleOptions?:string[]};onClose:()=>void;onReexport?:(format:'video'|'shorts')=>void;onConnect:()=>void}){
  const dialog=useRef<HTMLDialogElement>(null);
  const [pub,setPub]=useState<Publication|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[post,setPost]=useState<Post|null>(null),[postAs,setPostAs]=useState<'video'|'shorts'>('shorts'),[writing,setWriting]=useState(false),[ai,setAi]=useState<AiDraft|null>(null);
@@ -42,6 +49,7 @@ export default function PostDialog({job,clip,onClose,onReexport,onConnect}:{job:
     <button type="button" aria-pressed={destination==='youtube'} disabled={busy||preparingTikTok} onClick={()=>{setDestination('youtube');if(pub)setError('');}}><MonitorPlay size={17}/>YouTube</button>
     <button type="button" aria-pressed={destination==='tiktok'} disabled={busy||preparingTikTok} onClick={()=>{setDestination('tiktok');if(pub)setError('');}}><Smartphone size={17}/>TikTok</button>
    </div>}
+   {pub?.exported&&!post&&<PostPreview job={job} clipId={clip.id} portrait={portrait} note={destination==='tiktok'?'TikTok lets you pick the cover in its app before you publish.':postAs==='video'?'After you save, OpenClip makes an automatic thumbnail from the streamer’s biggest reaction. Change it in the Posting calendar (Edit).':'YouTube lets you choose a Short’s thumbnail only in its mobile app, after the upload. This is the frame it starts on.'}/>}
    {!pub&&!error&&<p className="loading-words"><Loader2 className="spin" size={16}/>Writing the title and description…</p>}
    {pub&&destination==='tiktok'&&<div className="post-destination-details">
     <p>TikTok receives the finished portrait video in your Inbox, where you can review and publish it.</p>

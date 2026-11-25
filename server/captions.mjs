@@ -5,6 +5,8 @@ export const CAPTION_STYLES=JSON.parse(fs.readFileSync(new URL('../presets/capti
 const LINK=new Set(['a','an','the','i','i\'m','it','it\'s','is','was','of','for','to','in','on','at','me','my','you','we','and','but','so','this','that','lot','just','get','go','oh','no','yes','he','she','they','not','too','up','out','what']);
 const bare=t=>String(t).toLowerCase().replace(/[^\p{L}\p{N}']/gu,'');
 const linked=(a,b)=>!/[,;:—–-]$/.test(a.text)&&b.start-a.end<.2&&(LINK.has(bare(a.text))||LINK.has(bare(b.text))||/^\d/.test(bare(b.text)));
+// A caption edit can blank a word (a translated line spread over fewer words than were spoken): nothing to show for it.
+const spoken=words=>(words||[]).filter(w=>String(w.text??'').trim());
 export function groupWords(words,{maxWords=3,maxChars=27,maxGap=.45,pairing=''}={}){
  const groups=[];let current=[];
  for(const w of words){if(current.length&&(current.length>=maxWords||(pairing==='link'&&!linked(current.at(-1),w))||current.map(x=>x.text).join(' ').length+w.text.length+1>maxChars||/[.!?]$/.test(current.at(-1).text)||w.start-current.at(-1).end>maxGap)){groups.push(current);current=[];}current.push(w);}if(current.length)groups.push(current);return groups;
@@ -28,7 +30,7 @@ const pick=(k,n,prev)=>{if(n<2)return 0;const r=Math.floor(Math.abs(Math.sin(k*1
 const TITLE_FONTS={'comic-word':{font:'Luckiest Guy',upper:true,size:118,min:76,rows:3,width:1000,accent:'&H0000E5FF&'},'meme-phrase':{font:'Montserrat Black',upper:true,size:88,min:64},impact:{font:'Anton',upper:true,size:156,min:110},gaming:{font:'Anton',upper:true,size:156,min:110}};
 const titleFace=style=>TITLE_FONTS[style]||{font:'Montserrat Black',upper:false,size:122,min:88};
 export function makeAss(words,{style='clean',title='',progressBar=false,duration=0,font='auto',accentColor='auto',captionPosition='lower',captionX=null,captionY=null,motionIntensity='balanced',hookEnabled=true,hookDuration=2.8,titleMode='opening',contextText='',seriesLabel='',captionsEnabled=true,rankItems=[],rankActive=0,framing='center',captionReveal='progressive',outputFormat='shorts',maskProfanity:mask=true,watermark='',watermarkY=.82,hookReveal='pop',hookPosition='top'}={}){
- const source=CAPTION_STYLES[style];if(!source)throw new Error('Invalid caption style');const preset={...source,font:captionFont(font)||source.font,active:accentColor==='auto'?source.active:assColor(accentColor)};const wide=outputFormat==='video',cx=wide?960:540;const clean=t=>mask?maskProfanity(t):String(t);
+ words=spoken(words);const source=CAPTION_STYLES[style];if(!source)throw new Error('Invalid caption style');const preset={...source,font:captionFont(font)||source.font,active:accentColor==='auto'?source.active:assColor(accentColor)};const wide=outputFormat==='video',cx=wide?960:540;const clean=t=>mask?maskProfanity(t):String(t);
  // Captions sit in the lower-middle band (about 65-70% height on 9:16) so they never cover the face.
  // `middle` centres the caption block on the frame's horizontal midline (\an5, or \an8 from the block top for 2-line phrases).
  // A dragged position (captionX/captionY, shares of the frame, from the clip editor) centres the captions on that point.
@@ -105,4 +107,4 @@ export function makeAss(words,{style='clean',title='',progressBar=false,duration
  if(progressBar&&duration>0){lines.push(`Dialogue: -1,${time(0)},${time(duration)},Default,,0,0,0,,{\\an7\\pos(0,${wide?1068:1908})\\p1\\bord0\\shad0\\c${preset.active}\\clip(0,${wide?1068:1908},0,${wide?1080:1920})\\t(0,${Math.round(duration*1000)},\\clip(0,${wide?1068:1908},${wide?1920:1080},${wide?1080:1920}))}m 0 0 l ${wide?1920:1080} 0 l ${wide?1920:1080} 12 l 0 12`);}
  return header+lines.join('\n')+'\n';
 }
-export function makeSrt(words){const stamp=t=>{const n=Math.round(t*1000);return `${String(Math.floor(n/3600000)).padStart(2,'0')}:${String(Math.floor(n/60000)%60).padStart(2,'0')}:${String(Math.floor(n/1000)%60).padStart(2,'0')},${String(n%1000).padStart(3,'0')}`;};return groupWords(words).map((g,i)=>`${i+1}\n${stamp(g[0].start)} --> ${stamp(g.at(-1).end)}\n${g.map(w=>w.text).join(' ')}\n`).join('\n');}
+export function makeSrt(words){words=spoken(words);const stamp=t=>{const n=Math.round(t*1000);return `${String(Math.floor(n/3600000)).padStart(2,'0')}:${String(Math.floor(n/60000)%60).padStart(2,'0')}:${String(Math.floor(n/1000)%60).padStart(2,'0')},${String(n%1000).padStart(3,'0')}`;};return groupWords(words).map((g,i)=>`${i+1}\n${stamp(g[0].start)} --> ${stamp(g.at(-1).end)}\n${g.map(w=>w.text).join(' ')}\n`).join('\n');}
