@@ -687,3 +687,9 @@ button:disabled{opacity:.55;filter:grayscale(.6)}
 .more-status.failed{background:#ffe3df}
 .new-chip{background:var(--lime,#b6ff5c);color:var(--ink)}
 .facecam-note{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0;padding:7px 10px;border:2px solid var(--ink);border-radius:8px;background:#fff1c9;color:var(--ink);font-size:12.5px;font-weight:700;line-height:1.35}.facecam-note svg{flex:none;margin-top:2px}
+/* Delete a clip: a quiet trash button on the card, confirmed in place. */
+.clip-delete{display:grid;place-items:center;flex:none;width:28px;height:28px;margin-left:8px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);cursor:pointer}
+.clip-delete:hover:not(:disabled){background:var(--red,#e63b2e);color:#fff}
+.clip-delete:focus-visible{outline:3px solid var(--blue,#2f6bff);outline-offset:2px}
+.clip-delete:disabled{opacity:.5;cursor:not-allowed}
+.clip-confirm{margin:8px 0 0}

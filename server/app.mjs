@@ -221,6 +221,18 @@ export function createApp({store,queue,youtube:client=new YouTubeClient(),tiktok
   const next=bestUnused(jobTimeline(job,store.folder(job.id)).candidates,job.clips);if(!next)throw fail('No unused moment is left that does not overlap your other clips',404);
   const clip=await momentClip(job,next,{settings:old.settings,score:next.score,category:next.category,peakAt:next.peakAt,reasons:next.reasons});const fresh=store.get(job.id);editable(fresh);const index=fresh.clips.findIndex(c=>c.id===old.id);if(index<0)throw fail('Clip not found',404);
   fresh.clips[index]={...clip,kept:old.kept};fresh.exports=fresh.exports.filter(e=>e.clipId!==old.id);fresh.retiredMoments=[...(fresh.retiredMoments||[]),{start:old.start,end:old.end}].slice(-60);saveClips(fresh);res.json({clip:fresh.clips.find(c=>c.id===clip.id),replaced:old.id,job:publicJob(fresh)});});
+ // Delete clips the owner doesn't want: the clip, its video and side files. The moment is remembered, so Clip again
+ // doesn't bring it back. Posts already in the calendar keep their own copy of the video.
+ app.post('/api/jobs/:id/clips/delete',(req,res)=>{const job=get(req);editable(job);const ids=req.body?.clipIds;
+  if(!Array.isArray(ids)||!ids.length||ids.length>30||new Set(ids).size!==ids.length||ids.some(id=>typeof id!=='string'||!job.clips.some(c=>c.id===id)))throw fail('Choose one or more clips of this project');
+  for(const id of ids)queue.cancelClip?.(job.id,id);// a clip that is updating stops first
+  const fresh=get(req),gone=fresh.clips.filter(c=>ids.includes(c.id));
+  fresh.clips=fresh.clips.filter(c=>!ids.includes(c.id));fresh.exports=(fresh.exports||[]).filter(e=>!ids.includes(e.clipId));
+  fresh.retiredMoments=[...(fresh.retiredMoments||[]),...gone.map(c=>({start:c.start,end:c.end}))].slice(-120);saveClips(fresh);
+  const folder=store.folder(job.id);
+  for(const dir of ['exports','clips']){let names=[];try{names=fs.readdirSync(path.join(folder,dir));}catch{continue;}
+   for(const f of names)if(ids.some(id=>f.startsWith(id+'.')))try{fs.rmSync(path.join(folder,dir,f),{force:true});}catch{/* a player still has it open; it's no longer listed */}}
+  res.json(publicJob(store.get(job.id)));});
  // Clip again: more clips from the same stream. The next-best moments that repeat nothing (no overlap with any clip,
  // kept or discarded, or with a moment swapped away) are added one by one in the background, and each new clip renders
  // on its own, so the project stays watchable and editable the whole time.
