@@ -1,4 +1,4 @@
-import {spawn} from 'node:child_process';import fs from 'node:fs';import path from 'node:path';import {localEnv,ROOT} from './config.mjs';
+import {spawn} from 'node:child_process';import {StringDecoder} from 'node:string_decoder';import fs from 'node:fs';import path from 'node:path';import {localEnv,ROOT} from './config.mjs';
 export async function run(command,args,{cwd=ROOT,signal,onLine,logFile,timeout=60*60*1000,idleTimeout=0,maxOutput=2_000_000,env={}}={}){
  if(signal?.aborted)throw new Error('Job cancelled');
  for(const value of [timeout,idleTimeout])if(!Number.isFinite(value)||value<0||value>2147483647)throw new Error('Invalid subprocess timeout');
@@ -9,7 +9,9 @@ export async function run(command,args,{cwd=ROOT,signal,onLine,logFile,timeout=6
   let idleTimer;const timer=timeout>0?setTimeout(()=>{timedOut='absolute';terminate();},timeout):null;
   const touch=()=>{if(!idleTimeout)return;clearTimeout(idleTimer);idleTimer=setTimeout(()=>{timedOut='idle';terminate();},idleTimeout);};touch();
   const abort=()=>terminate();signal?.addEventListener('abort',abort,{once:true});
-  const read=(chunk,isErr)=>{touch();const s=chunk.toString();log?.write(s);if(isErr)stderr=(stderr+s).slice(-maxOutput);else stdout=(stdout+s).slice(-maxOutput);let b=(isErr?errBuffer:buffer)+s;const lines=b.split(/\r?\n|\r/);b=lines.pop();if(isErr)errBuffer=b;else buffer=b;for(const line of lines)if(line.trim())onLine?.(line,isErr);};
+  // One UTF-8 decoder per stream: a character split across two chunks stays whole.
+  const decoders=[new StringDecoder('utf8'),new StringDecoder('utf8')];
+  const read=(chunk,isErr)=>{touch();const s=decoders[isErr?1:0].write(chunk);log?.write(s);if(isErr)stderr=(stderr+s).slice(-maxOutput);else stdout=(stdout+s).slice(-maxOutput);let b=(isErr?errBuffer:buffer)+s;const lines=b.split(/\r?\n|\r/);b=lines.pop();if(isErr)errBuffer=b;else buffer=b;for(const line of lines)if(line.trim())onLine?.(line,isErr);};
   child.stdout.on('data',c=>read(c,false));child.stderr.on('data',c=>read(c,true));
   const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);clearTimeout(idleTimer);signal?.removeEventListener('abort',abort);log?.end();error?reject(error):resolve(value);};
   child.on('error',e=>finish(new Error(`Cannot start ${command}: ${e.message}`)));

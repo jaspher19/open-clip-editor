@@ -67,6 +67,9 @@ try{
  step(2,'Installing the speech recognizer and video downloader (first time: a few minutes)');
  if(uv)exec('uv',['pip','install','--python',PYTHON,'-r','workers/requirements.txt'],'Installing the Python packages');
  else{exec(PYTHON,['-m','ensurepip'],'Preparing pip');exec(PYTHON,['-m','pip','install','-r','workers/requirements.txt'],'Installing the Python packages');}
+ // YouTube changes often and an old yt-dlp gets refused ("confirm you're not a bot"): always take the newest one.
+ if(uv)exec('uv',['pip','install','--upgrade','--python',PYTHON,'yt-dlp[default,curl-cffi]'],'Updating the video downloader');
+ else exec(PYTHON,['-m','pip','install','--upgrade','--disable-pip-version-check','yt-dlp[default,curl-cffi]'],'Updating the video downloader');
  exec(PYTHON,['-c','import faster_whisper,yt_dlp; print("  Workers ready")'],'Checking the Python packages');
  done.push('Speech recognizer (faster-whisper) and downloader (yt-dlp)');
 

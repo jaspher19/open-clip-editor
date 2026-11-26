@@ -1,4 +1,4 @@
-import fs from 'node:fs';import path from 'node:path';import {run} from './process.mjs';import {PYTHON} from './config.mjs';
+import fs from 'node:fs';import path from 'node:path';import {run} from './process.mjs';import {PYTHON} from './config.mjs';import {explainRefusal} from './ytdlp.mjs';
 export function parseYouTubeUrl(value){
  let u;try{u=new URL(value);}catch{throw new Error('Enter a valid YouTube video URL');}
  const host=u.hostname.toLowerCase();if(u.protocol!=='https:'||u.username||u.password||!['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','youtu.be','www.youtu.be'].includes(host))throw new Error('Only public YouTube video URLs are supported');
@@ -22,7 +22,7 @@ export async function importYouTube(url,folder,{signal,onProgress,infoOnly=false
  if(section)args.push('--download-sections',`*${section.start}-${section.end}`);else args.push('--max-filesize','4G');
  if(infoOnly){const r=await run(PYTHON,[...args,'--skip-download','--dump-single-json',parsed.url],{cwd:folder,signal,timeout:180000});return JSON.parse(r.stdout);}
  const out=path.join(folder,'source.%(ext)s');
- const r=await run(PYTHON,[...args,'--newline','--progress-template','download:download:%(progress._percent_str)s','-f',FORMAT,'--merge-output-format','mp4','--write-info-json','--windows-filenames','-o',out,parsed.url],{cwd:folder,signal,timeout:30*60*1000,logFile:path.join(folder,'download.log'),onLine:line=>{const m=line.match(/download:\s*([\d.]+)%/);if(m)onProgress?.(Number(m[1])/100);}}).catch(e=>{if(signal?.aborted)throw new Error('Job cancelled');throw new Error(`YouTube import failed. The video may be unavailable or YouTube may require sign-in. Local upload remains available. ${e.message}`);});
+ const r=await run(PYTHON,[...args,'--newline','--progress-template','download:download:%(progress._percent_str)s','-f',FORMAT,'--merge-output-format','mp4','--write-info-json','--windows-filenames','-o',out,parsed.url],{cwd:folder,signal,timeout:30*60*1000,logFile:path.join(folder,'download.log'),onLine:line=>{const m=line.match(/download:\s*([\d.]+)%/);if(m)onProgress?.(Number(m[1])/100);}}).catch(e=>{if(signal?.aborted)throw new Error('Job cancelled');throw new Error(explainRefusal('YouTube',e.message));});
  const filename=fs.readdirSync(folder).find(f=>/^source\.(mp4|mkv|webm|mov)$/.test(f));if(!filename)throw new Error(skipReason(folder));
  let info={};const meta=fs.readdirSync(folder).find(f=>f.endsWith('.info.json'));if(meta)try{info=JSON.parse(fs.readFileSync(path.join(folder,meta),'utf8'));}catch{}
  return {path:path.join(folder,filename),title:info.title||'YouTube video',youtubeId:parsed.id,sourceInfo:{uploader:info.uploader||info.channel||'',channel:info.channel||'',uploaderId:info.uploader_id||'',tags:(info.tags||[]).slice(0,20)}};

@@ -8,7 +8,7 @@
 // the light copy's audio (workers/align.py); captions and cuts then land on the same frames as before.
 import fs from 'node:fs';import path from 'node:path';
 import {run,probe} from './process.mjs';import {PYTHON,ROOT} from './config.mjs';import {writeJsonAtomic} from './atomic.mjs';
-import {importYouTube,FORMAT as YOUTUBE_FULL} from './ingest.mjs';import {prepareAudio} from './audio.mjs';import {PLATFORMS} from './sources.mjs';
+import {importYouTube,FORMAT as YOUTUBE_FULL} from './ingest.mjs';import {explainRefusal,updateMayHelp,updateDownloader} from './ytdlp.mjs';import {prepareAudio} from './audio.mjs';import {PLATFORMS} from './sources.mjs';
 
 const num=(v,d)=>{const n=Number(v);return Number.isFinite(n)&&n>0?n:d;};
 export const PROXY_AFTER=num(process.env.SOURCE_PROXY_AFTER_MINUTES,90)*60;
@@ -56,8 +56,17 @@ export function sourceInfoFrom(info,source){
 }
 function freeBytes(folder){try{const s=fs.statfsSync(folder);return Number(s.bavail)*Number(s.bsize);}catch{return Infinity;}}
 
-export async function inspectSource(source,{signal,runCommand=run}={}){
- const r=await runCommand(PYTHON,[...BASE(),'--skip-download','--dump-single-json',source.url],{signal,timeout:180000,maxOutput:40_000_000}).catch(e=>{if(signal?.aborted)throw new Error('Job cancelled');throw new Error(`${PLATFORMS[source.type]} did not return this video. It may be private, subscriber-only, deleted or region-locked. ${e.message}`.trim());});
+export async function inspectSource(source,{signal,runCommand=run,update=updateDownloader}={}){
+ const ask=()=>runCommand(PYTHON,[...BASE(),'--skip-download','--dump-single-json',source.url],{signal,timeout:180000,maxOutput:40_000_000});
+ let r;
+ try{r=await ask();}
+ catch(e){
+  if(signal?.aborted)throw new Error('Job cancelled');
+  // A refusal a newer yt-dlp often fixes (bot check, site change): update it once and try again.
+  const updated=updateMayHelp(e.message)&&await update();
+  if(!updated)throw new Error(explainRefusal(PLATFORMS[source.type],e.message));
+  try{r=await ask();}catch(again){if(signal?.aborted)throw new Error('Job cancelled');throw new Error(explainRefusal(PLATFORMS[source.type],again.message,{updated:true}));}
+ }
  return JSON.parse(r.stdout);
 }
 
